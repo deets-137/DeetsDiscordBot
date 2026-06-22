@@ -40,6 +40,37 @@ _BARE_RE = re.compile(r"https?://[^\s<>()\[\]]+")
 
 _TRAILING = ".,;:!?\"'"
 
+# Map a URL's host to a streaming service. Order doesn't matter; first host
+# substring that matches wins. Anything unrecognised is "other".
+_SERVICES = {
+    "music.apple.com": "apple_music",
+    "itunes.apple.com": "apple_music",
+    "open.spotify.com": "spotify",
+    "spotify.com": "spotify",
+    "music.youtube.com": "youtube_music",
+    "youtube.com": "youtube",
+    "youtu.be": "youtube",
+    "soundcloud.com": "soundcloud",
+    "bandcamp.com": "bandcamp",
+    "tidal.com": "tidal",
+    "deezer.com": "deezer",
+    "music.amazon.com": "amazon_music",
+}
+
+
+def detect_service(url: str) -> str:
+    """Classify a URL by streaming service from its host (e.g. 'apple_music')."""
+    host = re.sub(r"^https?://", "", url).split("/", 1)[0].lower()
+    host = host.split("@")[-1].split(":")[0]  # strip any creds / port
+    for needle, name in _SERVICES.items():
+        if host == needle or host.endswith("." + needle) or host == needle.split(".", 1)[-1]:
+            return name
+    # Fall back to a substring check so e.g. music.apple.com.edgekey hosts still map.
+    for needle, name in _SERVICES.items():
+        if needle in host:
+            return name
+    return "other"
+
 
 def _clean(url: str) -> str:
     """Strip trailing punctuation that got swept up by the bare-url regex."""

@@ -55,5 +55,29 @@ links-per-user tally. CSV/TSV are flat tables sorted so each user's links sit
 together (`author, author_id, link_count, url, …`); XML nests `<link>` elements
 under one `<user>` element each. Users are ordered by most recent activity.
 
+### The journal + SongOTD archive
+
+Treat the channel as a Song-of-the-Day journal that accumulates over time in a
+local SQLite DB (`storage.db`, gitignored):
+
+```bash
+python scan.py <channel_id> --archive   # fold posts into the journal
+python scan.py <channel_id> --enrich    # + resolve each song via iTunes
+```
+
+`--archive` records one **post** per song link a user typed (display name,
+**Discord user ID**, the message's date/time, URL, and detected **service** —
+`apple_music` / `spotify` / `youtube` / …). It's idempotent on
+`(message_id, url)`, so re-scanning never double-counts.
+
+`--enrich` (implies `--archive`) resolves each post against the free iTunes
+APIs into a **`songs`** catalog — title, artist, album, genre, release date,
+artwork, 30s preview, store link. Apple Music links resolve by their track id
+(`direct`); Spotify/YouTube/etc. resolve via oEmbed title → iTunes search
+(`search`). Posts that don't resolve (e.g. a non-music link) stay in the journal
+unenriched.
+
+Schema lives in [storage.py](storage.py); enrichment in [enrich.py](enrich.py).
+
 > Personal, single-user. The harness binds to localhost with no auth — don't
 > expose it.

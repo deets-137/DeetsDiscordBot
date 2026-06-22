@@ -1,6 +1,10 @@
 .env
 config.py
 exports/
+storage.db
+storage.db-journal
+storage.db-wal
+storage.db-shm
 __pycache__/
 *.pyc
 .DS_Store

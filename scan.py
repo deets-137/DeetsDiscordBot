@@ -11,6 +11,9 @@ Usage:
   python scan.py <channel_id> --by-user
   python scan.py <channel_id> --by-user --format xml
 
+  # Fold the scan into the persistent archive (storage.db):
+  python scan.py <channel_id> --archive
+
 A bot token can read message history over the gateway without staying online, so
 this connects, does its work in on_ready, and closes immediately.
 """
@@ -23,6 +26,8 @@ import sys
 import discord
 from dotenv import load_dotenv
 
+import enrich
+import storage
 from linkscan import collect_links, group_by_user, write_by_user, write_outputs
 
 load_dotenv()
@@ -35,11 +40,13 @@ except ModuleNotFoundError:
 
 
 async def scan_channel(channel_id: int, limit: int | None = None,
-                       by_user: bool = False, fmt: str = "csv"):
+                       by_user: bool = False, fmt: str = "csv",
+                       archive: bool = False, do_enrich: bool = False):
     """Connect, collect links from one channel, write files. Returns paths+count.
 
-    When by_user is True, also writes a per-user breakdown in fmt (csv/tsv/xml)
-    and returns it under "by_user" along with a {author: count} summary.
+    When by_user is True, also writes a per-user breakdown in fmt (csv/tsv/xml).
+    When archive is True, folds the scan into storage.db (the journal). When
+    do_enrich is True, also resolves any un-enriched posts against iTunes.
     """
     token = os.environ.get("DISCORD_TOKEN", "")
     if not token:
@@ -65,11 +72,29 @@ async def scan_channel(channel_id: int, limit: int | None = None,
                     links[0].author: len(links)
                     for links in group_by_user(records).values()
                 }
+            if archive or do_enrich:
+                result["archive"] = storage.record_scan(channel_id, label, records, limit)
+            if do_enrich:
+                result["enriched"] = enrich_pending(channel_id)
         finally:
             await client.close()
 
     await client.start(token)
     return result
+
+
+def enrich_pending(channel_id=None) -> dict:
+    """Resolve every un-enriched post in the journal against iTunes. Returns counts."""
+    pending = storage.posts_needing_enrichment(channel_id)
+    resolved = 0
+    for post in pending:
+        hit = enrich.enrich(post["url"])
+        if hit:
+            track, match_type = hit
+            song_id = storage.upsert_song(track, match_type)
+            storage.link_post_to_song(post["post_id"], song_id)
+            resolved += 1
+    return {"checked": len(pending), "resolved": resolved}
 
 
 def main():
@@ -81,13 +106,18 @@ def main():
                     help="also write a per-user breakdown of who sent which links")
     ap.add_argument("--format", choices=["csv", "tsv", "xml"], default="csv",
                     help="format for the --by-user breakdown (default: csv)")
+    ap.add_argument("--archive", action="store_true",
+                    help="fold the scan into the persistent journal (storage.db)")
+    ap.add_argument("--enrich", action="store_true",
+                    help="resolve posted songs against iTunes (implies --archive)")
     args = ap.parse_args()
 
     if not args.channel_id:
         ap.error("no channel id given and DEFAULT_CHANNEL_ID is 0 in config.py")
 
     result = asyncio.run(scan_channel(
-        args.channel_id, args.limit, by_user=args.by_user, fmt=args.format))
+        args.channel_id, args.limit, by_user=args.by_user, fmt=args.format,
+        archive=args.archive, do_enrich=args.enrich))
     print(f"#{result['label']}: {result['count']} links")
     print(f"  {result['md']}")
     print(f"  {result['csv']}")
@@ -96,6 +126,13 @@ def main():
         print("\nLinks per user (unique urls):")
         for author, count in result["per_user"].items():
             print(f"  {author}: {count}")
+    if "archive" in result:
+        a = result["archive"]
+        print(f"\nArchived to storage.db: {a['new']} new posts, "
+              f"{a['known']} already on record (scan #{a['scan_id']}).")
+    if "enriched" in result:
+        e = result["enriched"]
+        print(f"Enriched {e['resolved']}/{e['checked']} posts against iTunes.")
 
 
 if __name__ == "__main__":
