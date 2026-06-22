@@ -19,9 +19,11 @@ from __future__ import annotations
 
 import csv
 import re
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+from xml.sax.saxutils import escape, quoteattr
 
 from paths import EXPORTS_DIR
 
@@ -175,3 +177,74 @@ def write_outputs(records: list[LinkRecord], label: str) -> tuple[Path, Path]:
             writer.writerow(r.as_row())
 
     return md_path, csv_path
+
+
+# ─── Per-user output ─────────────────────────────────────────────────────────
+
+def group_by_user(records: list[LinkRecord]) -> "OrderedDict[int, list[LinkRecord]]":
+    """Group records by author, deduping each user's repeated urls (earliest kept).
+
+    Records arrive oldest→newest, so the first time we see a (user, url) pair is
+    the first time that user sent it — which is what "what they've sent" means.
+    Users are ordered by their most recent activity (most active-recently first).
+    """
+    by_user: "OrderedDict[int, list[LinkRecord]]" = OrderedDict()
+    seen: set[tuple[int, str]] = set()
+    for r in records:
+        key = (r.author_id, r.url)
+        if key in seen:
+            continue
+        seen.add(key)
+        by_user.setdefault(r.author_id, []).append(r)
+    # Order users by their latest link's timestamp, newest first.
+    return OrderedDict(
+        sorted(by_user.items(),
+               key=lambda kv: kv[1][-1].timestamp, reverse=True))
+
+
+def write_by_user(records: list[LinkRecord], label: str, fmt: str = "csv") -> Path:
+    """Write a per-user breakdown of links to EXPORTS_DIR. Returns the path.
+
+    fmt is one of "csv", "tsv", "xml". CSV/TSV are flat tables sorted so each
+    user's links sit together (author, url, …); XML nests links under each user.
+    """
+    fmt = fmt.lower()
+    if fmt not in ("csv", "tsv", "xml"):
+        raise ValueError(f"unknown format {fmt!r} (use csv, tsv, or xml)")
+
+    EXPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    safe = re.sub(r"[^A-Za-z0-9_-]+", "-", label).strip("-") or "channel"
+    path = EXPORTS_DIR / f"by_user_{safe}_{_stamp()}.{fmt}"
+    grouped = group_by_user(records)
+
+    if fmt in ("csv", "tsv"):
+        delim = "\t" if fmt == "tsv" else ","
+        with path.open("w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f, delimiter=delim)
+            writer.writerow(["author", "author_id", "link_count",
+                             "url", "link_text", "source", "timestamp", "jump_url"])
+            for links in grouped.values():
+                count = len(links)
+                for r in links:
+                    writer.writerow([r.author, r.author_id, count, r.url,
+                                     r.link_text, r.source, r.timestamp, r.jump_url])
+        return path
+
+    # XML — one <user> element per author, links nested inside.
+    scanned = datetime.now(timezone.utc).isoformat()
+    lines = ['<?xml version="1.0" encoding="UTF-8"?>',
+             f'<links channel={quoteattr(label)} scanned={quoteattr(scanned)} '
+             f'users="{len(grouped)}" total="{len(records)}">']
+    for links in grouped.values():
+        head = links[0]
+        lines.append(f'  <user name={quoteattr(head.author)} '
+                     f'id="{head.author_id}" count="{len(links)}">')
+        for r in links:
+            lines.append(
+                f'    <link url={quoteattr(r.url)} source={quoteattr(r.source)} '
+                f'timestamp={quoteattr(r.timestamp)} jump={quoteattr(r.jump_url)}>'
+                f'{escape(r.link_text)}</link>')
+        lines.append('  </user>')
+    lines.append('</links>')
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return path

@@ -39,5 +39,21 @@ python bot.py                              # then use /links in Discord
 python harness.py                          # open http://127.0.0.1:8077
 ```
 
+### Per-user breakdown
+
+To see *what each user has sent* in a channel — every user's links grouped
+together, with repeats per user collapsed — add `--by-user`:
+
+```bash
+python scan.py 123456789012345678 --by-user                 # CSV (default)
+python scan.py 123456789012345678 --by-user --format tsv    # TSV
+python scan.py 123456789012345678 --by-user --format xml    # XML
+```
+
+This writes `exports/by_user_<channel>_<timestamp>.<ext>` and prints a
+links-per-user tally. CSV/TSV are flat tables sorted so each user's links sit
+together (`author, author_id, link_count, url, …`); XML nests `<link>` elements
+under one `<user>` element each. Users are ordered by most recent activity.
+
 > Personal, single-user. The harness binds to localhost with no auth — don't
 > expose it.
