@@ -14,6 +14,7 @@ what to persist. Uses stdlib urllib so there's no extra dependency.
 
 from __future__ import annotations
 
+import html
 import json
 import re
 import urllib.parse
@@ -84,27 +85,68 @@ def _get_text(url: str) -> str | None:
         return None
 
 
-def _meta(html: str, prop: str) -> str | None:
+def _meta(page: str, prop: str) -> str | None:
     m = re.search(r'<meta[^>]+(?:property|name)="' + re.escape(prop)
-                  + r'"[^>]+content="([^"]*)"', html)
-    return m.group(1).strip() if m else None
+                  + r'"[^>]+content="([^"]*)"', page)
+    return html.unescape(m.group(1).strip()) if m else None
 
 
-def _spotify_term(url: str) -> str | None:
-    """Spotify's oEmbed gives only the track title (no artist), which makes for
-    bad iTunes matches. The track page's og tags do carry the artist: og:title is
-    the track, og:description reads "<Artist> · <Album> · Song · <year>". Combine
-    them into a "<title> <artist>" search term.
+def _spotify_meta(url: str) -> dict | None:
+    """Authoritative track facts from a Spotify track page's og tags.
+
+    Spotify's oEmbed gives only the bare title (no artist), which mis-resolves on
+    iTunes. The page's og tags carry the truth: og:title is the track, and
+    og:description reads "<Artist> · <Album> · Song · <year>". og:image is the
+    cover. Returns {title, artist, album, year, thumb} — the source of truth we
+    trust over whatever iTunes search happens to return.
     """
     html = _get_text(url)
     if not html:
         return None
     title = _meta(html, "og:title")
-    desc = _meta(html, "og:description") or ""
-    artist = desc.split(" · ")[0].strip()
-    if title and artist and artist.lower() not in title.lower():
-        return f"{title} {artist}"
-    return title or None
+    if not title:
+        return None
+    parts = [p.strip() for p in (_meta(html, "og:description") or "").split(" · ")]
+    artist = parts[0] if parts else ""
+    album = parts[1] if len(parts) > 1 else ""
+    year = next((p for p in parts if p.isdigit() and len(p) == 4), "")
+    return {"title": title, "artist": artist, "album": album,
+            "year": year, "thumb": _meta(html, "og:image") or ""}
+
+
+def _norm(s: str) -> str:
+    """Loosely normalize a title/artist for comparison (drop case, brackets, feat)."""
+    s = (s or "").lower()
+    s = re.sub(r"\(.*?\)|\[.*?\]", " ", s)
+    s = re.sub(r"\b(feat|ft|featuring)\b.*", " ", s)
+    s = re.sub(r"[^a-z0-9]+", " ", s)
+    return re.sub(r"\s+", " ", s).strip()
+
+
+def _matches(cand: dict, title: str, artist: str) -> bool:
+    """True if an iTunes candidate is plausibly the same song as the Spotify truth."""
+    ct, tt = _norm(cand.get("trackName")), _norm(title)
+    if not (ct and tt and (ct == tt or ct in tt or tt in ct)):
+        return False
+    ca = _norm(cand.get("artistName"))
+    main = _norm(re.split(r"[,&]| and | x | feat", artist, flags=re.I)[0])
+    return bool(main and (main in ca or ca in main))
+
+
+def _synthetic(meta: dict) -> dict:
+    """An iTunes-shaped track built from Spotify's own facts, for when no iTunes
+    hit validates. Uses Spotify's cover as artwork; year-only release; no preview."""
+    return {
+        "trackId": None,
+        "trackName": meta["title"],
+        "artistName": meta["artist"],
+        "collectionName": meta["album"],
+        "primaryGenreName": None,
+        "releaseDate": meta["year"] or None,   # year only — honest, not a fake day
+        "artworkUrl100": meta["thumb"],
+        "previewUrl": None,
+        "trackViewUrl": None,
+    }
 
 
 def _oembed_title(url: str, service: str) -> str | None:
@@ -114,11 +156,13 @@ def _oembed_title(url: str, service: str) -> str | None:
     data = _get_json(tmpl.format(url=urllib.parse.quote(url, safe="")))
     if not data:
         return None
-    # oEmbed gives a "title"; for most music services it reads like the track,
-    # often with the artist in "author_name". Combine for a better search term.
+    # oEmbed gives a "title"; for some services the artist is in "author_name".
+    # On YouTube that field is the *channel* (e.g. "RatsRecords", "…VEVO"), which
+    # is not the artist and pollutes the iTunes search — so skip it there.
     title = (data.get("title") or "").strip()
     author = (data.get("author_name") or "").strip()
-    if title and author and author.lower() not in title.lower():
+    if (title and author and service not in ("youtube", "youtube_music")
+            and author.lower() not in title.lower()):
         return f"{title} {author}"
     return title or None
 
@@ -177,11 +221,18 @@ def enrich(url: str) -> tuple[dict, str] | None:
                 return track, "direct"
         # Fall through to search if the id path failed.
 
-    term = None
+    # Spotify: trust the page's own facts; use iTunes only if it validates,
+    # otherwise keep Spotify's truth (with its own cover) as a 'spotify' match.
     if service == "spotify":
-        term = _spotify_term(url)
-    if not term:
-        term = _oembed_title(url, service)
+        meta = _spotify_meta(url)
+        if meta:
+            cand = _search(f"{meta['title']} {meta['artist']}".strip())
+            if cand and _matches(cand, meta["title"], meta["artist"]):
+                return cand, "search"
+            return _synthetic(meta), "spotify"
+
+    # Everything else: best-effort oEmbed title → iTunes search.
+    term = _oembed_title(url, service)
     if term:
         track = _search(term)
         if track:

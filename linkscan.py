@@ -58,10 +58,25 @@ _SERVICES = {
 }
 
 
+# Hosts that are never songs — Discord's gif keyboard, image hosts, CDNs. Links
+# to these are noise in a song journal and are kept out of the `posts` table.
+_NON_MUSIC_HOSTS = {
+    "tenor.com", "media.tenor.com", "c.tenor.com",
+    "giphy.com", "media.giphy.com", "gph.is",
+    "imgur.com", "i.imgur.com",
+    "media.discordapp.net", "cdn.discordapp.com",
+    "twitter.com", "x.com", "fxtwitter.com", "vxtwitter.com",
+}
+
+
+def _host(url: str) -> str:
+    host = re.sub(r"^https?://", "", url).split("/", 1)[0].lower()
+    return host.split("@")[-1].split(":")[0]  # strip any creds / port
+
+
 def detect_service(url: str) -> str:
     """Classify a URL by streaming service from its host (e.g. 'apple_music')."""
-    host = re.sub(r"^https?://", "", url).split("/", 1)[0].lower()
-    host = host.split("@")[-1].split(":")[0]  # strip any creds / port
+    host = _host(url)
     for needle, name in _SERVICES.items():
         if host == needle or host.endswith("." + needle) or host == needle.split(".", 1)[-1]:
             return name
@@ -70,6 +85,12 @@ def detect_service(url: str) -> str:
         if needle in host:
             return name
     return "other"
+
+
+def is_non_music(url: str) -> bool:
+    """True for hosts that never carry songs (gif keyboards, image CDNs, …)."""
+    host = _host(url)
+    return any(host == h or host.endswith("." + h) for h in _NON_MUSIC_HOSTS)
 
 
 def _clean(url: str) -> str:

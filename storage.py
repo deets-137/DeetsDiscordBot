@@ -31,7 +31,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from linkscan import detect_service
+from linkscan import detect_service, is_non_music
 from paths import DB_PATH as _DB_PATH
 from paths import EXPORTS_DIR
 
@@ -105,15 +105,16 @@ def record_scan(channel_id, label, records, limit=None) -> dict:
     """Fold a scan's link records into the journal.
 
     Only links the user actually typed (source == "text") become posts — Discord's
-    auto-generated embed/attachment urls are noise for a song journal. Idempotent:
-    a post already on record (same message_id + url) is skipped. Logs a scan row.
-    Returns counts for reporting.
+    auto-generated embed/attachment urls are noise for a song journal. Non-music
+    hosts (Tenor gifs, image CDNs, …) are dropped too. Idempotent: a post already
+    on record (same message_id + url) is skipped. Logs a scan row. Returns counts.
     """
     c = _db()
     now = int(time.time())
     cid = str(channel_id)
 
-    posts = [r for r in records if r.source == "text"]
+    posts = [r for r in records
+             if r.source == "text" and not is_non_music(r.url)]
     new_count = 0
     for r in posts:
         cur = c.execute(
@@ -149,8 +150,16 @@ def upsert_song(track: dict, match_type: str) -> int:
     """
     c = _db()
     tid = track.get("trackId")
-    row = c.execute("SELECT song_id FROM songs WHERE itunes_track_id = ?",
-                    (tid,)).fetchone() if tid is not None else None
+    if tid is not None:
+        row = c.execute("SELECT song_id FROM songs WHERE itunes_track_id = ?",
+                        (tid,)).fetchone()
+    else:
+        # Synthetic (e.g. Spotify-truth) songs have no iTunes id; dedupe on identity.
+        row = c.execute(
+            """SELECT song_id FROM songs WHERE itunes_track_id IS NULL
+                   AND track_name = ? AND artist_name = ? AND collection_name = ?""",
+            (track.get("trackName"), track.get("artistName"),
+             track.get("collectionName"))).fetchone()
     fields = (
         tid,
         track.get("trackName"),
@@ -417,6 +426,33 @@ def _write_workbook(path: Path, rows: list[dict]) -> None:
     for month, mrows in months.items():
         fill_sheet(wb.create_sheet(month), mrows)
     wb.save(path)
+
+
+def purge_non_music(channel_id=None) -> list[sqlite3.Row]:
+    """Delete journal posts whose URL is a non-music host. Returns the deleted rows."""
+    c = _db()
+    q, args = "SELECT post_id, author, url FROM posts", ()
+    if channel_id is not None:
+        q += " WHERE channel_id = ?"
+        args = (str(channel_id),)
+    victims = [r for r in c.execute(q, args).fetchall() if is_non_music(r["url"])]
+    for r in victims:
+        c.execute("DELETE FROM posts WHERE post_id = ?", (r["post_id"],))
+    return victims
+
+
+def delete_posts(post_ids) -> int:
+    """Delete specific posts by id (e.g. confirmed non-song meme links)."""
+    c = _db()
+    return sum(c.execute("DELETE FROM posts WHERE post_id = ?", (pid,)).rowcount
+               for pid in post_ids)
+
+
+def prune_orphan_songs() -> int:
+    """Delete catalog songs no post points at anymore. Returns the count removed."""
+    return _db().execute(
+        "DELETE FROM songs WHERE song_id NOT IN "
+        "(SELECT song_id FROM posts WHERE song_id IS NOT NULL)").rowcount
 
 
 def close() -> None:
