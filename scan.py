@@ -43,7 +43,7 @@ except ModuleNotFoundError:
 async def scan_channel(channel_id: int, limit: int | None = None,
                        by_user: bool = False, fmt: str = "csv",
                        archive: bool = False, do_enrich: bool = False,
-                       export: str | None = None):
+                       export: str | None = None, notion: bool = False):
     """Connect, collect links from one channel, write files. Returns paths+count.
 
     When by_user is True, also writes a per-user breakdown in fmt (csv/tsv/xml).
@@ -74,12 +74,15 @@ async def scan_channel(channel_id: int, limit: int | None = None,
                     links[0].author: len(links)
                     for links in group_by_user(records).values()
                 }
-            if archive or do_enrich or export:
+            if archive or do_enrich or export or notion:
                 result["archive"] = storage.record_scan(channel_id, label, records, limit)
             if do_enrich:
                 result["enriched"] = enrich_pending(channel_id)
             if export:
                 result["export"] = storage.export_journal(channel_id, export)
+            if notion:
+                import notion_sync
+                result["notion"] = notion_sync.sync(channel_id)
         finally:
             await client.close()
 
@@ -125,6 +128,9 @@ def main():
                     help="write the enriched journal from storage.db to "
                          "SOTD_Export_MMDDYYYY.{csv,tsv,xlsx} (implies --archive; "
                          "xlsx gets one tab per month)")
+    ap.add_argument("--notion", action="store_true",
+                    help="mirror the journal into the Notion database "
+                         "(implies --archive; see notion_sync.py for setup)")
     args = ap.parse_args()
 
     if not args.channel_id:
@@ -132,7 +138,8 @@ def main():
 
     result = asyncio.run(scan_channel(
         args.channel_id, args.limit, by_user=args.by_user, fmt=args.format,
-        archive=args.archive, do_enrich=args.enrich, export=args.export))
+        archive=args.archive, do_enrich=args.enrich, export=args.export,
+        notion=args.notion))
     print(f"#{result['label']}: {result['count']} links")
     print(f"  {result['md']}")
     print(f"  {result['csv']}")
@@ -150,6 +157,9 @@ def main():
         print(f"Enriched {e['resolved']}/{e['checked']} posts against iTunes.")
     if "export" in result:
         print(f"Exported journal: {result['export']}")
+    if "notion" in result:
+        n = result["notion"]
+        print(f"Notion sync: {n['created']} created, {n['updated']} updated.")
 
 
 if __name__ == "__main__":

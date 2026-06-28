@@ -264,11 +264,11 @@ def _journal_rows(channel_id) -> list[dict]:
     resolved flag, and the artwork / preview / Apple-Music links.
     """
     raw = _db().execute(
-        """SELECT p.author, p.author_id, p.posted_at, p.service, p.url,
-                  p.jump_url, p.song_id, s.track_name, s.artist_name,
-                  s.collection_name, s.primary_genre, s.release_date,
-                  s.match_type, s.artwork_url, s.preview_url, s.track_view_url,
-                  s.raw_json
+        """SELECT p.post_id, p.message_id, p.author, p.author_id, p.posted_at,
+                  p.service, p.url, p.jump_url, p.song_id, s.track_name,
+                  s.artist_name, s.collection_name, s.primary_genre,
+                  s.release_date, s.match_type, s.artwork_url, s.preview_url,
+                  s.track_view_url, s.raw_json
              FROM posts p
              LEFT JOIN songs s ON s.song_id = p.song_id
             WHERE p.channel_id = ?
@@ -303,6 +303,9 @@ def _journal_rows(channel_id) -> list[dict]:
         art = (r["artwork_url"] or "").replace("100x100bb", "600x600bb")
 
         out.append({
+            # stable keys for downstream sinks (not part of _JOURNAL_COLS)
+            "post_id": r["post_id"], "message_id": r["message_id"],
+            "posted_at": r["posted_at"],
             "date": date, "time": t[:8], "day": day,
             "month": f"{date[5:7]}_{date[:4]}" if len(date) >= 7 else "unknown",
             "author": r["author"],
