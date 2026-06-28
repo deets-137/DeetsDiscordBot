@@ -5,3 +5,5 @@ uvicorn[standard]
 pydantic
 openpyxl
 requests
+# For applemusic.py (developer-token JWT). Not needed until that path is wired in.
+PyJWT[crypto]
