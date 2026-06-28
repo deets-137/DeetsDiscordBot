@@ -121,9 +121,10 @@ def main():
                     help="fold the scan into the persistent journal (storage.db)")
     ap.add_argument("--enrich", action="store_true",
                     help="resolve posted songs against iTunes (implies --archive)")
-    ap.add_argument("--export", choices=["csv", "tsv"], default=None,
-                    help="write the enriched journal from storage.db to csv/tsv "
-                         "(implies --archive)")
+    ap.add_argument("--export", choices=["csv", "tsv", "xlsx"], default=None,
+                    help="write the enriched journal from storage.db to "
+                         "SOTD_Export_MMDDYYYY.{csv,tsv,xlsx} (implies --archive; "
+                         "xlsx gets one tab per month)")
     args = ap.parse_args()
 
     if not args.channel_id:

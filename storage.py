@@ -24,7 +24,6 @@ from __future__ import annotations
 
 import csv
 import json
-import re
 import sqlite3
 import time
 from collections import OrderedDict
@@ -234,47 +233,187 @@ def channels() -> list[sqlite3.Row]:
             ORDER BY latest DESC""").fetchall()
 
 
-def export_journal(channel_id, fmt: str = "tsv") -> Path:
-    """Write the channel's journal (posts joined to resolved songs) to CSV/TSV.
+# Journal column order: (row-dict key, spreadsheet header). Grouped when / who /
+# what / release / meta / ids+links for readability.
+_JOURNAL_COLS = [
+    ("date", "date"), ("time", "time"), ("day", "day"), ("month", "month"),
+    ("author", "author"),
+    ("track_name", "track"), ("artist_name", "artist"), ("album", "album"),
+    ("genre", "genre"), ("duration", "duration"),
+    ("release_date", "released"), ("release_year", "rel_year"),
+    ("age_yrs", "age_yrs"),
+    ("service", "service"), ("match_type", "match"), ("resolved", "resolved"),
+    ("author_id", "author_id"),
+    ("url", "source_url"), ("apple_music_url", "apple_music_url"),
+    ("preview_url", "preview_url"), ("artwork_url", "artwork_url"),
+    ("jump_url", "jump_url"),
+]
 
-    One row per post, oldest→newest, with the message's date and time split out
-    and the iTunes song fields filled in where a post resolved. Returns the path.
+# In xlsx, these columns render as a compact clickable label instead of a raw URL.
+_LINK_LABELS = {
+    "url": "source", "apple_music_url": "Apple", "preview_url": "▶ play",
+    "artwork_url": "cover", "jump_url": "↗ msg",
+}
+
+
+def _journal_rows(channel_id) -> list[dict]:
+    """Posts joined to resolved songs, enriched with derived fields, oldest→newest.
+
+    Adds: day-of-week, month bucket (MM_YYYY), track duration (mm:ss, parsed from
+    the cached iTunes payload), release year, song age in years at post time, a
+    resolved flag, and the artwork / preview / Apple-Music links.
     """
-    fmt = fmt.lower()
-    if fmt not in ("csv", "tsv"):
-        raise ValueError(f"unknown format {fmt!r} (use csv or tsv)")
-
-    rows = _db().execute(
+    raw = _db().execute(
         """SELECT p.author, p.author_id, p.posted_at, p.service, p.url,
-                  p.jump_url, s.track_name, s.artist_name, s.collection_name,
-                  s.primary_genre, s.release_date, s.match_type
+                  p.jump_url, p.song_id, s.track_name, s.artist_name,
+                  s.collection_name, s.primary_genre, s.release_date,
+                  s.match_type, s.artwork_url, s.preview_url, s.track_view_url,
+                  s.raw_json
              FROM posts p
              LEFT JOIN songs s ON s.song_id = p.song_id
             WHERE p.channel_id = ?
             ORDER BY p.posted_at""", (str(channel_id),)).fetchall()
 
-    label = (_db().execute(
-        "SELECT channel_label FROM scans WHERE channel_id = ? "
-        "ORDER BY scanned_at DESC LIMIT 1", (str(channel_id),)).fetchone()
-        or {"channel_label": str(channel_id)})["channel_label"]
-    safe = re.sub(r"[^A-Za-z0-9_-]+", "-", label).strip("-") or "channel"
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    out = []
+    for r in raw:
+        date, _, t = (r["posted_at"] or "").partition("T")
 
+        day = ""
+        try:
+            day = datetime.strptime(date, "%Y-%m-%d").strftime("%a")
+        except ValueError:
+            pass
+
+        rel = (r["release_date"] or "")[:10]
+        rel_year = rel[:4]
+        age = ""
+        if rel_year.isdigit() and date[:4].isdigit():
+            age = int(date[:4]) - int(rel_year)
+
+        duration = ""
+        if r["raw_json"]:
+            try:
+                ms = json.loads(r["raw_json"]).get("trackTimeMillis")
+                if ms:
+                    secs = int(ms) // 1000
+                    duration = f"{secs // 60}:{secs % 60:02d}"
+            except (ValueError, TypeError):
+                pass
+
+        art = (r["artwork_url"] or "").replace("100x100bb", "600x600bb")
+
+        out.append({
+            "date": date, "time": t[:8], "day": day,
+            "month": f"{date[5:7]}_{date[:4]}" if len(date) >= 7 else "unknown",
+            "author": r["author"],
+            "track_name": r["track_name"] or "",
+            "artist_name": r["artist_name"] or "",
+            "album": r["collection_name"] or "",
+            "genre": r["primary_genre"] or "", "duration": duration,
+            "release_date": rel, "release_year": rel_year, "age_yrs": age,
+            "service": r["service"], "match_type": r["match_type"] or "",
+            "resolved": "yes" if r["song_id"] else "no",
+            "author_id": r["author_id"],
+            "url": r["url"], "apple_music_url": r["track_view_url"] or "",
+            "preview_url": r["preview_url"] or "", "artwork_url": art,
+            "jump_url": r["jump_url"],
+        })
+    return out
+
+
+def export_journal(channel_id, fmt: str = "xlsx") -> Path:
+    """Write the channel's enriched journal to SOTD_Export_MMDDYYYY.<fmt>.
+
+    csv/tsv → one flat sheet, oldest→newest. xlsx → an 'All' tab plus one tab
+    per month (MM_YYYY), styled for readability. Returns the path written.
+    """
+    fmt = fmt.lower()
+    if fmt not in ("csv", "tsv", "xlsx"):
+        raise ValueError(f"unknown format {fmt!r} (use csv, tsv, or xlsx)")
+
+    rows = _journal_rows(channel_id)
     EXPORTS_DIR.mkdir(parents=True, exist_ok=True)
-    path = EXPORTS_DIR / f"journal_{safe}_{stamp}.{fmt}"
-    with path.open("w", newline="", encoding="utf-8") as f:
-        w = csv.writer(f, delimiter="\t" if fmt == "tsv" else ",")
-        w.writerow(["date", "time", "author", "author_id", "service", "url",
-                    "track_name", "artist_name", "album", "genre",
-                    "release_date", "match_type", "jump_url"])
-        for r in rows:
-            date, _, t = (r["posted_at"] or "").partition("T")
-            w.writerow([date, t[:8], r["author"], r["author_id"], r["service"],
-                        r["url"], r["track_name"] or "", r["artist_name"] or "",
-                        r["collection_name"] or "", r["primary_genre"] or "",
-                        r["release_date"] or "", r["match_type"] or "",
-                        r["jump_url"]])
+    stamp = datetime.now(timezone.utc).strftime("%m%d%Y")
+    path = EXPORTS_DIR / f"SOTD_Export_{stamp}.{fmt}"
+
+    if fmt in ("csv", "tsv"):
+        with path.open("w", newline="", encoding="utf-8") as f:
+            w = csv.writer(f, delimiter="\t" if fmt == "tsv" else ",")
+            w.writerow([h for _, h in _JOURNAL_COLS])
+            for r in rows:
+                w.writerow([r[k] for k, _ in _JOURNAL_COLS])
+        return path
+
+    _write_workbook(path, rows)
     return path
+
+
+def _write_workbook(path: Path, rows: list[dict]) -> None:
+    """Render the journal as a styled multi-tab .xlsx (All + one tab per month)."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+    from openpyxl.utils import get_column_letter
+
+    headers = [h for _, h in _JOURNAL_COLS]
+    keys = [k for k, _ in _JOURNAL_COLS]
+
+    widths = {
+        "date": 11, "time": 9, "day": 6, "month": 9, "author": 16,
+        "track": 30, "artist": 22, "album": 26, "genre": 14, "duration": 9,
+        "released": 11, "rel_year": 9, "age_yrs": 8, "service": 12,
+        "match": 8, "resolved": 9, "author_id": 20, "source_url": 9,
+        "apple_music_url": 9, "preview_url": 9, "artwork_url": 9, "jump_url": 9,
+    }
+    centered = {"time", "day", "month", "duration", "released", "rel_year",
+                "age_yrs", "service", "match", "resolved", "source_url",
+                "apple_music_url", "preview_url", "artwork_url", "jump_url"}
+
+    header_font = Font(bold=True, color="FFFFFF", size=11)
+    header_fill = PatternFill("solid", fgColor="4F46E5")
+    link_font = Font(color="2563EB", underline="single")
+    stripe = PatternFill("solid", fgColor="F1F5F9")
+    border = Border(bottom=Side(style="thin", color="E2E8F0"))
+    center = Alignment(horizontal="center", vertical="center")
+    left = Alignment(horizontal="left", vertical="center")
+
+    # group rows by month; rows arrive oldest→newest so order is chronological
+    months: "OrderedDict[str, list]" = OrderedDict()
+    for r in rows:
+        months.setdefault(r["month"], []).append(r)
+
+    def fill_sheet(ws, sheet_rows):
+        ws.append(headers)
+        for cell in ws[1]:
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = center
+            cell.border = border
+        for ri, r in enumerate(sheet_rows, start=2):
+            shade = ri % 2 == 0
+            for ci, (k, h) in enumerate(_JOURNAL_COLS, start=1):
+                cell = ws.cell(row=ri, column=ci)
+                if k in _LINK_LABELS and r[k]:
+                    cell.value = _LINK_LABELS[k]
+                    cell.hyperlink = r[k]
+                    cell.font = link_font
+                    cell.alignment = center
+                else:
+                    cell.value = r[k]
+                    cell.alignment = center if h in centered else left
+                if shade:
+                    cell.fill = stripe
+        for ci, (_, h) in enumerate(_JOURNAL_COLS, start=1):
+            ws.column_dimensions[get_column_letter(ci)].width = widths.get(h, 14)
+        ws.freeze_panes = "A2"
+        ws.auto_filter.ref = ws.dimensions
+        ws.sheet_view.showGridLines = False
+
+    wb = Workbook()
+    wb.remove(wb.active)
+    fill_sheet(wb.create_sheet("All"), rows)
+    for month, mrows in months.items():
+        fill_sheet(wb.create_sheet(month), mrows)
+    wb.save(path)
 
 
 def close() -> None:
