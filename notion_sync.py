@@ -42,6 +42,7 @@ WRITE_DELAY = 0.34  # ~3 req/s, Notion's published rate limit
 # Notion database schema. Title must exist; PostID is our idempotency key.
 SCHEMA = {
     "Track": {"title": {}},
+    "Cover": {"files": {}},
     "Artist": {"rich_text": {}},
     "Album": {"rich_text": {}},
     "Genre": {"select": {}},
@@ -148,9 +149,19 @@ def _num(value):
         return {"number": None}
 
 
+def _cover_files(url: str) -> dict:
+    """A Files & media value from an external image URL (renders as a thumbnail
+    and can be used as the gallery card image)."""
+    if not url:
+        return {"files": []}
+    return {"files": [{"type": "external", "name": "cover.jpg",
+                       "external": {"url": url}}]}
+
+
 def build_properties(row: dict) -> dict:
     return {
         "Track": {"title": _text(row["track_name"] or "(unresolved)")},
+        "Cover": _cover_files(row["artwork_url"]),
         "Artist": {"rich_text": _text(row["artist_name"])},
         "Album": {"rich_text": _text(row["album"])},
         "Genre": _select(row["genre"]),
