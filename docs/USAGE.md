@@ -52,6 +52,11 @@ Idempotent: re-scanning the same channel only adds posts it hasn't seen
 (`posts` is unique on `message_id` + `url`), and enrichment skips songs already
 resolved. So this is safe to re-run any time.
 
+**Non-music links are filtered out.** Discord's gif keyboard (`tenor.com`),
+image hosts, and CDNs never enter the journal — see `linkscan.is_non_music`.
+Meme/ad clips on YouTube can still slip through (they look like normal links);
+purge those with `storage.delete_posts([...])` (see Maintenance below).
+
 **The typical "do everything" command:**
 
 ```bash
@@ -76,6 +81,16 @@ from `storage.db`:
 22 columns: `date, time, day, month, author, track, artist, album, genre,
 duration, released, rel_year, age_yrs, service, match, resolved, author_id,
 source_url, apple_music_url, preview_url, artwork_url, jump_url`.
+
+**`match` (how a song was resolved):**
+- `direct` — Apple Music link, looked up by its track id (most reliable).
+- `search` — title/artist searched on iTunes and **validated** against the
+  source's own metadata before being accepted.
+- `spotify` — the Spotify page's own facts are the source of truth and no iTunes
+  result validated, so we keep Spotify's title/artist/album + cover art.
+- `manual` — hand-corrected.
+- blank / `resolved=no` — no match (e.g. a real Apple Music track the free iTunes
+  API can't see; the Apple Music API will fix these — see `docs/APPLE_MUSIC.md`).
 
 You can also generate one without a fresh scan:
 
@@ -117,6 +132,10 @@ python notion_sync.py <channel_id>       # standalone full upsert (rate-limited,
 python scan.py <channel_id> --notion
 ```
 
+It's a **true mirror**: it creates new posts, updates changed ones, and
+**archives** Notion pages whose post no longer exists in `storage.db` (e.g. after
+purging gif/meme links). Idempotent on `post_id` — safe to re-run.
+
 ### Views
 
 The database ships with: **🖼 Covers** (gallery), **👤 By Poster** (board),
@@ -125,29 +144,60 @@ the view tabs — group/filter/sort on any of the 22 properties.
 
 ---
 
-## 5. Files at a glance
+## 5. Maintenance
+
+Occasional cleanups, all in `storage.py`. Re-run `notion_sync.py` afterward to
+push the changes (it auto-archives removed posts).
+
+```python
+import storage, enrich
+
+# Drop gif/image-host links that slipped in (Tenor, etc.)
+storage.purge_non_music("<channel_id>")
+
+# Delete specific non-song posts (meme/ad clips on YouTube, etc.)
+storage.delete_posts([81, 194])
+
+# Re-resolve a single post (e.g. a known-bad match)
+hit = enrich.enrich(url)
+if hit:
+    sid = storage.upsert_song(*hit); storage.link_post_to_song(post_id, sid)
+
+# Remove catalog songs nothing points at anymore
+storage.prune_orphan_songs()
+```
+
+To re-resolve a batch (e.g. all Spotify search matches after an enricher change),
+loop `enrich.enrich` over the relevant posts with a ~1s delay, then
+`prune_orphan_songs()`. The enricher is conservative — a Spotify result is only
+overwritten when the page's own metadata confirms it.
+
+## 6. Files at a glance
 
 | File | Role |
 |------|------|
 | `scan.py` | CLI entry point: scan → archive → enrich → export → notion |
-| `linkscan.py` | core link extraction + service detection |
-| `storage.py` | SQLite journal + `export_journal()` spreadsheet writer |
-| `enrich.py` | iTunes resolution (Apple Music id lookup / oEmbed → search) |
-| `notion_sync.py` | idempotent Notion mirror |
+| `linkscan.py` | link extraction, service detection, non-music filter |
+| `storage.py` | SQLite journal, `export_journal()` spreadsheet, maintenance helpers |
+| `enrich.py` | song resolution (Apple id lookup / Spotify-truth / iTunes search) |
+| `applemusic.py` | Apple Music API client — **scaffold, not wired yet** |
+| `notion_sync.py` | idempotent Notion mirror (creates/updates/archives) |
 | `bot.py` / `harness.py` | Discord slash-command / local web triggers |
 | `storage.db` | **the database — source of truth** |
 | `exports/` | generated spreadsheets and link dumps |
+| `docs/APPLE_MUSIC.md` | plan for wiring the Apple Music API in next |
 
 ---
 
-## 6. Troubleshooting
+## 7. Troubleshooting
 
 - **`DISCORD_TOKEN not set`** — `.env` is missing or not in the working dir.
 - **`Set NOTION_DB_ID … or NOTION_PARENT_PAGE_ID`** — Notion vars absent from
   `.env`; the sync has no target.
 - **Notion 401/403** — the integration token is wrong, or the DeetsOTD page
   hasn't been shared with the integration (step 2 above).
-- **A song didn't resolve** — some links (odd YouTube/other hosts) have no iTunes
-  match; those rows show blank track fields and `resolved = no`. Re-running
-  `--enrich` retries only the unresolved ones.
-</content>
+- **A song didn't resolve** — some links (gifs, odd hosts, or real Apple Music
+  tracks the free iTunes API can't see) have no match; those rows show blank
+  track fields and `resolved = no`. Re-running `--enrich` retries only the
+  unresolved ones; the Apple Music API (`docs/APPLE_MUSIC.md`) will close most of
+  the remaining gap.
