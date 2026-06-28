@@ -22,14 +22,19 @@ Model:
 
 from __future__ import annotations
 
+import csv
 import json
+import re
 import sqlite3
 import time
 from collections import OrderedDict
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
 
 from linkscan import detect_service
 from paths import DB_PATH as _DB_PATH
+from paths import EXPORTS_DIR
 
 _conn: Optional[sqlite3.Connection] = None
 
@@ -227,6 +232,49 @@ def channels() -> list[sqlite3.Row]:
              FROM posts p
             GROUP BY p.channel_id
             ORDER BY latest DESC""").fetchall()
+
+
+def export_journal(channel_id, fmt: str = "tsv") -> Path:
+    """Write the channel's journal (posts joined to resolved songs) to CSV/TSV.
+
+    One row per post, oldest→newest, with the message's date and time split out
+    and the iTunes song fields filled in where a post resolved. Returns the path.
+    """
+    fmt = fmt.lower()
+    if fmt not in ("csv", "tsv"):
+        raise ValueError(f"unknown format {fmt!r} (use csv or tsv)")
+
+    rows = _db().execute(
+        """SELECT p.author, p.author_id, p.posted_at, p.service, p.url,
+                  p.jump_url, s.track_name, s.artist_name, s.collection_name,
+                  s.primary_genre, s.release_date, s.match_type
+             FROM posts p
+             LEFT JOIN songs s ON s.song_id = p.song_id
+            WHERE p.channel_id = ?
+            ORDER BY p.posted_at""", (str(channel_id),)).fetchall()
+
+    label = (_db().execute(
+        "SELECT channel_label FROM scans WHERE channel_id = ? "
+        "ORDER BY scanned_at DESC LIMIT 1", (str(channel_id),)).fetchone()
+        or {"channel_label": str(channel_id)})["channel_label"]
+    safe = re.sub(r"[^A-Za-z0-9_-]+", "-", label).strip("-") or "channel"
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+
+    EXPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    path = EXPORTS_DIR / f"journal_{safe}_{stamp}.{fmt}"
+    with path.open("w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f, delimiter="\t" if fmt == "tsv" else ",")
+        w.writerow(["date", "time", "author", "author_id", "service", "url",
+                    "track_name", "artist_name", "album", "genre",
+                    "release_date", "match_type", "jump_url"])
+        for r in rows:
+            date, _, t = (r["posted_at"] or "").partition("T")
+            w.writerow([date, t[:8], r["author"], r["author_id"], r["service"],
+                        r["url"], r["track_name"] or "", r["artist_name"] or "",
+                        r["collection_name"] or "", r["primary_genre"] or "",
+                        r["release_date"] or "", r["match_type"] or "",
+                        r["jump_url"]])
+    return path
 
 
 def close() -> None:

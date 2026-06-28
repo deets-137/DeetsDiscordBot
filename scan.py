@@ -22,6 +22,7 @@ import argparse
 import asyncio
 import os
 import sys
+import time
 
 import discord
 from dotenv import load_dotenv
@@ -41,7 +42,8 @@ except ModuleNotFoundError:
 
 async def scan_channel(channel_id: int, limit: int | None = None,
                        by_user: bool = False, fmt: str = "csv",
-                       archive: bool = False, do_enrich: bool = False):
+                       archive: bool = False, do_enrich: bool = False,
+                       export: str | None = None):
     """Connect, collect links from one channel, write files. Returns paths+count.
 
     When by_user is True, also writes a per-user breakdown in fmt (csv/tsv/xml).
@@ -72,10 +74,12 @@ async def scan_channel(channel_id: int, limit: int | None = None,
                     links[0].author: len(links)
                     for links in group_by_user(records).values()
                 }
-            if archive or do_enrich:
+            if archive or do_enrich or export:
                 result["archive"] = storage.record_scan(channel_id, label, records, limit)
             if do_enrich:
                 result["enriched"] = enrich_pending(channel_id)
+            if export:
+                result["export"] = storage.export_journal(channel_id, export)
         finally:
             await client.close()
 
@@ -83,17 +87,24 @@ async def scan_channel(channel_id: int, limit: int | None = None,
     return result
 
 
-def enrich_pending(channel_id=None) -> dict:
-    """Resolve every un-enriched post in the journal against iTunes. Returns counts."""
+def enrich_pending(channel_id=None, delay: float = 1.0) -> dict:
+    """Resolve every un-enriched post in the journal against iTunes. Returns counts.
+
+    Sleeps `delay` seconds between calls to stay under iTunes' rate limit
+    (~20/min). Songs already resolved (shared by an earlier post) are reused
+    without a network call, so re-posts cost nothing.
+    """
     pending = storage.posts_needing_enrichment(channel_id)
     resolved = 0
-    for post in pending:
+    for i, post in enumerate(pending):
         hit = enrich.enrich(post["url"])
         if hit:
             track, match_type = hit
             song_id = storage.upsert_song(track, match_type)
             storage.link_post_to_song(post["post_id"], song_id)
             resolved += 1
+        if delay and i < len(pending) - 1:
+            time.sleep(delay)
     return {"checked": len(pending), "resolved": resolved}
 
 
@@ -110,6 +121,9 @@ def main():
                     help="fold the scan into the persistent journal (storage.db)")
     ap.add_argument("--enrich", action="store_true",
                     help="resolve posted songs against iTunes (implies --archive)")
+    ap.add_argument("--export", choices=["csv", "tsv"], default=None,
+                    help="write the enriched journal from storage.db to csv/tsv "
+                         "(implies --archive)")
     args = ap.parse_args()
 
     if not args.channel_id:
@@ -117,7 +131,7 @@ def main():
 
     result = asyncio.run(scan_channel(
         args.channel_id, args.limit, by_user=args.by_user, fmt=args.format,
-        archive=args.archive, do_enrich=args.enrich))
+        archive=args.archive, do_enrich=args.enrich, export=args.export))
     print(f"#{result['label']}: {result['count']} links")
     print(f"  {result['md']}")
     print(f"  {result['csv']}")
@@ -133,6 +147,8 @@ def main():
     if "enriched" in result:
         e = result["enriched"]
         print(f"Enriched {e['resolved']}/{e['checked']} posts against iTunes.")
+    if "export" in result:
+        print(f"Exported journal: {result['export']}")
 
 
 if __name__ == "__main__":
