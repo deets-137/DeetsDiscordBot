@@ -210,7 +210,18 @@ def sync(channel_id) -> dict:
             created += 1
         time.sleep(WRITE_DELAY)
 
-    return {"created": created, "updated": updated, "db_id": db_id}
+    # Mirror deletions: archive Notion pages whose post no longer exists (e.g.
+    # purged gif/meme links), so Notion stays a faithful copy of storage.db.
+    live = {row["post_id"] for row in rows}
+    archived = 0
+    for post_id, page_id in existing.items():
+        if post_id not in live:
+            _patch(f"pages/{page_id}", {"archived": True})
+            archived += 1
+            time.sleep(WRITE_DELAY)
+
+    return {"created": created, "updated": updated,
+            "archived": archived, "db_id": db_id}
 
 
 def main():
@@ -223,8 +234,8 @@ def main():
         sys.exit("no channel id given and DEFAULT_CHANNEL_ID is 0 in config.py")
 
     result = sync(channel_id)
-    print(f"Notion sync: {result['created']} created, {result['updated']} updated "
-          f"(db {result['db_id']}).")
+    print(f"Notion sync: {result['created']} created, {result['updated']} updated, "
+          f"{result['archived']} archived (db {result['db_id']}).")
 
 
 if __name__ == "__main__":

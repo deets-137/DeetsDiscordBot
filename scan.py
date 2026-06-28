@@ -159,7 +159,8 @@ def main():
         print(f"Exported journal: {result['export']}")
     if "notion" in result:
         n = result["notion"]
-        print(f"Notion sync: {n['created']} created, {n['updated']} updated.")
+        print(f"Notion sync: {n['created']} created, {n['updated']} updated, "
+              f"{n['archived']} archived.")
 
 
 if __name__ == "__main__":
