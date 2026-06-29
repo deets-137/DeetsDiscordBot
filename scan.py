@@ -99,6 +99,7 @@ def enrich_pending(channel_id=None, delay: float = 1.0) -> dict:
     """
     pending = storage.posts_needing_enrichment(channel_id)
     resolved = 0
+    review = 0
     for i, post in enumerate(pending):
         hit = enrich.enrich(post["url"])
         if hit:
@@ -106,9 +107,11 @@ def enrich_pending(channel_id=None, delay: float = 1.0) -> dict:
             song_id = storage.upsert_song(track, match_type)
             storage.link_post_to_song(post["post_id"], song_id)
             resolved += 1
+            if match_type == "review":
+                review += 1
         if delay and i < len(pending) - 1:
             time.sleep(delay)
-    return {"checked": len(pending), "resolved": resolved}
+    return {"checked": len(pending), "resolved": resolved, "review": review}
 
 
 def main():
@@ -154,7 +157,10 @@ def main():
               f"{a['known']} already on record (scan #{a['scan_id']}).")
     if "enriched" in result:
         e = result["enriched"]
-        print(f"Enriched {e['resolved']}/{e['checked']} posts against iTunes.")
+        print(f"Enriched {e['resolved']}/{e['checked']} posts.")
+        if e.get("review"):
+            print(f"  {e['review']} need hand-verification — run `python review.py "
+                  f"{args.channel_id}`.")
     if "export" in result:
         print(f"Exported journal: {result['export']}")
     if "notion" in result:

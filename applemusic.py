@@ -1,12 +1,14 @@
 """
-Apple Music API client — SCAFFOLD (not wired into enrich.py yet).
+Apple Music API client — the authenticated resolver enrich.py prefers.
 
-Why this exists: the free, key-less iTunes Search/Lookup API (used by enrich.py)
-can't see some real Apple Music tracks — e.g. journal posts #56 "Want You Gone"
-and #84 "We Get High" return resultCount 0. The authenticated Apple Music API
-(part of a paid developer subscription) resolves them directly, gives richer
-metadata, and can map Spotify→Apple via ISRC. This module is the foundation; the
-final step (calling it from enrich.py) is intentionally left for next session.
+Why this exists: the free, key-less iTunes Search/Lookup API can't see some real
+Apple Music tracks — e.g. journal posts #56 "Want You Gone" and #84 "We Get High"
+return resultCount 0. The authenticated Apple Music API (part of a paid developer
+subscription) resolves them directly and gives richer metadata. enrich.py calls
+song_by_id for Apple links and search_songs for the Spotify→Apple bridge; it
+gracefully no-ops to the free path when credentials are absent. song_by_isrc is
+the precise Spotify→Apple bridge, kept for when a Spotify API key is available
+(Spotify no longer exposes ISRC in page HTML, so it's dormant today).
 
 Auth: Apple Music uses a *developer token* — a short-lived ES256 JWT signed with
 a MusicKit private key. You need three things from developer.apple.com:
@@ -19,8 +21,7 @@ Put them in .env:
   APPLE_TEAM_ID=YYYYYYYYYY
   APPLE_STOREFRONT=us            # optional, defaults to us
 
-Needs PyJWT[crypto] (see requirements.txt). Untested end-to-end — wire & verify
-next session once the .p8 key is in place. See docs/APPLE_MUSIC.md for the plan.
+Needs PyJWT[crypto] (see requirements.txt). See docs/APPLE_MUSIC.md for setup.
 """
 
 from __future__ import annotations
@@ -105,10 +106,17 @@ def song_by_isrc(isrc: str) -> dict | None:
     return items[0] if items else None
 
 
-def search_song(term: str) -> dict | None:
+def search_songs(term: str, limit: int = 10) -> list[dict]:
+    """Search the catalog for songs, returning up to `limit` raw song objects."""
+    limit = max(1, min(limit, 25))  # Apple caps the songs search at 25
     data = _get(f"catalog/{_storefront()}/search",
-                {"term": term, "types": "songs", "limit": 1})
-    songs = (((data or {}).get("results") or {}).get("songs") or {}).get("data") or []
+                {"term": term, "types": "songs", "limit": limit})
+    return (((data or {}).get("results") or {}).get("songs") or {}).get("data") or []
+
+
+def search_song(term: str) -> dict | None:
+    """The single best search hit (or None) — convenience over search_songs."""
+    songs = search_songs(term, limit=1)
     return songs[0] if songs else None
 
 

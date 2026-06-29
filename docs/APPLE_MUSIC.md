@@ -1,70 +1,95 @@
-# Apple Music API — integration plan (next session)
+# Apple Music API — how it works
 
-`applemusic.py` is scaffolded but **not yet called by `enrich.py`**. This is the
-plan for wiring it in.
-
-## Why
-The free iTunes Search/Lookup API can't see every Apple Music track. Two real
-journal posts prove it — both return `resultCount 0`:
-
-| Post | Track | Apple Music link |
-|---|---|---|
-| #56 | Want You Gone | `music.apple.com/.../1657048600?i=1657050617` |
-| #84 | We Get High   | `music.apple.com/.../1720473897?i=1720474315` |
-
-The authenticated Apple Music API resolves these directly. It also enables
-**Spotify → Apple mapping by ISRC**, which would let *every* Spotify post carry
-real Apple artwork/preview/genre instead of the current Spotify-truth fallback.
+`applemusic.py` is the authenticated resolver `enrich.py` prefers. The free,
+key-less iTunes Search/Lookup API can't see every Apple Music track; the paid
+Apple Music API resolves them directly and returns richer metadata (genre,
+preview, hi-res art). Wired and verified 2026-06-28.
 
 ## One-time credentials
 From <https://developer.apple.com> (paid membership) → Certificates, IDs &
 Profiles → Keys → **+** → enable **MusicKit** → download `AuthKey_XXXX.p8`
-(once only). Note the **Key ID** and your **Team ID**. Put them in `.env`
-(`APPLE_PRIVATE_KEY_PATH`, `APPLE_KEY_ID`, `APPLE_TEAM_ID`), and
-`pip install 'PyJWT[crypto]'`.
+(once only). Note the **Key ID** and your **Team ID**. Put them in `.env`:
 
-## What's already built (`applemusic.py`)
-- `developer_token()` — ES256 JWT, cached.
-- `song_by_id(catalog_id)` — the `?i=…` in an Apple album-track URL **is** the
-  catalog id, so this resolves #56/#84.
-- `song_by_isrc(isrc)` — the Spotify→Apple bridge.
-- `search_song(term)` — authenticated search.
-- `to_itunes_shape(song)` — adapts an Apple Music song to the **same dict shape**
-  `storage.upsert_song()` already consumes, so no schema changes are needed.
-
-## Wiring it into `enrich.py` (the actual TODO)
-Make Apple Music the **first, most-trusted** resolver, with the current iTunes /
-Spotify-truth logic as fallback:
-
-1. **Apple Music links** — extract the `?i=` id (reuse `_apple_track_id`) →
-   `applemusic.song_by_id(id)` → `to_itunes_shape` → `match_type="apple"`.
-   **Fall back to `search_song(title artist)` on a 404** — delisted/re-issued ids
-   (exactly #56/#84) return 404 by id but resolve by search. Verified: the
-   credential works (200s); `song_by_id('1657050617')` 404s but
-   `search_song('We Get High')` → Logic, `search_song('Want You Gone Jonathan
-   Coulton')` → a live cut.
-2. **Spotify links** — keep `_spotify_meta()` as the source of truth, but try to
-   recover the **ISRC** (from the Spotify page's embedded JSON, or later the
-   Spotify Web API) and call `applemusic.song_by_isrc(isrc)`. If it matches the
-   Spotify title/artist (reuse `_matches`), use it (`match_type="apple"`);
-   otherwise fall back to the existing iTunes-validate → synthetic chain.
-3. Gate the whole thing on credentials being present (`applemusic` raises a clear
-   `RuntimeError` if env is missing) so the free path still works without keys.
-
-## Backfill after wiring
-Re-resolve the API-limited and Spotify posts:
-```python
-# pseudocode
-for post in posts where match_type in ('spotify', None) or service=='apple_music' and unresolved:
-    re-run enrich(post.url); upsert_song; link_post_to_song
-storage.prune_orphan_songs()
-python notion_sync.py <channel_id>   # push corrections to Notion
 ```
+APPLE_PRIVATE_KEY_PATH=secrets/AuthKey_XXXXXXXXXX.p8
+APPLE_KEY_ID=XXXXXXXXXX
+APPLE_TEAM_ID=YYYYYYYYYY
+APPLE_STOREFRONT=us            # optional, defaults to us
+```
+
+`pip install 'PyJWT[crypto]'`. The `.p8` and `secrets/` are gitignored — never
+commit them. If the vars are absent, `enrich.py` silently falls back to the free
+iTunes path, so the pipeline still runs without keys.
+
+## What `applemusic.py` provides
+- `developer_token()` — ES256 JWT, cached (valid up to 6 months; we mint a short
+  one per process).
+- `song_by_id(catalog_id)` — the `?i=…` in an Apple album-track URL **is** the
+  catalog id.
+- `search_songs(term, limit)` / `search_song(term)` — authenticated search.
+- `song_by_isrc(isrc)` — the precise Spotify→Apple bridge. **Dormant** (see below).
+- `to_itunes_shape(song)` — adapts an Apple song to the same dict shape
+  `storage.upsert_song()` consumes, so no schema changes were needed.
+
+## How `enrich.py` uses it (match_type taxonomy)
+- **Apple Music links** → `song_by_id` → `apple`. Falls back to the free iTunes
+  lookup (`direct`) if the API has no record.
+- **Delisted Apple ids** (404 on both — e.g. posts #56/#84) → best-effort slug
+  search, tagged **`review`**. There is no reliable signal to confirm a title
+  search is the right track (it happily returns live cuts / wrong artists), so we
+  don't trust it — a human verifies by hand. See **the review flow** below.
+- **Spotify links** → the page's `og` tags stay the source of truth; we search
+  the Apple Music API for that title+artist and keep Apple's richer record when
+  it **validates** against the Spotify truth (`apple`). Otherwise the existing
+  validated-iTunes (`search`) → Spotify-truth (`spotify`) chain.
+- **YouTube / everything else** → oEmbed title → iTunes search (`search`).
+
+match_type values: `apple`, `direct`, `search`, `spotify`, `review`, `manual`.
+
+## The review flow (`review.py`)
+Songs the enricher couldn't safely resolve are tagged `review` and surface in
+exports/Notion automatically (it's just a `match_type`). Verify them by hand:
+
+```bash
+python review.py                 # walk each flagged song interactively
+python review.py --list          # just print what's flagged
+```
+
+Per song you can: **[u]** paste the correct Apple Music URL (re-resolves via the
+API → `manual`), **[a]** accept the current guess (→ `manual`), **[s]** skip, or
+**[q]** quit. Corrections re-point the post(s) and prune the orphaned guess.
+`storage.db` stays the source of truth — re-run `python notion_sync.py <channel>`
+afterward to push corrections to Notion.
+
+## ISRC bridge — why it's dormant
+The precise Spotify→Apple mapping is by **ISRC** (`song_by_isrc`), but it isn't
+reachable today: Spotify no longer exposes ISRC in page HTML, and this project
+holds no Spotify Web API credentials (by design — enrichment scrapes `og` tags to
+avoid them). So the Spotify→Apple bridge keys on **title+artist** (validated)
+instead. `song_by_isrc` is kept ready for the day a Spotify app/key is added —
+prefer it over the search in `enrich.enrich`'s Spotify branch.
 
 ## Notes / gotchas
 - Apple Music catalog ids are the same Apple track ids as iTunes, so storing them
-  in `songs.itunes_track_id` stays consistent (no dupes vs. existing `direct`
-  rows).
-- Developer tokens last up to 6 months; minting one per process is fine.
-- Respect rate limits; keep the ~1 req/sec courtesy delay used elsewhere.
-</content>
+  in `songs.itunes_track_id` stays consistent (no dupes vs. existing `direct` rows).
+- `apple` vs `direct` both mean an authoritative id match; the split just records
+  which API answered (paid vs free).
+- Respect rate limits; the ~1 req/sec courtesy delay used elsewhere applies.
+
+## Backfill recipe (re-resolving existing rows)
+After wiring or credential changes, re-resolve unresolved + Spotify-fallback posts:
+```python
+import time, storage, enrich
+c = storage._db()
+rows = c.execute("""SELECT p.post_id, p.url FROM posts p
+                    LEFT JOIN songs s ON s.song_id = p.song_id
+                    WHERE p.song_id IS NULL OR s.match_type = 'spotify'""").fetchall()
+for r in rows:
+    hit = enrich.enrich(r["url"])
+    if hit:
+        track, mt = hit
+        storage.link_post_to_song(r["post_id"], storage.upsert_song(track, mt))
+    time.sleep(1.0)
+storage.prune_orphan_songs()
+# then: python review.py <channel>   and   python notion_sync.py <channel>
+```

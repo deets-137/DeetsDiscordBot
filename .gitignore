@@ -5,6 +5,7 @@ storage.db
 storage.db-journal
 storage.db-wal
 storage.db-shm
+storage.db.bak-*
 __pycache__/
 *.pyc
 .DS_Store

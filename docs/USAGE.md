@@ -67,6 +67,20 @@ Other entry points wrap the same core:
 - `python bot.py` — `/links` slash command inside Discord (DMs you the files).
 - `python harness.py` — local web/API trigger at <http://127.0.0.1:8077>.
 
+**Songs flagged for review.** A delisted Apple Music track can't be resolved
+automatically and a title search for it is unreliable, so the enricher tags those
+`match_type='review'` rather than trusting a guess. `--enrich` tells you when any
+turn up. Verify them by hand:
+
+```bash
+python review.py <channel_id>            # walk each flagged song interactively
+python review.py <channel_id> --list     # just print what's flagged
+```
+
+Per song: **[u]** paste the correct Apple Music URL (re-resolves → `manual`),
+**[a]** accept the guess (→ `manual`), **[s]** skip, **[q]** quit. Re-run
+`notion_sync.py` afterward to push corrections. See `docs/APPLE_MUSIC.md`.
+
 ---
 
 ## 3. The spreadsheet export
@@ -179,13 +193,14 @@ overwritten when the page's own metadata confirms it.
 | `scan.py` | CLI entry point: scan → archive → enrich → export → notion |
 | `linkscan.py` | link extraction, service detection, non-music filter |
 | `storage.py` | SQLite journal, `export_journal()` spreadsheet, maintenance helpers |
-| `enrich.py` | song resolution (Apple id lookup / Spotify-truth / iTunes search) |
-| `applemusic.py` | Apple Music API client — **scaffold, not wired yet** |
+| `enrich.py` | song resolution (Apple Music API → iTunes id → Spotify-truth → search) |
+| `applemusic.py` | authenticated Apple Music API client (preferred resolver) |
+| `review.py` | hand-verify `review`-flagged songs (delisted Apple ids) |
 | `notion_sync.py` | idempotent Notion mirror (creates/updates/archives) |
 | `bot.py` / `harness.py` | Discord slash-command / local web triggers |
 | `storage.db` | **the database — source of truth** |
 | `exports/` | generated spreadsheets and link dumps |
-| `docs/APPLE_MUSIC.md` | plan for wiring the Apple Music API in next |
+| `docs/APPLE_MUSIC.md` | Apple Music API setup, match_type taxonomy, review flow |
 
 ---
 

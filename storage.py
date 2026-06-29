@@ -193,6 +193,30 @@ def link_post_to_song(post_id: int, song_id: int) -> None:
     _db().execute("UPDATE posts SET song_id = ? WHERE post_id = ?", (song_id, post_id))
 
 
+def set_song_match_type(song_id: int, match_type: str) -> None:
+    """Re-tag a song's match (e.g. flip a hand-verified 'review' to 'manual')."""
+    _db().execute("UPDATE songs SET match_type = ? WHERE song_id = ?",
+                  (match_type, song_id))
+
+
+def songs_needing_review(channel_id=None) -> list[sqlite3.Row]:
+    """Songs whose match is an unconfirmed best-effort guess ('review'), joined to
+    the post(s) pointing at them so a human has the original link for context.
+    One row per (song, post); oldest post first."""
+    q = """SELECT s.song_id, s.track_name, s.artist_name, s.collection_name,
+                  s.primary_genre, s.release_date, s.track_view_url,
+                  p.post_id, p.author, p.posted_at, p.service, p.url, p.jump_url
+             FROM songs s
+             JOIN posts p ON p.song_id = s.song_id
+            WHERE s.match_type = 'review'"""
+    args: tuple = ()
+    if channel_id is not None:
+        q += " AND p.channel_id = ?"
+        args = (str(channel_id),)
+    q += " ORDER BY p.posted_at"
+    return _db().execute(q, args).fetchall()
+
+
 def posts_needing_enrichment(channel_id=None) -> list[sqlite3.Row]:
     """Posts that don't yet have a resolved song, newest first."""
     q = "SELECT * FROM posts WHERE song_id IS NULL"

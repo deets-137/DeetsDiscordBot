@@ -1,12 +1,26 @@
 """
-SongOTD enrichment via the (free, key-less) iTunes APIs.
+SongOTD enrichment. Prefers the authenticated Apple Music API when credentials
+are present, and always keeps the free, key-less iTunes APIs as a fallback so the
+pipeline still works without keys.
 
-Two paths, by service:
-  - Apple Music links carry a track id, so we Lookup it directly — a reliable
-    "direct" match.
-  - Spotify / YouTube / everything else carry no iTunes id. We read the page's
-    title via the service's oEmbed endpoint to get a "Title - Artist" string,
-    then Search iTunes for the closest song — a fuzzier "search" match.
+Resolution paths, by service:
+  - Apple Music links carry a catalog id. We resolve it via the Apple Music API
+    ("apple"), falling back to the free iTunes Lookup ("direct"). If the id is
+    *delisted* (404 on both — e.g. journal posts #56/#84), we make a best-effort
+    Apple search but tag it "review": a guess no algorithm can safely confirm, so
+    a human verifies it by hand (see review.py).
+  - Spotify links: the page's og tags are the source of truth. We search the
+    Apple Music API for that title+artist and, when the hit validates against the
+    Spotify truth, keep Apple's richer artwork/genre/preview ("apple"). Otherwise
+    we fall back to a validated iTunes search ("search"), and finally to Spotify's
+    own facts + cover ("spotify"). (A precise ISRC bridge — applemusic.song_by_isrc
+    — is wired but dormant: Spotify no longer exposes ISRC in page HTML and we hold
+    no Spotify API key, so title+artist is the reachable anchor today.)
+  - YouTube / everything else: oEmbed title → iTunes Search ("search").
+
+match_type values: "apple" (Apple Music API), "direct" (free iTunes id lookup),
+"search" (validated iTunes search), "spotify" (Spotify-truth fallback), "review"
+(unconfirmed Apple search guess awaiting hand-verification), "manual" (hand-fixed).
 
 Pure functions: this module only fetches and returns dicts. storage.py decides
 what to persist. Uses stdlib urllib so there's no extra dependency.
@@ -19,7 +33,9 @@ import json
 import re
 import urllib.parse
 import urllib.request
+from functools import lru_cache
 
+import applemusic
 from linkscan import detect_service
 
 _UA = "DeetsOTD/0.1 (+https://github.com/deets-137)"
@@ -203,29 +219,86 @@ def _search(term: str) -> dict | None:
     return next((r for r in results if not _is_cover(r)), results[0])
 
 
+# ─── Apple Music API (authenticated; optional) ───────────────────────────────
+
+@lru_cache(maxsize=1)
+def _apple_ready() -> bool:
+    """True if Apple Music credentials are configured and a token can be minted.
+    Cached: the free path must work untouched when keys are absent."""
+    try:
+        return bool(applemusic.developer_token())
+    except Exception:
+        return False
+
+
+def _apple_slug_term(url: str) -> str | None:
+    """A search term recovered from an Apple Music URL's slug, e.g.
+    .../album/want-you-gone/123?i=456 → "want you gone". Used only when the id is
+    delisted, so we can still offer a (review-flagged) best guess."""
+    m = re.search(r"/(?:album|song)/([^/?#]+)/\d", url)
+    if not m:
+        return None
+    return urllib.parse.unquote(m.group(1)).replace("-", " ").strip() or None
+
+
+def _apple_search_validated(title: str, artist: str) -> dict | None:
+    """Search the Apple Music API for title+artist and return the first hit that
+    validates against the given (Spotify-truth) facts, iTunes-shaped. None if the
+    API is unavailable or nothing validates. Prefers an exact title over a
+    variant like "(Instrumental)"/"(Live)"."""
+    if not _apple_ready():
+        return None
+    songs = applemusic.search_songs(f"{title} {artist}".strip(), limit=10) or []
+    cands = [applemusic.to_itunes_shape(s) for s in songs]
+    valid = [c for c in cands if _matches(c, title, artist)]
+    if not valid:
+        return None
+    want = _norm(title)
+    return next((c for c in valid if _norm(c.get("trackName")) == want), valid[0])
+
+
 # ─── Public entry point ──────────────────────────────────────────────────────
 
 def enrich(url: str) -> tuple[dict, str] | None:
-    """Resolve a posted url to an iTunes track payload.
+    """Resolve a posted url to an iTunes-shaped track payload.
 
-    Returns (track_dict, match_type) where match_type is "direct" (Apple id) or
-    "search" (best-effort title lookup), or None if nothing could be resolved.
+    Returns (track_dict, match_type) — see the module docstring for the match_type
+    taxonomy — or None if nothing could be resolved.
     """
     service = detect_service(url)
 
     if service == "apple_music":
         tid = _apple_track_id(url)
         if tid:
+            # Authenticated API first (richer metadata), then the free iTunes id
+            # lookup, which occasionally resolves ids the API path doesn't.
+            if _apple_ready():
+                song = applemusic.song_by_id(tid)
+                if song:
+                    return applemusic.to_itunes_shape(song), "apple"
             track = _lookup(tid)
             if track:
                 return track, "direct"
-        # Fall through to search if the id path failed.
+        # Delisted id (404 on both): a title search is the only option, but it
+        # mis-resolves to live cuts / wrong artists with no reliable signal to
+        # catch it — so flag it 'review' for a human instead of trusting it.
+        if _apple_ready():
+            term = _apple_slug_term(url)
+            if term:
+                song = applemusic.search_song(term)
+                if song:
+                    return applemusic.to_itunes_shape(song), "review"
+        # Fall through to the generic oEmbed path as a last resort.
 
-    # Spotify: trust the page's own facts; use iTunes only if it validates,
-    # otherwise keep Spotify's truth (with its own cover) as a 'spotify' match.
+    # Spotify: the page's own og tags are the source of truth. Prefer Apple
+    # Music's richer record when an Apple search validates against that truth;
+    # otherwise a validated iTunes search; otherwise keep Spotify's own facts.
     if service == "spotify":
         meta = _spotify_meta(url)
         if meta:
+            apple = _apple_search_validated(meta["title"], meta["artist"])
+            if apple:
+                return apple, "apple"
             cand = _search(f"{meta['title']} {meta['artist']}".strip())
             if cand and _matches(cand, meta["title"], meta["artist"]):
                 return cand, "search"

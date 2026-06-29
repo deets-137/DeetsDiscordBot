@@ -9,15 +9,22 @@ of truth**), enriches each to a real track, and mirrors everything to a Notion
 gallery. Spreadsheets and Notion are read-only views of the DB.
 
 ## Current state (2026-06-28)
-- **292 posts**, **290 resolved (99%)**. The 2 unresolved (#56, #84) are real
-  Apple Music tracks the *free* iTunes API can't see — the Apple Music API will
-  fix them.
-- `match` mix: ~213 `direct`, ~68 `search` (validated), ~7 `spotify` (Spotify's
-  own facts kept), 1 `manual`.
+- **292 posts, 292 resolved (100%).** Apple Music API is wired into `enrich.py`
+  (see `docs/APPLE_MUSIC.md`).
+- `match` mix: 208 `direct` (free iTunes id), 66 `search` (validated), 6 `apple`
+  (Apple Music API), 2 `review` (delisted #56/#84 — best-effort guesses awaiting
+  hand-verification), 1 `spotify` (a classical track Apple search wouldn't
+  validate), 1 `manual`.
+- **#56/#84 are no longer "unresolved" — they're `review`.** The free API can't
+  see those delisted ids; the only fallback is a title search that's often wrong
+  with no way to auto-catch it. So they carry a flagged guess for you to confirm
+  via `python review.py` (see below). #56's guess looks correct already.
 - Gif/meme noise (10 Tenor + 2 YouTube) has been **purged**; the scanner now
   filters non-music hosts going forward.
 - Notion "SongOTD Journal" DB is fully synced (292 pages, 12 stale ones archived)
-  with views: Covers (gallery), By Poster, Calendar, By Genre.
+  with views: Covers (gallery), By Poster, Calendar, By Genre. **Notion is now
+  stale vs storage.db** after the Apple backfill — re-run `notion_sync.py` to push
+  the 6 upgraded + 2 review rows (see Next session).
 
 ## Key identifiers
 - Discord channel id: `1463626949430612267` (#song-of-the-day)
@@ -34,21 +41,21 @@ Scan → archive new posts → enrich → write `exports/SOTD_Export_MMDDYYYY.xl
 (All tab + one per month) → mirror to Notion. Idempotent; safe to re-run.
 
 ## Next session — START HERE
-Apple Music API is **verified working** (2026-06-28). Key
-`secrets/AuthKey_22CB27A4ZK.p8`, `.env` filled in; developer token mints and
-catalog calls return 200. `applemusic.search_song` resolves both tracks the free
-iTunes API couldn't (#84 → Logic "We Get High"; #56 → a live "Want You Gone").
+Apple Music wiring + the `review.py` hand-verification flow are **done and tested**
+(2026-06-28). Two follow-ups remain:
 
-Go straight to **wiring `applemusic` into `enrich.py`** per **`docs/APPLE_MUSIC.md`**:
-make Apple Music the first resolver, then backfill and
-`python notion_sync.py 1463626949430612267`.
-
-**One learned nuance:** direct `song_by_id` (the `?i=` from an Apple Music URL)
-can return **404 for delisted tracks** (that's why #56/#84 were unresolved). So
-the resolver must **try id first, then fall back to `search_song`**. Sanity check:
-```bash
-python3 -c "import applemusic; print(applemusic.search_song('We Get High')['attributes']['artistName'])"  # -> Logic
-```
+1. **Hand-verify the 2 `review` posts**, then push to Notion:
+   ```bash
+   python review.py 1463626949430612267   # confirm/correct #56 & #84
+   python notion_sync.py 1463626949430612267
+   ```
+   `review.py` shows each guess + the original Discord post; **[u]** paste the
+   correct Apple URL, **[a]** accept, **[s]** skip. #56 ("Want You Gone — Aperture
+   Science Psychoacoustic Laboratories") is the correct Portal 2 credit and can be
+   accepted; #84 ("We Get High — Logic") needs your eyes on whether that's the
+   actually-posted track.
+2. **Re-sync Notion regardless** — the Apple backfill upgraded 6 Spotify posts to
+   `apple` (real artwork/genre/preview); Notion still shows the old `spotify` data.
 
 ## Then — Notion presentation polish
 The user directs the aesthetic; a "Wrapped"-style stats dashboard (top artists,
