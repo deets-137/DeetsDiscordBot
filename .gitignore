@@ -8,3 +8,7 @@ storage.db-shm
 __pycache__/
 *.pyc
 .DS_Store
+
+# Apple Music MusicKit private key — never commit
+*.p8
+secrets/
