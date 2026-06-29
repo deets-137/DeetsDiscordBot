@@ -37,8 +37,12 @@ Make Apple Music the **first, most-trusted** resolver, with the current iTunes /
 Spotify-truth logic as fallback:
 
 1. **Apple Music links** — extract the `?i=` id (reuse `_apple_track_id`) →
-   `applemusic.song_by_id(id)` → `to_itunes_shape` → `match_type="apple"`. This is
-   strictly better than today's `_lookup` and fixes #56/#84.
+   `applemusic.song_by_id(id)` → `to_itunes_shape` → `match_type="apple"`.
+   **Fall back to `search_song(title artist)` on a 404** — delisted/re-issued ids
+   (exactly #56/#84) return 404 by id but resolve by search. Verified: the
+   credential works (200s); `song_by_id('1657050617')` 404s but
+   `search_song('We Get High')` → Logic, `search_song('Want You Gone Jonathan
+   Coulton')` → a live cut.
 2. **Spotify links** — keep `_spotify_meta()` as the source of truth, but try to
    recover the **ISRC** (from the Spotify page's embedded JSON, or later the
    Spotify Web API) and call `applemusic.song_by_isrc(isrc)`. If it matches the

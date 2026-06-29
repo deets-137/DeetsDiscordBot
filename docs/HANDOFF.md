@@ -34,27 +34,21 @@ Scan → archive new posts → enrich → write `exports/SOTD_Export_MMDDYYYY.xl
 (All tab + one per month) → mirror to Notion. Idempotent; safe to re-run.
 
 ## Next session — START HERE
-The Apple Music key is in `secrets/AuthKey_UFGNN69C58.p8` and `.env` is filled in.
-A developer token **mints fine** (ES256, correct kid) and the request sends, but
-Apple returns **401** on catalog calls. That's credential config, not code.
-Verify on the Apple Developer portal, in order:
-1. The key **UFGNN69C58 has the MusicKit capability enabled** (Keys → that key).
-   If it was created without MusicKit, make a new MusicKit key and swap the
-   `.p8` + `APPLE_KEY_ID`.
-2. **`APPLE_TEAM_ID` (5PFDS365A8) is the Apple Developer Team ID** from the
-   Membership page (not an App ID prefix).
-3. The `.p8` on disk is the file for that exact Key ID.
+Apple Music API is **verified working** (2026-06-28). Key
+`secrets/AuthKey_22CB27A4ZK.p8`, `.env` filled in; developer token mints and
+catalog calls return 200. `applemusic.search_song` resolves both tracks the free
+iTunes API couldn't (#84 → Logic "We Get High"; #56 → a live "Want You Gone").
 
-Re-test until this prints a track (currently returns None):
+Go straight to **wiring `applemusic` into `enrich.py`** per **`docs/APPLE_MUSIC.md`**:
+make Apple Music the first resolver, then backfill and
+`python notion_sync.py 1463626949430612267`.
+
+**One learned nuance:** direct `song_by_id` (the `?i=` from an Apple Music URL)
+can return **404 for delisted tracks** (that's why #56/#84 were unresolved). So
+the resolver must **try id first, then fall back to `search_song`**. Sanity check:
 ```bash
-python3 -c "import applemusic; s=applemusic.song_by_id('1657050617'); \
-print(applemusic.to_itunes_shape(s) if s else 'still 401 — fix credential')"
+python3 -c "import applemusic; print(applemusic.search_song('We Get High')['attributes']['artistName'])"  # -> Logic
 ```
-(`1657050617` is post #56 "Want You Gone" — one of the two the free API can't see.)
-
-Once that resolves, **wire it into `enrich.py`** per **`docs/APPLE_MUSIC.md`**:
-make Apple Music the first resolver (fixes #56/#84), map Spotify→Apple by ISRC,
-then backfill and `python notion_sync.py 1463626949430612267`.
 
 ## Then — Notion presentation polish
 The user directs the aesthetic; a "Wrapped"-style stats dashboard (top artists,
