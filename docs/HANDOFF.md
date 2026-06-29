@@ -9,29 +9,29 @@ of truth**), enriches each to a real track, and mirrors everything to a Notion
 gallery. Spreadsheets and Notion are read-only views of the DB.
 
 ## Current state (2026-06-28)
-- **292 posts, 292 resolved (100%).** Apple Music API is wired into `enrich.py`
-  (see `docs/APPLE_MUSIC.md`).
+- **292 posts, 292 resolved (100%). Zero flagged for review — fully clean.**
+  Apple Music API is wired into `enrich.py` (see `docs/APPLE_MUSIC.md`).
 - `match` mix: 208 `direct` (free iTunes id), 66 `search` (validated), 6 `apple`
-  (Apple Music API), 2 `review` (delisted #56/#84 — best-effort guesses awaiting
-  hand-verification), 1 `spotify` (a classical track Apple search wouldn't
-  validate), 1 `manual`.
-- **#56/#84 are no longer "unresolved" — they're `review`.** The free API can't
-  see those delisted ids; the only fallback is a title search that's often wrong
-  with no way to auto-catch it. So they carry a flagged guess for you to confirm
-  via `python review.py` (see below). #56's guess looks correct already.
+  (Apple Music API), 3 `manual` (hand-verified), 1 `spotify` (a Bach/Yo-Yo Ma
+  track Apple search wouldn't validate).
+- **#56/#84 (delisted Apple ids) are resolved and hand-verified.** Both were
+  enriched to `review` guesses, then confirmed via `review.py`: #56 accepted as
+  "Want You Gone — Aperture Science Psychoacoustic Laboratories" (the correct
+  Portal 2 credit); #84 corrected to **Ashe — "We Get High"** (the auto-guess
+  "Logic" was wrong — exactly the case `review` exists to catch). Both now `manual`.
 - Gif/meme noise (10 Tenor + 2 YouTube) has been **purged**; the scanner now
   filters non-music hosts going forward.
-- Notion "SongOTD Journal" DB is fully synced (292 pages, 12 stale ones archived)
-  with views: Covers (gallery), By Poster, Calendar, By Genre. **Notion is now
-  stale vs storage.db** after the Apple backfill — re-run `notion_sync.py` to push
-  the 6 upgraded + 2 review rows (see Next session).
+- Notion "SongOTD Journal" DB is **fully synced** (Apple backfill + the two
+  corrections pushed), views: Covers (gallery), By Poster, Calendar, By Genre.
 
 ## Key identifiers
 - Discord channel id: `1463626949430612267` (#song-of-the-day)
 - Notion parent page "DeetsOTD": `38d86876-b378-8019-8264-f2d923c56f1c`
 - Notion DB "SongOTD Journal": `cff663746866485ca23fc3d8d44bc478`
 - All secrets live in `.env` (gitignored): `DISCORD_TOKEN`, `NOTION_TOKEN`,
-  `NOTION_DB_ID`, `NOTION_PARENT_PAGE_ID`. Apple Music vars are placeholders.
+  `NOTION_DB_ID`, `NOTION_PARENT_PAGE_ID`, and Apple Music
+  (`APPLE_PRIVATE_KEY_PATH` → `secrets/AuthKey_22CB27A4ZK.p8`, `APPLE_KEY_ID`,
+  `APPLE_TEAM_ID`) — all live and verified working.
 
 ## The one routine command
 ```bash
@@ -41,25 +41,26 @@ Scan → archive new posts → enrich → write `exports/SOTD_Export_MMDDYYYY.xl
 (All tab + one per month) → mirror to Notion. Idempotent; safe to re-run.
 
 ## Next session — START HERE
-Apple Music wiring + the `review.py` hand-verification flow are **done and tested**
-(2026-06-28). Two follow-ups remain:
+Apple Music wiring, the `review.py` flow, the backfill, and the #56/#84
+hand-verification + Notion re-sync are all **done (2026-06-28)**. The journal is
+clean (100% resolved, nothing flagged). Next is presentation, not data — pick up
+the largest open arc:
 
-1. **Hand-verify the 2 `review` posts**, then push to Notion:
-   ```bash
-   python review.py 1463626949430612267   # confirm/correct #56 & #84
-   python notion_sync.py 1463626949430612267
-   ```
-   `review.py` shows each guess + the original Discord post; **[u]** paste the
-   correct Apple URL, **[a]** accept, **[s]** skip. #56 ("Want You Gone — Aperture
-   Science Psychoacoustic Laboratories") is the correct Portal 2 credit and can be
-   accepted; #84 ("We Get High — Logic") needs your eyes on whether that's the
-   actually-posted track.
-2. **Re-sync Notion regardless** — the Apple backfill upgraded 6 Spotify posts to
-   `apple` (real artwork/genre/preview); Notion still shows the old `spotify` data.
+1. **Notion "Wrapped"-style stats dashboard** (discussed; user directs aesthetic):
+   top artists, genre split, posting streaks, busiest months, per-poster
+   leaderboards. All derivable from `storage.db`; mostly a `notion_sync` extension
+   + new views.
+2. **The harness web UI** — the original vision's end state: a UI to browse the
+   journal/catalog (`harness.py` @ `127.0.0.1:8077` is the stub). Notion is the
+   presentation layer today; UI/aesthetic direction is open.
 
-## Then — Notion presentation polish
-The user directs the aesthetic; a "Wrapped"-style stats dashboard (top artists,
-genre split, posting streaks) was discussed.
+Smaller opportunistic wins:
+- Re-resolve the 66 `search` rows through the Apple API to upgrade them to `apple`
+  (richer genre/preview/art). Low-risk — validation already guards it; just churns
+  rows. Use the backfill recipe in `docs/APPLE_MUSIC.md`, widened to `search`.
+- A Spotify Web API key would unlock the precise ISRC bridge (`song_by_isrc`,
+  currently dormant) and exact-version matching (avoids "(Instrumental)/(Live)"
+  ambiguity in title+artist search).
 
 ## Gotchas
 - `notion_sync.py` uses an **internal integration token**, separate from the
