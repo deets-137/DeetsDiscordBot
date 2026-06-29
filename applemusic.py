@@ -31,6 +31,10 @@ import urllib.parse
 import urllib.request
 from functools import lru_cache
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 API = "https://api.music.apple.com/v1"
 
 

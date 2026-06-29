@@ -33,14 +33,32 @@ python scan.py 1463626949430612267 --enrich --export xlsx --notion
 Scan → archive new posts → enrich → write `exports/SOTD_Export_MMDDYYYY.xlsx`
 (All tab + one per month) → mirror to Notion. Idempotent; safe to re-run.
 
-## Next session — the planned work
-1. **Wire the Apple Music API** (`applemusic.py` is scaffolded). Add the MusicKit
-   `.p8` key + ids to `.env`, then integrate per **`docs/APPLE_MUSIC.md`**: make
-   it the first resolver (fixes #56/#84) and map Spotify→Apple by ISRC. Backfill
-   and re-sync afterward.
-2. **Notion presentation polish** — the user is directing the aesthetic; a
-   "Wrapped"-style stats dashboard (top artists, genre split, posting streaks)
-   was discussed.
+## Next session — START HERE
+The Apple Music key is in `secrets/AuthKey_UFGNN69C58.p8` and `.env` is filled in.
+A developer token **mints fine** (ES256, correct kid) and the request sends, but
+Apple returns **401** on catalog calls. That's credential config, not code.
+Verify on the Apple Developer portal, in order:
+1. The key **UFGNN69C58 has the MusicKit capability enabled** (Keys → that key).
+   If it was created without MusicKit, make a new MusicKit key and swap the
+   `.p8` + `APPLE_KEY_ID`.
+2. **`APPLE_TEAM_ID` (5PFDS365A8) is the Apple Developer Team ID** from the
+   Membership page (not an App ID prefix).
+3. The `.p8` on disk is the file for that exact Key ID.
+
+Re-test until this prints a track (currently returns None):
+```bash
+python3 -c "import applemusic; s=applemusic.song_by_id('1657050617'); \
+print(applemusic.to_itunes_shape(s) if s else 'still 401 — fix credential')"
+```
+(`1657050617` is post #56 "Want You Gone" — one of the two the free API can't see.)
+
+Once that resolves, **wire it into `enrich.py`** per **`docs/APPLE_MUSIC.md`**:
+make Apple Music the first resolver (fixes #56/#84), map Spotify→Apple by ISRC,
+then backfill and `python notion_sync.py 1463626949430612267`.
+
+## Then — Notion presentation polish
+The user directs the aesthetic; a "Wrapped"-style stats dashboard (top artists,
+genre split, posting streaks) was discussed.
 
 ## Gotchas
 - `notion_sync.py` uses an **internal integration token**, separate from the
