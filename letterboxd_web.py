@@ -152,6 +152,7 @@ def build(export_dir: Path) -> dict:
             "liked": key(r) in liked,
             "review": None,
             "review_date": None,
+            "watches": [],                  # every diary entry, newest first
             "status": "watched",
         }
 
@@ -159,6 +160,11 @@ def build(export_dir: Path) -> dict:
         m = movies.get(key(r))
         if m:
             m["rating"] = float(r["Rating"])
+
+    # Reviews are diary entries with text — (film, watched date) pairs them
+    # back up, so a rewatch keeps its own review on its own watch.
+    review_by_watch = {(key(r), r.get("Watched Date") or r["Date"]): r["Review"]
+                       for r in reviews}
 
     for r in diary:
         m = movies.get(key(r))
@@ -170,8 +176,17 @@ def build(export_dir: Path) -> dict:
         wd = r.get("Watched Date") or r["Date"]
         if not m["watched_date"] or wd > m["watched_date"]:
             m["watched_date"] = wd
+        m["watches"].append({
+            "date": wd,
+            "rating": float(r["Rating"]) if r.get("Rating") else None,
+            "rewatch": r.get("Rewatch") == "Yes",
+            "review": review_by_watch.get((key(r), wd)),
+        })
 
-    for r in reviews:  # keep the most recent review per film
+    for m in movies.values():
+        m["watches"].sort(key=lambda w: w["date"], reverse=True)
+
+    for r in reviews:  # the film card itself carries the most recent review
         m = movies.get(key(r))
         if not m:
             continue
@@ -195,6 +210,7 @@ def build(export_dir: Path) -> dict:
             "liked": False,
             "review": None,
             "review_date": None,
+            "watches": [],
             "status": "watchlist",
         }
 
