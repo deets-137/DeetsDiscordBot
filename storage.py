@@ -324,12 +324,13 @@ def _journal_rows(channel_id) -> list[dict]:
             age = int(date[:4]) - int(rel_year)
 
         duration = ""
+        duration_sec = None
         if r["raw_json"]:
             try:
                 ms = json.loads(r["raw_json"]).get("trackTimeMillis")
                 if ms:
-                    secs = int(ms) // 1000
-                    duration = f"{secs // 60}:{secs % 60:02d}"
+                    duration_sec = int(ms) // 1000
+                    duration = f"{duration_sec // 60}:{duration_sec % 60:02d}"
             except (ValueError, TypeError):
                 pass
 
@@ -346,6 +347,7 @@ def _journal_rows(channel_id) -> list[dict]:
             "artist_name": r["artist_name"] or "",
             "album": r["collection_name"] or "",
             "genre": r["primary_genre"] or "", "duration": duration,
+            "duration_sec": duration_sec,
             "release_date": rel, "release_year": rel_year, "age_yrs": age,
             "service": r["service"], "match_type": r["match_type"] or "",
             "resolved": "yes" if r["song_id"] else "no",
@@ -382,6 +384,69 @@ def export_journal(channel_id, fmt: str = "xlsx") -> Path:
 
     _write_workbook(path, rows)
     return path
+
+
+# Fields safe to publish on a PUBLIC website: display data only. The Discord
+# message_id / author_id / jump_url from the journal are deliberately omitted so
+# songs.json never carries private server, user, or message ids. `author` (the
+# poster's display name) stays because the cards show it.
+_WEB_FIELDS = (
+    "post_id", "posted_at", "date", "day", "month",
+    "track_name", "artist_name", "album", "genre", "duration", "duration_sec",
+    "release_date", "release_year", "age_yrs",
+    "service", "resolved", "author",
+    "url", "apple_music_url", "preview_url", "artwork_url",
+)
+
+
+def _int_or_none(value):
+    """Coerce a possibly-empty string to int, or None — so the JSON carries real
+    numbers the browser can sort/range-filter without parsing."""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def export_web(channel_id, out_path: Optional[Path] = None,
+               label: Optional[str] = None) -> Path:
+    """Write the journal as a website-ready songs.json (display data only).
+
+    Shape: ``{"generated_at", "channel", "count", "songs": [...]}`` — one flat,
+    JSON-typed object per song. This is the bridge to the deets.solutions SOTD
+    page: it fetches this file and renders a card grid, and can filter/sort/search
+    the array client-side. So the export is shaped for that: numbers come out as
+    real numbers (or null), private Discord ids are dropped, and rows stay
+    oldest->newest (the site reverses for display). Returns the path written.
+
+    out_path lets a caller drop the file straight into the site repo
+    (…/deetssolutions/sotd/songs.json); default is exports/songs.json.
+    """
+    rows = _journal_rows(channel_id)
+    songs = []
+    for r in rows:
+        song = {k: r.get(k) for k in _WEB_FIELDS}
+        song["release_year"] = _int_or_none(r["release_year"])
+        song["age_yrs"] = _int_or_none(r["age_yrs"])
+        songs.append(song)
+
+    payload = {
+        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "channel": label or str(channel_id),
+        "count": len(songs),
+        "songs": songs,
+    }
+
+    if out_path is None:
+        EXPORTS_DIR.mkdir(parents=True, exist_ok=True)
+        out_path = EXPORTS_DIR / "songs.json"
+    else:
+        out_path = Path(out_path)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with out_path.open("w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False, indent=2)
+    return out_path
 
 
 def _write_workbook(path: Path, rows: list[dict]) -> None:

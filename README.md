@@ -79,5 +79,29 @@ unenriched.
 
 Schema lives in [storage.py](storage.py); enrichment in [enrich.py](enrich.py).
 
+### Website export (songs.json)
+
+Feed the [Deets.Solutions](https://deets.solutions) Song-of-the-Day page a static,
+display-only JSON straight from the journal:
+
+```bash
+python scan.py <channel_id> --enrich --web \
+    --web-out ../deetssolutions/sotd/songs.json
+```
+
+`--web` (implies `--archive`) writes `{generated_at, channel, count, songs[]}`. Each
+song carries only display fields — track/artist/album, genre, artwork, 30s preview,
+Apple Music link, `duration_sec`, dates, poster **name** — and **drops the private
+Discord ids** (message id, author id, jump link) so the file is safe on a public
+site. Numbers come out as real numbers (or `null`) so the page can sort/filter
+client-side. `--web-out` sets the path (default `exports/songs.json`); point it at
+the site repo and commit the result.
+
+Regenerating from an existing `storage.db` needs no Discord/iTunes:
+
+```bash
+python -c "import storage; storage.export_web(<channel_id>, out_path='../deetssolutions/sotd/songs.json')"
+```
+
 > Personal, single-user. The harness binds to localhost with no auth — don't
 > expose it.

@@ -43,7 +43,8 @@ except ModuleNotFoundError:
 async def scan_channel(channel_id: int, limit: int | None = None,
                        by_user: bool = False, fmt: str = "csv",
                        archive: bool = False, do_enrich: bool = False,
-                       export: str | None = None, notion: bool = False):
+                       export: str | None = None, notion: bool = False,
+                       web: bool = False, web_out: str | None = None):
     """Connect, collect links from one channel, write files. Returns paths+count.
 
     When by_user is True, also writes a per-user breakdown in fmt (csv/tsv/xml).
@@ -74,7 +75,7 @@ async def scan_channel(channel_id: int, limit: int | None = None,
                     links[0].author: len(links)
                     for links in group_by_user(records).values()
                 }
-            if archive or do_enrich or export or notion:
+            if archive or do_enrich or export or notion or web:
                 result["archive"] = storage.record_scan(channel_id, label, records, limit)
             if do_enrich:
                 result["enriched"] = enrich_pending(channel_id)
@@ -83,6 +84,9 @@ async def scan_channel(channel_id: int, limit: int | None = None,
             if notion:
                 import notion_sync
                 result["notion"] = notion_sync.sync(channel_id)
+            if web:
+                result["web"] = storage.export_web(channel_id, out_path=web_out,
+                                                   label=label)
         finally:
             await client.close()
 
@@ -134,6 +138,14 @@ def main():
     ap.add_argument("--notion", action="store_true",
                     help="mirror the journal into the Notion database "
                          "(implies --archive; see notion_sync.py for setup)")
+    ap.add_argument("--web", action="store_true",
+                    help="write a website-ready songs.json for the deets.solutions "
+                         "SOTD page (display data only, private Discord ids dropped; "
+                         "implies --archive)")
+    ap.add_argument("--web-out", metavar="PATH", default=None,
+                    help="where --web writes songs.json (default: exports/songs.json). "
+                         "Point at the site repo, e.g. "
+                         "../deetssolutions/sotd/songs.json")
     args = ap.parse_args()
 
     if not args.channel_id:
@@ -142,7 +154,7 @@ def main():
     result = asyncio.run(scan_channel(
         args.channel_id, args.limit, by_user=args.by_user, fmt=args.format,
         archive=args.archive, do_enrich=args.enrich, export=args.export,
-        notion=args.notion))
+        notion=args.notion, web=args.web, web_out=args.web_out))
     print(f"#{result['label']}: {result['count']} links")
     print(f"  {result['md']}")
     print(f"  {result['csv']}")
@@ -167,6 +179,8 @@ def main():
         n = result["notion"]
         print(f"Notion sync: {n['created']} created, {n['updated']} updated, "
               f"{n['archived']} archived.")
+    if "web" in result:
+        print(f"Wrote website JSON: {result['web']}")
 
 
 if __name__ == "__main__":
