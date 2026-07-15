@@ -228,6 +228,46 @@ def posts_needing_enrichment(channel_id=None) -> list[sqlite3.Row]:
     return _db().execute(q, args).fetchall()
 
 
+def find_songs(query, channel_id=None) -> list[sqlite3.Row]:
+    """Songs whose track / artist / album contains a substring, with the number of
+    posts pointing at each and the earliest one for context.
+
+    The lookup behind `review.py search`: for hand-correcting a song that resolved
+    *confidently but wrong* (tagged 'apple'/'search'/'spotify'), which
+    songs_needing_review never surfaces because nothing flagged it. Find it here by
+    what shows on the site, then correct it by song_id."""
+    like = f"%{query}%"
+    q = """SELECT s.song_id, s.track_name, s.artist_name, s.collection_name,
+                  s.match_type, s.track_view_url,
+                  COUNT(p.post_id)  AS post_count,
+                  MIN(p.posted_at)  AS first_posted,
+                  (SELECT jump_url FROM posts
+                     WHERE song_id = s.song_id ORDER BY posted_at LIMIT 1) AS jump_url
+             FROM songs s
+             JOIN posts p ON p.song_id = s.song_id
+            WHERE (s.track_name LIKE ? OR s.artist_name LIKE ?
+                   OR s.collection_name LIKE ?)"""
+    args: list = [like, like, like]
+    if channel_id is not None:
+        q += " AND p.channel_id = ?"
+        args.append(str(channel_id))
+    q += " GROUP BY s.song_id ORDER BY first_posted"
+    return _db().execute(q, args).fetchall()
+
+
+def song_row(song_id) -> Optional[sqlite3.Row]:
+    """One catalog song by id, or None."""
+    return _db().execute(
+        "SELECT * FROM songs WHERE song_id = ?", (song_id,)).fetchone()
+
+
+def posts_for_song(song_id) -> list[sqlite3.Row]:
+    """Every post pointing at a song — the set a hand-correction must re-link."""
+    return _db().execute(
+        "SELECT * FROM posts WHERE song_id = ? ORDER BY posted_at",
+        (song_id,)).fetchall()
+
+
 # ─── Reading ─────────────────────────────────────────────────────────────────
 
 def posts_by_user(channel_id) -> "OrderedDict[str, list[sqlite3.Row]]":

@@ -76,24 +76,60 @@ def save_poster_cache(cache: dict) -> None:
         json.dump(cache, f, ensure_ascii=False, indent=1, sort_keys=True)
 
 
-def tmdb_poster(api_key: str, name: str, year: int | None) -> str | None:
-    """Best-match poster path for a film, or None if TMDB doesn't know it."""
+# Regional premieres drift a year from a film's canonical Letterboxd year, so
+# accept ±1; a hit further off than that is a different film with the same title.
+_YEAR_TOL = 1
+
+
+def _tmdb_search(api_key: str, name: str, year: int | None) -> list[dict]:
     params = {"api_key": api_key, "query": name}
     if year:
         params["year"] = str(year)
     r = requests.get(TMDB_SEARCH, params=params, timeout=15)
     r.raise_for_status()
-    results = r.json().get("results") or []
-    # A year-constrained search can whiff on off-by-one release dates
-    # (regional premieres); retry unconstrained before giving up.
-    if not results and year:
-        del params["year"]
-        r = requests.get(TMDB_SEARCH, params=params, timeout=15)
-        r.raise_for_status()
-        results = r.json().get("results") or []
-    for hit in results:
-        if hit.get("poster_path"):
-            return hit["poster_path"]
+    return r.json().get("results") or []
+
+
+def _hit_year(hit: dict) -> int | None:
+    rd = (hit.get("release_date") or "")[:4]
+    return int(rd) if rd.isdigit() else None
+
+
+def _best_poster(results: list[dict], year: int | None) -> str | None:
+    """First postered candidate whose release year matches (exact, then ±1).
+
+    Year validation is what keeps an underground/foreign title from grabbing a
+    wrong same-title film: TMDB ranks by popularity, so the top hit for a niche
+    film is often a louder namesake from another year. With no year to check
+    against, fall back to TMDB's own ranking (first postered hit)."""
+    postered = [h for h in results if h.get("poster_path")]
+    if not postered:
+        return None
+    if not year:
+        return postered[0]["poster_path"]
+    for tol in range(_YEAR_TOL + 1):        # exact match first, then widen to ±tol
+        for h in postered:
+            hy = _hit_year(h)
+            if hy is not None and abs(hy - year) == tol:
+                return h["poster_path"]
+    return None                             # results exist, but none the right year
+
+
+def tmdb_poster(api_key: str, name: str, year: int | None) -> str | None:
+    """Best-match poster path for a film, or None if TMDB doesn't know it.
+
+    Validates candidates on release year, so a same-title film from another year
+    is never mistaken for this one."""
+    poster = _best_poster(_tmdb_search(api_key, name, year), year)
+    if poster:
+        return poster
+    # A year-constrained search can whiff on off-by-one release dates (regional
+    # premieres); retry unconstrained, but still validate the year on the results
+    # so the wider net doesn't drag in a wrong-year namesake.
+    if year:
+        poster = _best_poster(_tmdb_search(api_key, name, None), year)
+        if poster:
+            return poster
     return None
 
 

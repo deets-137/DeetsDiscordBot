@@ -67,19 +67,41 @@ Other entry points wrap the same core:
 - `python bot.py` — `/links` slash command inside Discord (DMs you the files).
 - `python harness.py` — local web/API trigger at <http://127.0.0.1:8077>.
 
-**Songs flagged for review.** A delisted Apple Music track can't be resolved
+**Correcting matches (`review.py`).** Two failure modes, two entry points.
+
+*Songs the enricher flagged.* A delisted Apple Music track can't be resolved
 automatically and a title search for it is unreliable, so the enricher tags those
 `match_type='review'` rather than trusting a guess. `--enrich` tells you when any
-turn up. Verify them by hand:
+turn up. Walk them by hand:
 
 ```bash
-python review.py <channel_id>            # walk each flagged song interactively
-python review.py <channel_id> --list     # just print what's flagged
+python review.py                         # walk each flagged song interactively
+python review.py review -c <channel_id>  # ...limited to one channel
+python review.py list                    # just print what's flagged
 ```
 
 Per song: **[u]** paste the correct Apple Music URL (re-resolves → `manual`),
-**[a]** accept the guess (→ `manual`), **[s]** skip, **[q]** quit. Re-run
-`notion_sync.py` afterward to push corrections. See `docs/APPLE_MUSIC.md`.
+**[a]** accept the guess (→ `manual`), **[s]** skip, **[q]** quit.
+
+*Songs that resolved confidently but wrong.* A bare YouTube/Spotify title often
+matches a more-famous namesake (a cover, a live cut, the wrong artist's same-title
+song) and validates, so nothing flags it — `review` never shows it. Find it by
+what's on the site, then fix it by id, non-interactively:
+
+```bash
+python review.py search "<track or artist>"            # → a song_id + current match
+python review.py fix <song_id> --url "<correct link>"  # re-resolve, re-point, tag manual
+python review.py fix <song_id> --accept                # current match is fine — just tag manual
+```
+
+The correct link can be Apple Music (most precise — resolved by track id, and it
+falls back to the free iTunes lookup when no Apple key is configured) or any
+Spotify/YouTube/etc. URL the enricher can resolve; either way the result is tagged
+`manual`. A fix re-points every post on that song and prunes the orphaned guess.
+
+`storage.db` stays the source of truth — re-run `python notion_sync.py <channel>`
+afterward to push corrections to Notion, then regenerate `songs.json` to publish
+to the site. See `docs/APPLE_MUSIC.md`.
 
 ---
 
@@ -176,6 +198,7 @@ storage.delete_posts([81, 194])
 hit = enrich.enrich(url)
 if hit:
     sid = storage.upsert_song(*hit); storage.link_post_to_song(post_id, sid)
+# ...or, for a confidently-wrong match, just: python review.py fix <song_id> --url <link>
 
 # Remove catalog songs nothing points at anymore
 storage.prune_orphan_songs()
@@ -195,7 +218,7 @@ overwritten when the page's own metadata confirms it.
 | `storage.py` | SQLite journal, `export_journal()` spreadsheet, maintenance helpers |
 | `enrich.py` | song resolution (Apple Music API → iTunes id → Spotify-truth → search) |
 | `applemusic.py` | authenticated Apple Music API client (preferred resolver) |
-| `review.py` | hand-verify `review`-flagged songs (delisted Apple ids) |
+| `review.py` | correct mis-resolved songs: interactive `review`/`list` for flagged ones, `search`/`fix` for any confidently-wrong match |
 | `notion_sync.py` | idempotent Notion mirror (creates/updates/archives) |
 | `bot.py` / `harness.py` | Discord slash-command / local web triggers |
 | `storage.db` | **the database — source of truth** |

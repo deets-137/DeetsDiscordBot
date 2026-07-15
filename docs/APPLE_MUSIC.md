@@ -52,14 +52,29 @@ exports/Notion automatically (it's just a `match_type`). Verify them by hand:
 
 ```bash
 python review.py                 # walk each flagged song interactively
-python review.py --list          # just print what's flagged
+python review.py list            # just print what's flagged
 ```
 
 Per song you can: **[u]** paste the correct Apple Music URL (re-resolves via the
 API → `manual`), **[a]** accept the current guess (→ `manual`), **[s]** skip, or
-**[q]** quit. Corrections re-point the post(s) and prune the orphaned guess.
-`storage.db` stays the source of truth — re-run `python notion_sync.py <channel>`
-afterward to push corrections to Notion.
+**[q]** quit.
+
+**Confidently-wrong matches** — a `search`/`spotify`/`apple` row that *validated*
+but is still wrong (a bare YouTube/Spotify title matching a more-famous namesake:
+a cover, a live cut, the wrong artist's same-title song) — never get flagged, so
+the interactive walk won't show them. Correct one by id instead:
+
+```bash
+python review.py search "<track or artist>"            # → a song_id + current match
+python review.py fix <song_id> --url "<correct link>"  # re-resolve, re-point, tag manual
+python review.py fix <song_id> --accept                # keep the current match, tag manual
+```
+
+`--url` resolves via the Apple Music API when a track id is present (falling back
+to the free iTunes lookup with no key), or the full enricher for any other link.
+Corrections re-point the post(s) and prune the orphaned guess. `storage.db` stays
+the source of truth — re-run `python notion_sync.py <channel>` afterward to push
+corrections to Notion.
 
 ## ISRC bridge — why it's dormant
 The precise Spotify→Apple mapping is by **ISRC** (`song_by_isrc`), but it isn't
