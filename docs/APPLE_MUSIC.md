@@ -42,7 +42,11 @@ iTunes path, so the pipeline still runs without keys.
   the Apple Music API for that title+artist and keep Apple's richer record when
   it **validates** against the Spotify truth (`apple`). Otherwise the existing
   validated-iTunes (`search`) → Spotify-truth (`spotify`) chain.
-- **YouTube / everything else** → oEmbed title → iTunes search (`search`).
+- **YouTube / everything else** → oEmbed title → iTunes search (`search`). The
+  channel/uploader is normally dropped (labels, VEVO, reaction channels pollute
+  the query), except a `<Artist> - Topic` auto-channel — that name *is* the
+  artist, so it's folded into the search to stop a bare title mis-resolving to a
+  more-famous namesake.
 
 match_type values: `apple`, `direct`, `search`, `spotify`, `review`, `manual`.
 

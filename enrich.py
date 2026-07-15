@@ -173,12 +173,22 @@ def _oembed_title(url: str, service: str) -> str | None:
     if not data:
         return None
     # oEmbed gives a "title"; for some services the artist is in "author_name".
-    # On YouTube that field is the *channel* (e.g. "RatsRecords", "…VEVO"), which
-    # is not the artist and pollutes the iTunes search — so skip it there.
     title = (data.get("title") or "").strip()
     author = (data.get("author_name") or "").strip()
-    if (title and author and service not in ("youtube", "youtube_music")
-            and author.lower() not in title.lower()):
+    if service in ("youtube", "youtube_music"):
+        # The YouTube author is the *channel*, usually an uploader/label
+        # ("RatsRecords", "…VEVO", a reaction channel) that pollutes the search —
+        # so it's dropped. The exception: YouTube auto-generates a
+        # "<Artist> - Topic" channel per artist, so that suffix marks the author
+        # as the real artist. Fold it in — otherwise a bare title like
+        # "Passionfruit" mis-resolves to a more-famous namesake.
+        topic = re.match(r"(.+?)\s*-\s*topic$", author, re.I)
+        if topic:
+            artist = topic.group(1).strip()
+            if artist and artist.lower() not in title.lower():
+                return f"{title} {artist}"
+        return title or None
+    if title and author and author.lower() not in title.lower():
         return f"{title} {author}"
     return title or None
 
