@@ -2,17 +2,19 @@
 
 DeetsOTD turns a Discord channel into a **Song-of-the-Day journal**: it reads
 every song link posted, enriches each one against iTunes, and keeps the result
-in a local SQLite database (`storage.db`). From there you can export a
-spreadsheet or mirror everything into Notion.
+in a local SQLite database (`storage.db`). From there it exports a website-ready
+`songs.json` for the deets.solutions SOTD page — the live consumer.
 
 ```
-Discord  ─scan.py→  storage.db  ─export→  SOTD_Export_*.{csv,tsv,xlsx}
+Discord  ─scan.py→  storage.db  ─scan.py --web→  songs.json  →  deets.solutions
                          │
-                         └─notion_sync.py→  Notion "SongOTD Journal" gallery
+                         ├─export→  SOTD_Export_*.{csv,tsv,xlsx}
+                         └─notion_sync.py→  Notion gallery   (legacy — see §4)
 ```
 
-`storage.db` is the **source of truth**. The spreadsheet and Notion are
-read-only views generated from it — they never write back.
+`storage.db` is the **source of truth**. The site's `songs.json`, the
+spreadsheet, and the (legacy) Notion mirror are read-only views generated from
+it — they never write back.
 
 ---
 
@@ -45,7 +47,9 @@ python scan.py <channel_id> --by-user            # per-user breakdown (csv/tsv/x
 python scan.py <channel_id> --archive            # fold into storage.db (the journal)
 python scan.py <channel_id> --enrich             # + resolve songs against iTunes
 python scan.py <channel_id> --export xlsx        # + write the spreadsheet
-python scan.py <channel_id> --notion             # + sync to Notion
+python scan.py <channel_id> --web \              # + write songs.json for the site
+    --web-out ../DeetsSolutions/sotd/songs.json
+python scan.py <channel_id> --notion             # + mirror to Notion (legacy; site uses --web)
 ```
 
 Idempotent: re-scanning the same channel only adds posts it hasn't seen
@@ -57,10 +61,10 @@ image hosts, and CDNs never enter the journal — see `linkscan.is_non_music`.
 Meme/ad clips on YouTube can still slip through (they look like normal links);
 purge those with `storage.delete_posts([...])` (see Maintenance below).
 
-**The typical "do everything" command:**
+**The typical "do everything" command** (scan → enrich → publish the site JSON):
 
 ```bash
-python scan.py <channel_id> --enrich --export xlsx --notion
+python scan.py <channel_id> --enrich --web --web-out ../DeetsSolutions/sotd/songs.json
 ```
 
 Other entry points wrap the same core:
@@ -99,9 +103,9 @@ falls back to the free iTunes lookup when no Apple key is configured) or any
 Spotify/YouTube/etc. URL the enricher can resolve; either way the result is tagged
 `manual`. A fix re-points every post on that song and prunes the orphaned guess.
 
-`storage.db` stays the source of truth — re-run `python notion_sync.py <channel>`
-afterward to push corrections to Notion, then regenerate `songs.json` to publish
-to the site. See `docs/APPLE_MUSIC.md`.
+`storage.db` stays the source of truth — after correcting, regenerate `songs.json`
+(`scan.py --web`, or `storage.export_web(...)` for a no-scan re-export) and commit
+it to the site to publish. See `docs/APPLE_MUSIC.md`.
 
 ---
 
@@ -136,7 +140,12 @@ python -c "import storage; print(storage.export_journal('<channel_id>', 'xlsx'))
 
 ---
 
-## 4. Notion mirror
+## 4. Notion mirror (legacy — optional)
+
+> **The site does not use Notion.** deets.solutions reads `songs.json` (§2,
+> `--web`); the Notion mirror is an independent, optional view and is **not**
+> part of the publish or correction flow. The script is kept for anyone who
+> still wants the gallery, but you can ignore this whole section otherwise.
 
 `notion_sync.py` mirrors the journal into a Notion database — one page per post,
 with the album art as each page's cover (so the gallery view is a wall of
@@ -182,8 +191,8 @@ the view tabs — group/filter/sort on any of the 22 properties.
 
 ## 5. Maintenance
 
-Occasional cleanups, all in `storage.py`. Re-run `notion_sync.py` afterward to
-push the changes (it auto-archives removed posts).
+Occasional cleanups, all in `storage.py`. Regenerate `songs.json` afterward
+(`scan.py --web`) and commit it to the site to publish the changes.
 
 ```python
 import storage, enrich
@@ -213,13 +222,13 @@ overwritten when the page's own metadata confirms it.
 
 | File | Role |
 |------|------|
-| `scan.py` | CLI entry point: scan → archive → enrich → export → notion |
+| `scan.py` | CLI entry point: scan → archive → enrich → export → `--web` songs.json |
 | `linkscan.py` | link extraction, service detection, non-music filter |
-| `storage.py` | SQLite journal, `export_journal()` spreadsheet, maintenance helpers |
+| `storage.py` | SQLite journal, `export_web()` site JSON, `export_journal()` spreadsheet, maintenance helpers |
 | `enrich.py` | song resolution (Apple Music API → iTunes id → Spotify-truth → search) |
 | `applemusic.py` | authenticated Apple Music API client (preferred resolver) |
 | `review.py` | correct mis-resolved songs: interactive `review`/`list` for flagged ones, `search`/`fix` for any confidently-wrong match |
-| `notion_sync.py` | idempotent Notion mirror (creates/updates/archives) |
+| `notion_sync.py` | Notion mirror — **legacy/optional**, not in the publish flow |
 | `bot.py` / `harness.py` | Discord slash-command / local web triggers |
 | `storage.db` | **the database — source of truth** |
 | `exports/` | generated spreadsheets and link dumps |

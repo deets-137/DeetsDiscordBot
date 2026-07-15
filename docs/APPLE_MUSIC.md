@@ -77,8 +77,8 @@ python review.py fix <song_id> --accept                # keep the current match,
 `--url` resolves via the Apple Music API when a track id is present (falling back
 to the free iTunes lookup with no key), or the full enricher for any other link.
 Corrections re-point the post(s) and prune the orphaned guess. `storage.db` stays
-the source of truth — re-run `python notion_sync.py <channel>` afterward to push
-corrections to Notion.
+the source of truth — regenerate `songs.json` afterward (`scan.py --web`) and
+commit it to the site to publish.
 
 ## ISRC bridge — why it's dormant
 The precise Spotify→Apple mapping is by **ISRC** (`song_by_isrc`), but it isn't
@@ -110,5 +110,5 @@ for r in rows:
         storage.link_post_to_song(r["post_id"], storage.upsert_song(track, mt))
     time.sleep(1.0)
 storage.prune_orphan_songs()
-# then: python review.py <channel>   and   python notion_sync.py <channel>
+# then: python review.py <channel>   and   python scan.py <channel> --web --web-out ../DeetsSolutions/sotd/songs.json
 ```

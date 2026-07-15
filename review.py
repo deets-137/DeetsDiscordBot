@@ -23,8 +23,8 @@ Two failure modes, two entry points:
    The correct link can be Apple Music (most precise), or any Spotify/YouTube/etc.
    URL the enricher can resolve; either way the result is tagged 'manual'.
 
-storage.db stays the source of truth; after fixing, re-run notion_sync.py to push
-the corrections to Notion, then regenerate songs.json (scan.py --web) to publish.
+storage.db stays the source of truth; after fixing, regenerate songs.json
+(scan.py --web) and commit it to the site to publish.
 
     python review.py                       # interactive review (default channel)
     python review.py review -c <channel>   # interactive review of one channel
@@ -171,7 +171,7 @@ def _finish(fixed: int) -> None:
     print(f"Done. {fixed} verified" + (f", {pruned} orphan song(s) pruned." if pruned
                                         else "."))
     if fixed:
-        print("Re-run `python notion_sync.py <channel_id>` to push corrections to Notion.")
+        print("Regenerate songs.json (scan.py --web) and commit it to the site to publish.")
 
 
 def cmd_search(query: str, channel_id) -> int:
@@ -219,7 +219,7 @@ def cmd_fix(song_id: int, url: str | None, accept: bool) -> int:
           f"{track.get('artistName') or '?'} (manual)")
     print(f"  re-pointed {len(posts)} post(s)"
           + (f", pruned {pruned} orphan song(s)" if pruned else "") + ".")
-    print("Re-run `python notion_sync.py` then regenerate songs.json to publish.")
+    print("Regenerate songs.json (scan.py --web) and commit it to the site to publish.")
     return 0
 
 
