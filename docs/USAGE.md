@@ -162,8 +162,8 @@ of creating duplicates.
 3. Fill in `.env`:
    ```
    NOTION_TOKEN=secret_xxx
-   NOTION_PARENT_PAGE_ID=38d86876-b378-8019-8264-f2d923c56f1c
-   NOTION_DB_ID=cff663746866485ca23fc3d8d44bc478
+   NOTION_PARENT_PAGE_ID=your_parent_page_id_here
+   NOTION_DB_ID=your_db_id_here
    ```
    - `NOTION_DB_ID` points at the existing "SongOTD Journal" database. Leave it
      blank to have the first run create a fresh database under
