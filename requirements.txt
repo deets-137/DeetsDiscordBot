@@ -5,5 +5,7 @@ uvicorn[standard]
 pydantic
 openpyxl
 requests
+# IANA tz database for zoneinfo on Windows (journal-day derivation in storage.py).
+tzdata
 # For applemusic.py (developer-token JWT). Not needed until that path is wired in.
 PyJWT[crypto]

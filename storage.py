@@ -31,9 +31,29 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
+from datetime import timedelta
+
 from linkscan import detect_service, is_non_music
 from paths import DB_PATH as _DB_PATH
 from paths import EXPORTS_DIR
+
+# ── Journal-day semantics ────────────────────────────────────────────
+# posted_at is stored in UTC (the raw truth, never rewritten); the derived
+# display fields (date / day / month / time) live in the journal's home
+# timezone with a late-night grace rule: the day flips at 04:00, not
+# midnight, so a 12:30 AM upload is the tail of yesterday, not the start
+# of today. America/Chicago anchors it — most posts were sent from Central
+# time, and the 4-hour grace absorbs the travel cases (4 AM Central =
+# 2 AM Pacific / 5 AM Eastern, so a West-coast late-nighter still rolls
+# back and an East-coast early bird doesn't). Falls back to fixed CST when
+# no tz database is installed (on Windows, `pip install tzdata` gets real
+# DST handling — it's in requirements.txt).
+GRACE_HOURS = 4
+try:
+    from zoneinfo import ZoneInfo
+    JOURNAL_TZ = ZoneInfo("America/Chicago")
+except Exception:
+    JOURNAL_TZ = timezone(timedelta(hours=-6))
 
 _conn: Optional[sqlite3.Connection] = None
 
@@ -349,13 +369,27 @@ def _journal_rows(channel_id) -> list[dict]:
 
     out = []
     for r in raw:
-        date, _, t = (r["posted_at"] or "").partition("T")
-
-        day = ""
-        try:
-            day = datetime.strptime(date, "%Y-%m-%d").strftime("%a")
-        except ValueError:
-            pass
+        # Journal day: local (JOURNAL_TZ) with the 4 AM grace boundary —
+        # implemented by sliding the timestamp back GRACE_HOURS before
+        # taking .date(). `time` stays the post's actual local clock time.
+        date, t, day = "", "", ""
+        if r["posted_at"]:
+            try:
+                dt = datetime.fromisoformat(r["posted_at"])
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                local = dt.astimezone(JOURNAL_TZ)
+                jday = (local - timedelta(hours=GRACE_HOURS)).date()
+                date = jday.isoformat()
+                day = jday.strftime("%a")
+                t = local.strftime("%H:%M:%S")
+            except ValueError:              # malformed timestamp: old behavior
+                date, _, t = r["posted_at"].partition("T")
+                t = t[:8]
+                try:
+                    day = datetime.strptime(date, "%Y-%m-%d").strftime("%a")
+                except ValueError:
+                    pass
 
         rel = (r["release_date"] or "")[:10]
         rel_year = rel[:4]
