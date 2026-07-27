@@ -40,20 +40,27 @@ from paths import EXPORTS_DIR
 # ── Journal-day semantics ────────────────────────────────────────────
 # posted_at is stored in UTC (the raw truth, never rewritten); the derived
 # display fields (date / day / month / time) live in the journal's home
-# timezone with a late-night grace rule: the day flips at 04:00, not
-# midnight, so a 12:30 AM upload is the tail of yesterday, not the start
-# of today. America/Chicago anchors it — most posts were sent from Central
-# time, and the 4-hour grace absorbs the travel cases (4 AM Central =
-# 2 AM Pacific / 5 AM Eastern, so a West-coast late-nighter still rolls
-# back and an East-coast early bird doesn't). Falls back to fixed CST when
-# no tz database is installed (on Windows, `pip install tzdata` gets real
-# DST handling — it's in requirements.txt).
-GRACE_HOURS = 4
+# timezone with a late-night grace rule: the day flips at 05:00, not
+# midnight, so a 3 AM upload is the tail of yesterday, not the start of
+# today. America/Los_Angeles anchors it — Aditya moved to the West coast,
+# and the journal follows wherever he is posting from. The 5-hour grace
+# still absorbs the travel cases (5 AM Pacific = 7 AM Central / 8 AM
+# Eastern, so a Central late-nighter rolls back and only a genuine
+# morning post starts a new day). Falls back to fixed PST when no tz
+# database is installed (on Windows, `pip install tzdata` gets real DST
+# handling — it's in requirements.txt).
+#
+# This anchor is deliberately retroactive: the whole journal is re-bucketed
+# under the current rule rather than carrying a cutover date per move. Only
+# posts sent between 2 and 5 AM Pacific are affected at all (Chicago-4h and
+# Pacific-5h differ by exactly 3 hours, year-round — both zones share DST
+# dates), which was 5 of 341 posts at the time of the switch.
+GRACE_HOURS = 5
 try:
     from zoneinfo import ZoneInfo
-    JOURNAL_TZ = ZoneInfo("America/Chicago")
+    JOURNAL_TZ = ZoneInfo("America/Los_Angeles")
 except Exception:
-    JOURNAL_TZ = timezone(timedelta(hours=-6))
+    JOURNAL_TZ = timezone(timedelta(hours=-8))
 
 _conn: Optional[sqlite3.Connection] = None
 
@@ -369,7 +376,7 @@ def _journal_rows(channel_id) -> list[dict]:
 
     out = []
     for r in raw:
-        # Journal day: local (JOURNAL_TZ) with the 4 AM grace boundary —
+        # Journal day: local (JOURNAL_TZ) with the 5 AM grace boundary —
         # implemented by sliding the timestamp back GRACE_HOURS before
         # taking .date(). `time` stays the post's actual local clock time.
         date, t, day = "", "", ""
