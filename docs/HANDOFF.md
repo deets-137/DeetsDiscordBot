@@ -1,6 +1,10 @@
 # DeetsOTD — handoff notes
 
-Quick orientation for picking this up cold. Full how-to is in `docs/USAGE.md`.
+> Internal working notes for continuing development between sessions — kept
+> as-is for context. Ids below are placeholders. Full how-to is in
+> `docs/USAGE.md`.
+
+Quick orientation for picking this up cold.
 
 ## What DeetsOTD is
 A personal Song-of-the-Day journal: it scans one Discord channel, treats each
@@ -25,17 +29,17 @@ gallery. Spreadsheets and Notion are read-only views of the DB.
   corrections pushed), views: Covers (gallery), By Poster, Calendar, By Genre.
 
 ## Key identifiers
-- Discord channel id: `1463626949430612267` (#song-of-the-day)
-- Notion parent page "DeetsOTD": `38d86876-b378-8019-8264-f2d923c56f1c`
-- Notion DB "SongOTD Journal": `cff663746866485ca23fc3d8d44bc478`
+- Discord channel id: `YOUR_CHANNEL_ID` (#song-of-the-day)
+- Notion parent page "DeetsOTD": `YOUR_NOTION_PARENT_PAGE_ID`
+- Notion DB "SongOTD Journal": `YOUR_NOTION_DB_ID`
 - All secrets live in `.env` (gitignored): `DISCORD_TOKEN`, `NOTION_TOKEN`,
   `NOTION_DB_ID`, `NOTION_PARENT_PAGE_ID`, and Apple Music
-  (`APPLE_PRIVATE_KEY_PATH` → `secrets/AuthKey_22CB27A4ZK.p8`, `APPLE_KEY_ID`,
+  (`APPLE_PRIVATE_KEY_PATH` → `secrets/AuthKey_XXXXXXXXXX.p8`, `APPLE_KEY_ID`,
   `APPLE_TEAM_ID`) — all live and verified working.
 
 ## The one routine command
 ```bash
-python scan.py 1463626949430612267 --enrich --export xlsx --notion
+python scan.py YOUR_CHANNEL_ID --enrich --export xlsx --notion
 ```
 Scan → archive new posts → enrich → write `exports/SOTD_Export_MMDDYYYY.xlsx`
 (All tab + one per month) → mirror to Notion. Idempotent; safe to re-run.

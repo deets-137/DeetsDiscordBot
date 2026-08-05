@@ -13,13 +13,13 @@ Setup (one-time):
      integration (this is what grants the script access).
   3. Put the secret + parent page id in .env:
         NOTION_TOKEN=secret_xxx
-        NOTION_PARENT_PAGE_ID=38d86876-b378-8019-8264-f2d923c56f1c
+        NOTION_PARENT_PAGE_ID=your_parent_page_id_here
      On the first run the script creates the database and prints its id; paste
      that back into .env as NOTION_DB_ID so later runs reuse it.
 
 Usage:
   python notion_sync.py                       # uses DEFAULT_CHANNEL_ID
-  python notion_sync.py 1463626949430612267   # a specific channel
+  python notion_sync.py YOUR_CHANNEL_ID       # a specific channel
 """
 
 from __future__ import annotations

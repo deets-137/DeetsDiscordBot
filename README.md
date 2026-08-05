@@ -105,3 +105,7 @@ python -c "import storage; storage.export_web(<channel_id>, out_path='../deetsso
 
 > Personal, single-user. The harness binds to localhost with no auth — don't
 > expose it.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
