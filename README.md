@@ -1,5 +1,7 @@
 # DeetsOTD
 
+**Status:** working and in regular use · **Platform:** Python — Discord bot, CLI, and a local web harness
+
 Reads every hyperlink out of a Discord channel and writes them to Markdown + CSV.
 
 Three ways to trigger the same core (`linkscan.py`):
