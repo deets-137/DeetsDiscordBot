@@ -84,6 +84,11 @@ def _init_schema(c: sqlite3.Connection) -> None:
             rss_guid     TEXT UNIQUE,      -- NULL until the feed has seen it
             watched_date TEXT NOT NULL,    -- ISO date of the sitting
             logged_date  TEXT,             -- when the diary entry was created
+            logged_at    TEXT,             -- full UTC timestamp of the logging,
+                                           -- from RSS pubDate; NULL pre-feed.
+                                           -- The same-day tiebreaker: entries
+                                           -- logged in watch order, seconds
+                                           -- apart, sort a marathon correctly
             entry_uri    TEXT,             -- per-entry boxd.it link (exports)
             rating       REAL,
             liked        INTEGER,          -- RSS memberLike; NULL = unknown
@@ -108,6 +113,10 @@ def _init_schema(c: sqlite3.Connection) -> None:
             updated     INTEGER NOT NULL   -- watches touched (claimed/edited)
         );
     """)
+    # Additive column migrations (CREATE IF NOT EXISTS can't grow a table).
+    cols = {r[1] for r in c.execute("PRAGMA table_info(film_watches)")}
+    if "logged_at" not in cols:
+        c.execute("ALTER TABLE film_watches ADD COLUMN logged_at TEXT")
 
 
 # ─── Films ───────────────────────────────────────────────────────────────────
@@ -297,14 +306,16 @@ def upsert_rss_watch(item: dict) -> str:
             else (item.get("review") or row["review"])
         review_date = row["review_date"] or (item.get("pub_date") if item.get("review") else None)
         fields = (item["watched_date"], item.get("rating"), item.get("liked"),
-                  int(bool(item.get("rewatch"))), keep_review, review_date, raw)
+                  int(bool(item.get("rewatch"))), keep_review, review_date,
+                  item.get("logged_ts") or row["logged_at"], raw)
         current = (row["watched_date"], row["rating"], row["liked"],
-                   row["rewatch"], row["review"], row["review_date"], row["raw_json"])
+                   row["rewatch"], row["review"], row["review_date"],
+                   row["logged_at"], row["raw_json"])
         if fields == current:
             return "unchanged"
         c.execute(
             """UPDATE film_watches SET watched_date=?, rating=?, liked=?,
-                   rewatch=?, review=?, review_date=?, raw_json=?
+                   rewatch=?, review=?, review_date=?, logged_at=?, raw_json=?
                  WHERE watch_id=?""", (*fields, row["watch_id"]))
         _bump_film_meta(c, fid, item)
         return "updated"
@@ -321,20 +332,23 @@ def upsert_rss_watch(item: dict) -> str:
                    liked    = COALESCE(liked, ?),
                    review   = COALESCE(review, ?),
                    review_date = COALESCE(review_date, ?),
+                   logged_at = ?,
                    raw_json = ?
                  WHERE watch_id=?""",
             (item["guid"], item.get("rating"), item.get("liked"),
              item.get("review"),
              item.get("pub_date") if item.get("review") else None,
-             raw, row["watch_id"]))
+             item.get("logged_ts"), raw, row["watch_id"]))
         return "claimed"
 
     c.execute(
         """INSERT INTO film_watches
-               (film_id, rss_guid, watched_date, logged_date, rating, liked,
-                rewatch, review, review_date, source, raw_json, recorded_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'rss', ?, ?)""",
+               (film_id, rss_guid, watched_date, logged_date, logged_at,
+                rating, liked, rewatch, review, review_date, source, raw_json,
+                recorded_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'rss', ?, ?)""",
         (fid, item["guid"], item["watched_date"], item.get("pub_date"),
+         item.get("logged_ts"),
          item.get("rating"), item.get("liked"), int(bool(item.get("rewatch"))),
          item.get("review"),
          item.get("pub_date") if item.get("review") else None, raw, now))
@@ -376,14 +390,19 @@ def export_web(out_path: Optional[Path] = None,
     the film row so later runs are free. Returns the path written."""
     c = _db()
     films = c.execute("SELECT * FROM films").fetchall()
+    # Same-day sittings order on the logging timestamp (RSS pubDate) — a
+    # marathon night's entries are logged in watch order, seconds apart.
+    # Pre-feed history has no timestamp and keeps diary-position order.
     watches = c.execute(
-        "SELECT * FROM film_watches ORDER BY watched_date DESC, watch_id DESC"
-    ).fetchall()
+        """SELECT * FROM film_watches
+           ORDER BY watched_date DESC, COALESCE(logged_at, '') DESC,
+                    watch_id DESC""").fetchall()
     by_film: dict[int, list[sqlite3.Row]] = {}
     for w in watches:
         by_film.setdefault(w["film_id"], []).append(w)
 
     movies = []
+    tiebreak: dict[int, str] = {}   # id(m) -> latest sitting's logged_at
     for f in films:
         ws = by_film.get(f["film_id"], [])
         best_review = None
@@ -421,9 +440,14 @@ def export_web(out_path: Optional[Path] = None,
                 or f["poster_url"]
             if m["poster_url"] != f["poster_url"]:
                 set_film_poster(f["film_id"], m["poster_url"])
+        tiebreak[id(m)] = (ws[0]["logged_at"] or "") if ws else ""
         movies.append(m)
 
-    movies.sort(key=lambda m: (m["watched_date"] or m["logged_date"] or ""),
+    # Films watched the same day tie-break on their latest sitting's logging
+    # timestamp, so a marathon lists in watch order (newest first). The key
+    # rides outside the JSON — the page renders array order for ties.
+    movies.sort(key=lambda m: (m["watched_date"] or m["logged_date"] or "",
+                               tiebreak[id(m)]),
                 reverse=True)
     payload = {
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),

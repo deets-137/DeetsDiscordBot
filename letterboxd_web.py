@@ -177,10 +177,16 @@ def parse_rss(xml_text: str) -> list[dict]:
         rating = _text(item, "memberRating")
         tmdb_id = _text(item, "movieId", TMDB_NS)
         pub = item.findtext("pubDate")
+        pub_date = logged_ts = None
         try:
-            pub_date = parsedate_to_datetime(pub).date().isoformat() if pub else None
+            if pub:
+                dt = parsedate_to_datetime(pub)
+                pub_date = dt.date().isoformat()
+                # Full timestamp, normalized to UTC so strings sort correctly
+                # across the feed's shifting local offset.
+                logged_ts = dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         except (TypeError, ValueError):
-            pub_date = None
+            pass
         desc = item.findtext("description")
         out.append({
             "guid": guid,
@@ -194,6 +200,7 @@ def parse_rss(xml_text: str) -> list[dict]:
             "uri": (item.findtext("link") or "").strip() or None,
             "tmdb_id": int(tmdb_id) if tmdb_id and tmdb_id.isdigit() else None,
             "pub_date": pub_date,
+            "logged_ts": logged_ts,
             "raw": {"title": item.findtext("title"), "pubDate": pub,
                     "description": desc},
         })
