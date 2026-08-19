@@ -1,76 +1,222 @@
 #!/usr/bin/env python3
-"""Merge a Letterboxd data export into movies/movies.json for the site.
+"""Letterboxd film journal: import exports, ingest the RSS feed, export JSON.
 
-Letterboxd's export (Settings -> Data -> Export) is a folder of CSVs that
-each describe one slice of the account: watched.csv is the master film
-list, diary.csv adds dated watches/rewatches, ratings.csv the star
-ratings, reviews.csv the written reviews, likes/films.csv the hearts,
-and watchlist.csv the to-watch queue. This script joins them on
-(Name, Year) — verified unique per film — into one flat JSON array the
-site's movies page renders, same spirit as scan.py's --web songs.json
-export (display data only; the JSON is committed to the site repo).
+The film journal lives in storage.db (see letterboxd_store.py), fed from two
+sources and rendered to the site from the DB — the JSON is never the state:
 
-Posters: the export carries no artwork, so if TMDB_API_KEY is set in
-.env each film is looked up on TMDB (search by title + year) and its
-poster URL is baked into the JSON. Lookups are cached in
-exports/tmdb_posters.json — a regeneration only queries films it hasn't
-seen before, so re-runs are instant and offline-safe. No key = no
-posters, everything else still works (the site falls back to its
-monogram tiles). Free key: https://www.themoviedb.org/settings/api
-The site must credit TMDB (the movies page footer does).
+  import  — a Letterboxd data export (Settings -> Data -> Export), the full
+            archive. Seeds the DB and remains the true-up path when history
+            needs correcting (edits/deletions older than the feed's window).
+  rss     — the public feed (letterboxd.com/<user>/rss/), the last ~50 diary
+            entries. The nightly incremental top-up: new sittings, rating and
+            review edits, plus each film's TMDB id. Watch-only entries (no
+            review) count as sittings too; their boilerplate "Watched on ..."
+            description is not a review and is never stored as one.
+  web     — write movies.json for the site's movies page from the DB.
 
 Usage:
-    python letterboxd_web.py <export-dir> \
-        -o "../DeetsSolutions/movies/movies.json"
+    python letterboxd_web.py import <export-dir> [--web [-o PATH]]
+    python letterboxd_web.py rss [--user d33ts] [--web [-o PATH]]
+    python letterboxd_web.py web [-o PATH]
+
+Point -o at the site repo to publish: ../DeetsSolutions/movies/movies.json
+
+Posters: Letterboxd carries no artwork the site may hotlink, so posters come
+from TMDB (TMDB_API_KEY in .env; free key: themoviedb.org -> Settings ->
+API). A film seen in the RSS feed brings its exact tmdb_id — no search
+needed. Export-only films fall back to a title+year search validated on
+release year (TMDB ranks by popularity, so an unchecked first hit grabs a
+louder same-title namesake). exports/tmdb_posters.json is consulted first
+and doubles as the hand-pin override: set a film's "<Name> (<Year>)" key to
+the right /poster_path.jpg and every regen honors it (the cache outranks
+the URL mirrored onto the film row, which exists for DB self-containment).
+The site must credit TMDB (the movies page footer does).
 """
 
 from __future__ import annotations
 
 import argparse
 import csv
+import html
 import json
 import os
+import re
 import sys
 import time
+import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 
 import requests
 from dotenv import load_dotenv
 
+import letterboxd_store as store
+
 load_dotenv(Path(__file__).resolve().parent / ".env")
 
 TMDB_SEARCH = "https://api.themoviedb.org/3/search/movie"
+TMDB_MOVIE = "https://api.themoviedb.org/3/movie/{id}"
 TMDB_IMG = "https://image.tmdb.org/t/p/w342"      # ~card-sized poster
 POSTER_CACHE = Path(__file__).resolve().parent / "exports" / "tmdb_posters.json"
 
+RSS_URL = "https://letterboxd.com/{user}/rss/"
+RSS_UA = "DeetsOTD film journal (deets.solutions)"
+LB_NS = "https://letterboxd.com"
+TMDB_NS = "https://themoviedb.org"
 
-def load(path: Path) -> list[dict]:
+
+# ─── Export CSVs → store ─────────────────────────────────────────────────────
+
+def _load(path: Path) -> list[dict]:
     if not path.exists():
         return []
     with open(path, encoding="utf-8-sig", newline="") as f:
         return list(csv.DictReader(f))
 
 
-def key(row: dict) -> tuple[str, str]:
+def _key(row: dict) -> tuple[str, str]:
     return (row["Name"], row["Year"])
 
 
-def decade(year: str) -> str | None:
-    try:
-        return f"{int(year) // 10 * 10}s"
-    except (TypeError, ValueError):
+def _year(s) -> int | None:
+    return int(s) if isinstance(s, str) and s.isdigit() else None
+
+
+def parse_export(export_dir: Path) -> tuple[list[dict], list[dict]]:
+    """Join the export's CSVs on (Name, Year) — verified unique per film —
+    into the film/watch dicts letterboxd_store.import_export takes."""
+    watched = _load(export_dir / "watched.csv")
+    diary = _load(export_dir / "diary.csv")
+    ratings = {_key(r): float(r["Rating"]) for r in _load(export_dir / "ratings.csv")}
+    reviews = _load(export_dir / "reviews.csv")
+    liked = {_key(r) for r in _load(export_dir / "likes" / "films.csv")}
+    watchlist = _load(export_dir / "watchlist.csv")
+
+    films: dict[tuple, dict] = {}
+    for r in watched:
+        films[_key(r)] = {
+            "name": r["Name"], "year": _year(r["Year"]),
+            "uri": r["Letterboxd URI"], "logged_date": r["Date"],
+            "rating": ratings.get(_key(r)), "liked": _key(r) in liked,
+            "status": "watched",
+        }
+    for r in watchlist:
+        if _key(r) not in films:   # already watched — the queue entry is stale
+            films[_key(r)] = {
+                "name": r["Name"], "year": _year(r["Year"]),
+                "uri": r["Letterboxd URI"], "logged_date": r["Date"],
+                "rating": None, "liked": False, "status": "watchlist",
+            }
+
+    # Reviews are diary entries with text — (film, watched date) pairs them
+    # back up, so a rewatch keeps its own review on its own watch.
+    review_by_watch = {(_key(r), r.get("Watched Date") or r["Date"]): r
+                       for r in reviews}
+
+    watches = []
+    for r in diary:
+        wd = r.get("Watched Date") or r["Date"]
+        rev = review_by_watch.get((_key(r), wd))
+        watches.append({
+            "name": r["Name"], "year": _year(r["Year"]),
+            "watched_date": wd, "logged_date": r["Date"],
+            "entry_uri": r["Letterboxd URI"],
+            "rating": float(r["Rating"]) if r.get("Rating") else None,
+            "rewatch": r.get("Rewatch") == "Yes",
+            "tags": r.get("Tags") or None,
+            # \n throughout: the CSVs carry \r\n but the RSS round-trip yields
+            # \n, and both sources must store a review identically (verified
+            # byte-equal across the whole overlap window once normalized).
+            "review": rev["Review"].replace("\r\n", "\n") if rev else None,
+            "review_date": rev["Date"] if rev else None,
+            "raw": r,
+        })
+    return list(films.values()), watches
+
+
+# ─── RSS feed → store ────────────────────────────────────────────────────────
+
+def _review_text(desc_html: str | None) -> str | None:
+    """The review as plain text, or None.
+
+    The feed's description is rendered HTML: a leading poster <p><img></p>,
+    an optional '<em>This review may contain spoilers.</em>' banner, then the
+    review as <p> paragraphs. Strip the furniture, keep the words."""
+    if not desc_html:
         return None
+    s = re.sub(r"<p>\s*<img[^>]*>\s*</p>", "", desc_html, flags=re.I)
+    s = re.sub(r"<p>\s*<em>\s*This review may contain spoilers\.?\s*</em>\s*</p>",
+               "", s, flags=re.I, count=1)
+    s = re.sub(r"<br\s*/?>", "\n", s, flags=re.I)
+    paras = re.findall(r"<p>(.*?)</p>", s, flags=re.S | re.I)
+    s = "\n\n".join(paras) if paras else s
+    s = re.sub(r"<[^>]+>", "", s)
+    return html.unescape(s).strip() or None
 
 
-def load_poster_cache() -> dict:
+def _text(item, tag: str, ns: str = LB_NS) -> str | None:
+    el = item.find(f"{{{ns}}}{tag}")
+    return el.text if el is not None and el.text else None
+
+
+def parse_rss(xml_text: str) -> list[dict]:
+    """Feed items → upsert_rss_watch dicts. Only diary entries pass: guids
+    are 'letterboxd-review-N' (has a review) / 'letterboxd-watch-N' (none) —
+    anything else (published lists, ...) is not a sitting."""
+    root = ET.fromstring(xml_text)
+    out = []
+    for item in root.iter("item"):
+        guid = (item.findtext("guid") or "").strip()
+        is_review = guid.startswith("letterboxd-review-")
+        if not (is_review or guid.startswith("letterboxd-watch-")):
+            continue
+        watched = _text(item, "watchedDate")
+        if not watched:        # a diary entry always has one; skip defensively
+            continue
+        rating = _text(item, "memberRating")
+        tmdb_id = _text(item, "movieId", TMDB_NS)
+        pub = item.findtext("pubDate")
+        try:
+            pub_date = parsedate_to_datetime(pub).date().isoformat() if pub else None
+        except (TypeError, ValueError):
+            pub_date = None
+        desc = item.findtext("description")
+        out.append({
+            "guid": guid,
+            "name": _text(item, "filmTitle") or (item.findtext("title") or "").strip(),
+            "year": _year(_text(item, "filmYear")),
+            "watched_date": watched,
+            "rating": float(rating) if rating else None,
+            "liked": {"Yes": 1, "No": 0}.get(_text(item, "memberLike")),
+            "rewatch": _text(item, "rewatch") == "Yes",
+            "review": _review_text(desc) if is_review else None,
+            "uri": (item.findtext("link") or "").strip() or None,
+            "tmdb_id": int(tmdb_id) if tmdb_id and tmdb_id.isdigit() else None,
+            "pub_date": pub_date,
+            "raw": {"title": item.findtext("title"), "pubDate": pub,
+                    "description": desc},
+        })
+    return out
+
+
+def fetch_rss(user: str) -> str:
+    r = requests.get(RSS_URL.format(user=user),
+                     headers={"User-Agent": RSS_UA}, timeout=30)
+    r.raise_for_status()
+    return r.text
+
+
+# ─── TMDB posters ────────────────────────────────────────────────────────────
+
+def _load_poster_cache() -> dict:
     if POSTER_CACHE.exists():
         with open(POSTER_CACHE, encoding="utf-8") as f:
             return json.load(f)
     return {}
 
 
-def save_poster_cache(cache: dict) -> None:
+def _save_poster_cache(cache: dict) -> None:
     POSTER_CACHE.parent.mkdir(parents=True, exist_ok=True)
     with open(POSTER_CACHE, "w", encoding="utf-8") as f:
         json.dump(cache, f, ensure_ascii=False, indent=1, sort_keys=True)
@@ -115,11 +261,7 @@ def _best_poster(results: list[dict], year: int | None) -> str | None:
     return None                             # results exist, but none the right year
 
 
-def tmdb_poster(api_key: str, name: str, year: int | None) -> str | None:
-    """Best-match poster path for a film, or None if TMDB doesn't know it.
-
-    Validates candidates on release year, so a same-title film from another year
-    is never mistaken for this one."""
+def _tmdb_poster_search(api_key: str, name: str, year: int | None) -> str | None:
     poster = _best_poster(_tmdb_search(api_key, name, year), year)
     if poster:
         return poster
@@ -127,167 +269,124 @@ def tmdb_poster(api_key: str, name: str, year: int | None) -> str | None:
     # premieres); retry unconstrained, but still validate the year on the results
     # so the wider net doesn't drag in a wrong-year namesake.
     if year:
-        poster = _best_poster(_tmdb_search(api_key, name, None), year)
-        if poster:
-            return poster
+        return _best_poster(_tmdb_search(api_key, name, None), year)
     return None
 
 
-def add_posters(movies: list[dict]) -> None:
-    """Fill each film's poster_url from TMDB, via the on-disk cache."""
-    api_key = os.getenv("TMDB_API_KEY")
-    cache = load_poster_cache()
-    fresh = 0
+def _tmdb_poster_by_id(api_key: str, tmdb_id: int) -> str | None:
+    r = requests.get(TMDB_MOVIE.format(id=tmdb_id),
+                     params={"api_key": api_key}, timeout=15)
+    if r.status_code == 404:
+        return None
+    r.raise_for_status()
+    return r.json().get("poster_path")
+
+
+class PosterResolver:
+    """poster_fn for letterboxd_store.export_web.
+
+    Order: the hand-pinnable cache file, then TMDB by exact id (films the RSS
+    feed has seen), then the year-validated title search. Every network result
+    lands in the cache; the store persists the URL onto the film row."""
+
+    def __init__(self):
+        self.api_key = os.getenv("TMDB_API_KEY")
+        self.cache = _load_poster_cache()
+        self.fresh = 0
+        self.misses = 0
+
+    def __call__(self, name, year, tmdb_id):
+        ck = f"{name} ({year or '?'})"
+        if ck not in self.cache:
+            if not self.api_key:
+                self.misses += 1
+                return None
+            try:
+                if tmdb_id:
+                    self.cache[ck] = _tmdb_poster_by_id(self.api_key, tmdb_id)
+                else:
+                    self.cache[ck] = _tmdb_poster_search(self.api_key, name, year)
+            except requests.RequestException as e:
+                print(f"  tmdb: {ck}: {e}", file=sys.stderr)
+                self.misses += 1
+                return None          # transient; retry on the next run
+            self.fresh += 1
+            time.sleep(0.05)         # stay friendly to TMDB's rate limit
+        path = self.cache.get(ck)
+        if not path:
+            self.misses += 1
+        return TMDB_IMG + path if path else None
+
+    def finish(self):
+        if self.fresh:
+            _save_poster_cache(self.cache)
+        if not self.api_key and self.misses:
+            print(f"note: TMDB_API_KEY not set in .env — {self.misses} films "
+                  "left without a poster (cache/DB only)", file=sys.stderr)
+        elif self.fresh:
+            print(f"Posters: {self.fresh} new TMDB lookups")
+
+
+# ─── CLI ─────────────────────────────────────────────────────────────────────
+
+def _write_web(out: Path | None) -> None:
+    resolver = PosterResolver()
     try:
-        for m in movies:
-            m["poster_url"] = None
-            ck = f"{m['name']} ({m['year'] or '?'})"
-            if ck not in cache:
-                if not api_key:
-                    continue          # no key: use what the cache has, skip the rest
-                try:
-                    cache[ck] = tmdb_poster(api_key, m["name"], m["year"])
-                except requests.RequestException as e:
-                    print(f"  tmdb: {ck}: {e}", file=sys.stderr)
-                    continue          # transient; retry on the next run
-                fresh += 1
-                time.sleep(0.05)      # stay friendly to TMDB's rate limit
-            path = cache.get(ck)
-            m["poster_url"] = TMDB_IMG + path if path else None
+        path = store.export_web(out, poster_fn=resolver)
     finally:
-        if fresh:
-            save_poster_cache(cache)
-    hit = sum(1 for m in movies if m.get("poster_url"))
-    if not api_key and hit < len(movies):
-        print("note: TMDB_API_KEY not set in .env — "
-              f"posters only from cache ({hit}/{len(movies)})", file=sys.stderr)
-    else:
-        print(f"Posters: {hit}/{len(movies)} ({fresh} new lookups)")
-
-
-def build(export_dir: Path) -> dict:
-    watched = load(export_dir / "watched.csv")
-    diary = load(export_dir / "diary.csv")
-    ratings = load(export_dir / "ratings.csv")
-    reviews = load(export_dir / "reviews.csv")
-    liked = {key(r) for r in load(export_dir / "likes" / "films.csv")}
-    watchlist = load(export_dir / "watchlist.csv")
-
-    movies: dict[tuple[str, str], dict] = {}
-    for r in watched:
-        movies[key(r)] = {
-            "name": r["Name"],
-            "year": int(r["Year"]) if r["Year"].isdigit() else None,
-            "decade": decade(r["Year"]),
-            "uri": r["Letterboxd URI"],
-            "logged_date": r["Date"],       # when it entered the account
-            "watched_date": None,           # latest diary watch, if diarised
-            "watch_count": 0,               # diary entries; 0 = watched, undated
-            "rewatch": False,
-            "rating": None,
-            "liked": key(r) in liked,
-            "review": None,
-            "review_date": None,
-            "watches": [],                  # every diary entry, newest first
-            "status": "watched",
-        }
-
-    for r in ratings:
-        m = movies.get(key(r))
-        if m:
-            m["rating"] = float(r["Rating"])
-
-    # Reviews are diary entries with text — (film, watched date) pairs them
-    # back up, so a rewatch keeps its own review on its own watch.
-    review_by_watch = {(key(r), r.get("Watched Date") or r["Date"]): r["Review"]
-                       for r in reviews}
-
-    for r in diary:
-        m = movies.get(key(r))
-        if not m:
-            continue
-        m["watch_count"] += 1
-        if r.get("Rewatch") == "Yes":
-            m["rewatch"] = True
-        wd = r.get("Watched Date") or r["Date"]
-        if not m["watched_date"] or wd > m["watched_date"]:
-            m["watched_date"] = wd
-        m["watches"].append({
-            "date": wd,
-            "rating": float(r["Rating"]) if r.get("Rating") else None,
-            "rewatch": r.get("Rewatch") == "Yes",
-            "review": review_by_watch.get((key(r), wd)),
-        })
-
-    for m in movies.values():
-        m["watches"].sort(key=lambda w: w["date"], reverse=True)
-
-    for r in reviews:  # the film card itself carries the most recent review
-        m = movies.get(key(r))
-        if not m:
-            continue
-        if not m["review_date"] or r["Date"] >= m["review_date"]:
-            m["review"] = r["Review"]
-            m["review_date"] = r["Date"]
-
-    for r in watchlist:
-        if key(r) in movies:  # already watched — the queue entry is stale
-            continue
-        movies[key(r)] = {
-            "name": r["Name"],
-            "year": int(r["Year"]) if r["Year"].isdigit() else None,
-            "decade": decade(r["Year"]),
-            "uri": r["Letterboxd URI"],
-            "logged_date": r["Date"],
-            "watched_date": None,
-            "watch_count": 0,
-            "rewatch": False,
-            "rating": None,
-            "liked": False,
-            "review": None,
-            "review_date": None,
-            "watches": [],
-            "status": "watchlist",
-        }
-
-    items = sorted(
-        movies.values(),
-        key=lambda m: (m["watched_date"] or m["logged_date"]),
-        reverse=True,
-    )
-    add_posters(items)
-    return {
-        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "source": "letterboxd-export",
-        "count": len(items),
-        "movies": items,
-    }
+        resolver.finish()
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+    n_watch = sum(1 for m in data["movies"] if m["status"] == "watchlist")
+    n_poster = sum(1 for m in data["movies"] if m["poster_url"])
+    print(f"Wrote {path}: {data['count']} films "
+          f"({data['count'] - n_watch} watched, {n_watch} watchlist, "
+          f"{n_poster} posters)")
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("export_dir", type=Path, help="unzipped Letterboxd export folder")
-    ap.add_argument("-o", "--out", type=Path,
-                    default=Path(__file__).resolve().parent / "exports" / "movies.json",
-                    help="where to write movies.json (default: exports/movies.json). "
-                         "Point it at the site to publish, e.g. "
-                         "../DeetsSolutions/movies/movies.json")
+    sub = ap.add_subparsers(dest="cmd", required=True)
+
+    p_imp = sub.add_parser("import", help="seed/true-up the DB from a data export")
+    p_imp.add_argument("export_dir", type=Path,
+                       help="unzipped Letterboxd export folder")
+
+    p_rss = sub.add_parser("rss", help="ingest the public RSS feed")
+    p_rss.add_argument("--user", default="d33ts", help="Letterboxd username")
+
+    p_web = sub.add_parser("web", help="write movies.json from the DB")
+
+    for p in (p_imp, p_rss):
+        p.add_argument("--web", action="store_true",
+                       help="also write movies.json afterwards")
+    for p in (p_imp, p_rss, p_web):
+        p.add_argument("-o", "--out", type=Path, default=None,
+                       help="where to write movies.json (default: "
+                            "exports/movies.json). Point it at the site to "
+                            "publish: ../DeetsSolutions/movies/movies.json")
     args = ap.parse_args()
 
-    if not (args.export_dir / "watched.csv").exists():
-        print(f"error: {args.export_dir} has no watched.csv — not a Letterboxd export?",
-              file=sys.stderr)
-        return 1
+    if args.cmd == "import":
+        if not (args.export_dir / "watched.csv").exists():
+            print(f"error: {args.export_dir} has no watched.csv — "
+                  "not a Letterboxd export?", file=sys.stderr)
+            return 1
+        films, watches = parse_export(args.export_dir)
+        r = store.import_export(films, watches)
+        print(f"Import: {r['films']} films ({r['new_films']} new), "
+              f"{r['watches']} diary entries ({r['new_watches']} inserted)")
 
-    data = build(args.export_dir)
-    args.out.parent.mkdir(parents=True, exist_ok=True)
-    with open(args.out, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=1)
-        f.write("\n")
+    elif args.cmd == "rss":
+        items = parse_rss(fetch_rss(args.user))
+        results = [store.upsert_rss_watch(i) for i in items]
+        t = store.record_rss_sync(len(items), results)
+        print(f"RSS: {len(items)} entries — {t['new']} new, "
+              f"{t['claimed']} claimed, {t['updated']} updated, "
+              f"{t['unchanged']} unchanged")
 
-    n_watch = sum(1 for m in data["movies"] if m["status"] == "watchlist")
-    print(f"Wrote {args.out}: {data['count']} films "
-          f"({data['count'] - n_watch} watched, {n_watch} watchlist)")
+    if args.cmd == "web" or getattr(args, "web", False):
+        _write_web(args.out)
     return 0
 
 

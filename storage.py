@@ -2,8 +2,9 @@
 Persistent archive for DeetsOTD, backed by SQLite.
 
 The channel is treated as a *journal*: every song link posted is one entry, kept
-in order. This module is the only thing that writes the DB; linkscan.py stays a
-pure extractor and enrich.py only returns data.
+in order. This module is the only thing that writes the song tables; linkscan.py
+stays a pure extractor and enrich.py only returns data. (The film journal shares
+the same DB file but has its own sole writer: letterboxd_store.py.)
 
 Design (mirrors DeetsCode's storage.py):
   - One DB file at project root: storage.db (gitignored).
