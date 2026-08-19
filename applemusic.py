@@ -141,4 +141,9 @@ def to_itunes_shape(song: dict) -> dict:
         "artworkUrl100": artwork,
         "previewUrl": previews[0].get("url") if previews else None,
         "trackViewUrl": a.get("url"),
+        # storage.py reads the runtime from trackTimeMillis, the free iTunes
+        # API's name for it; Apple Music calls the same milliseconds
+        # durationInMillis. Without this line every Apple-matched song
+        # publishes a blank duration.
+        "trackTimeMillis": a.get("durationInMillis"),
     }

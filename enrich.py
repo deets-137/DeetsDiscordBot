@@ -113,7 +113,8 @@ def _spotify_meta(url: str) -> dict | None:
     Spotify's oEmbed gives only the bare title (no artist), which mis-resolves on
     iTunes. The page's og tags carry the truth: og:title is the track, and
     og:description reads "<Artist> · <Album> · Song · <year>". og:image is the
-    cover. Returns {title, artist, album, year, thumb} — the source of truth we
+    cover, and music:duration the runtime in whole seconds. Returns
+    {title, artist, album, year, thumb, duration_s} — the source of truth we
     trust over whatever iTunes search happens to return.
     """
     html = _get_text(url)
@@ -127,7 +128,8 @@ def _spotify_meta(url: str) -> dict | None:
     album = parts[1] if len(parts) > 1 else ""
     year = next((p for p in parts if p.isdigit() and len(p) == 4), "")
     return {"title": title, "artist": artist, "album": album,
-            "year": year, "thumb": _meta(html, "og:image") or ""}
+            "year": year, "thumb": _meta(html, "og:image") or "",
+            "duration_s": _meta(html, "music:duration") or ""}
 
 
 def _norm(s: str) -> str:
@@ -151,7 +153,9 @@ def _matches(cand: dict, title: str, artist: str) -> bool:
 
 def _synthetic(meta: dict) -> dict:
     """An iTunes-shaped track built from Spotify's own facts, for when no iTunes
-    hit validates. Uses Spotify's cover as artwork; year-only release; no preview."""
+    hit validates. Uses Spotify's cover as artwork; year-only release; no
+    preview. Spotify states the runtime in seconds, so it is scaled to the
+    milliseconds storage.py expects under the iTunes field name."""
     return {
         "trackId": None,
         "trackName": meta["title"],
@@ -162,6 +166,9 @@ def _synthetic(meta: dict) -> dict:
         "artworkUrl100": meta["thumb"],
         "previewUrl": None,
         "trackViewUrl": None,
+        "trackTimeMillis": (int(meta["duration_s"]) * 1000
+                            if str(meta.get("duration_s", "")).isdigit()
+                            else None),
     }
 
 
