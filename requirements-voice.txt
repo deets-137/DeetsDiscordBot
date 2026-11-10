@@ -1,0 +1,3 @@
+# Only for /vc (voice.py). The rest of DeetsOTD runs without these.
+PyNaCl          # voice transport encryption
+davey           # Discord's end-to-end voice encryption (DAVE), required for voice since 2026

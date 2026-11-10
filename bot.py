@@ -37,6 +37,11 @@ intents.message_content = True
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 
+# /vc: play one of this PC's apps into a voice channel (voice.py, self-contained).
+import voice  # noqa: E402
+
+voice.register(client, tree)
+
 
 @client.event
 async def on_ready():
