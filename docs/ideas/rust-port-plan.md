@@ -104,8 +104,10 @@ Built from the Python bot, so the port is checked against what runs today.
   - `text/*.txt` — suggestion rows per search; help text (host, guest in the call, guest with no
     stream); the "added" lines (later / next / a long song × playing / paused).
   - `cases.json` — `confident`, `tag`, `rating_word`, `column_width`, `_bar`, `mmss`, `_clip`.
-  - `links/` — records, the Markdown, the CSV (note: `\r\n` line ends, as Python's csv writes),
-    and the file names.
+  - `links/` — records, the Markdown, the CSV, and the file names. **Both files end lines with
+    `\r\n`**, as the Python bot writes them on Windows (the CSV from the csv module, the
+    Markdown from text mode). The kit is stored with no line-ending conversion
+    (`.gitattributes`), so compare bytes.
 - Regenerate: `python scripts/parity/render_expected.py` (offline). Refresh the inputs only with
   `python scripts/parity/capture_inputs.py` (needs DeetsMusic). Commit both with the change.
 - **Rust side:** each crate's tests load these files and compare: JSON equal after replacing
