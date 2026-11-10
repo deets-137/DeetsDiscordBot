@@ -1,0 +1,33 @@
+[package]
+name = "deets-tap"
+version = "0.1.0"
+description = "One Windows app's sound as 48 kHz PCM on stdout, for Lil Deets' /vc. Moved from DeetsAirplay's crates/airplay/src/bin (2026-11-10)."
+authors = ["Aditya Sundaram"]
+edition = "2021"
+license = "MIT"
+
+[[bin]]
+name = "deets-tap"
+path = "src/main.rs"
+
+[dependencies]
+# The per-process loopback capture (Capture::start_process_at) and the process helpers.
+# A path while DeetsAirplay's start_process_at is unpushed; once it is on GitHub this
+# becomes { git = "https://github.com/deets-137/DeetsAirplay", rev = "…" }, the way
+# DeetsMusic pins it (docs/ops/TAP.md §3, the drift rules).
+deets-airplay = { path = "../../../DeetsAirplay/crates/airplay" }
+
+# OS bindings for --list / --meters (sessions, meters, process snapshot). Same major as
+# deets-airplay's, so the two never pull two copies of the bindings.
+[dependencies.windows]
+version = "0.61"
+features = [
+  "Win32_Foundation",
+  "Win32_Media_Audio",
+  "Win32_Media_Audio_Endpoints",
+  "Win32_System_Com",
+  "Win32_System_Diagnostics_ToolHelp",
+]
+
+[profile.release]
+opt-level = 3

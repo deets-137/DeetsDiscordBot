@@ -17,20 +17,20 @@ Two failure modes, two entry points:
    — a Spotify/YouTube post that matched a cover, a live cut, or a wrong-artist
    same-title song. Nothing flagged these, so `review` never shows them. Find one
    by what's on the site and fix it by id, non-interactively:
-     python review.py search "<track or artist>"      # → a song_id
-     python review.py fix <song_id> --url <correct link>   # re-resolve, tag manual
-     python review.py fix <song_id> --accept               # keep it, just tag manual
+     python -m journal.review search "<track or artist>"      # → a song_id
+     python -m journal.review fix <song_id> --url <correct link>   # re-resolve, tag manual
+     python -m journal.review fix <song_id> --accept               # keep it, just tag manual
    The correct link can be Apple Music (most precise), or any Spotify/YouTube/etc.
    URL the enricher can resolve; either way the result is tagged 'manual'.
 
 storage.db stays the source of truth; after fixing, regenerate songs.json
 (scan.py --web) and commit it to the site to publish.
 
-    python review.py                       # interactive review (default channel)
-    python review.py review -c <channel>   # interactive review of one channel
-    python review.py list                  # print what's flagged, no prompts
-    python review.py search "<query>"      # find a song to correct by id
-    python review.py fix <song_id> --url <link> | --accept
+    python -m journal.review                       # interactive review (default channel)
+    python -m journal.review review -c <channel>   # interactive review of one channel
+    python -m journal.review list                  # print what's flagged, no prompts
+    python -m journal.review search "<query>"      # find a song to correct by id
+    python -m journal.review fix <song_id> --url <link> | --accept
 """
 
 from __future__ import annotations
@@ -38,10 +38,10 @@ from __future__ import annotations
 import argparse
 import sys
 
-import applemusic
+from . import applemusic
 import config
-import enrich
-import storage
+from . import enrich
+from . import storage
 
 
 def _fmt_guess(row) -> str:
@@ -188,7 +188,7 @@ def cmd_search(query: str, channel_id) -> int:
         if r["track_view_url"]:
             print(f"         {r['track_view_url']}")
         print()
-    print("Fix one with:  python review.py fix <song_id> --url <correct link>")
+    print("Fix one with:  python -m journal.review fix <song_id> --url <correct link>")
     return 0
 
 

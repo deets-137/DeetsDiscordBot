@@ -1,19 +1,20 @@
 """
-DeetsOTD Discord bot — slash command to scan the current channel for hyperlinks.
+Lil Deets — the Discord bot. One process owns every slash command of the application
+(Discord keeps one global command list per app, and the last process to sync wins).
 
-Setup:
-  pip install -r requirements.txt
-  cp config.example.py config.py   # edit ALLOWED_CHANNEL_IDS if you want
-  set DISCORD_TOKEN in .env
-  python bot.py
+Setup (docs/ops/SETUP.md):
+  pip install -r requirements.txt -r requirements-voice.txt
+  cp config.example.py config.py
+  put DISCORD_TOKEN in .env
+  cd crates/tap && cargo build --release      # the /vc capture helper
+  python -m bot                               # from the repo root
 
-In Discord:
-  /links              scan this channel's full history
-  /links limit:500    scan only the most recent 500 messages
+Commands:
+  /links [limit]   scan this channel's history for hyperlinks; DMs you Markdown + CSV
+  /vc …            play one Windows app into a voice channel (bot/voice.py)
+  /dm …            control DeetsMusic from Discord (bot/dm.py)
 
-Requires the "Message Content Intent" toggle in the Discord developer portal
-(Bot → Privileged Gateway Intents) so it can read historical message text.
-The bot DMs you the Markdown + CSV files so the channel stays uncluttered.
+Needs the "Message Content Intent" (Bot → Privileged Gateway Intents) for /links.
 """
 
 import os
@@ -22,9 +23,10 @@ import discord
 from discord import app_commands
 from dotenv import load_dotenv
 
-from linkscan import collect_links, write_outputs
+from journal.linkscan import collect_links, write_outputs
+from journal.paths import PROJECT_ROOT
 
-load_dotenv()
+load_dotenv(PROJECT_ROOT / ".env")
 
 try:
     import config
@@ -38,8 +40,8 @@ client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 
 # /vc: play one of this PC's apps into a voice channel (voice.py, self-contained).
-import voice  # noqa: E402
-import dm  # noqa: E402
+from bot import voice  # noqa: E402
+from bot import dm  # noqa: E402
 
 voice.register(client, tree)
 # /dm: control DeetsMusic from Discord through its local bridge (dm.py, dm_bridge.py).

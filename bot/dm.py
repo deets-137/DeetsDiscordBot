@@ -29,10 +29,10 @@ import time
 import discord
 from discord import app_commands, ui
 
-import voice
-from dm_bridge import Bridge, BridgeError, artwork, mmss
+from bot import voice
+from bot.dm_bridge import Bridge, BridgeError, artwork, mmss
 
-log = logging.getLogger("discord.deetsotd.dm")
+log = logging.getLogger("discord.lildeets.dm")
 bridge = Bridge()
 
 APP = "deetsmusic.exe"

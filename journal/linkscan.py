@@ -25,7 +25,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from xml.sax.saxutils import escape, quoteattr
 
-from paths import EXPORTS_DIR
+from .paths import EXPORTS_DIR
 
 # ─── URL patterns ────────────────────────────────────────────────────────────
 

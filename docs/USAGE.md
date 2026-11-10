@@ -41,15 +41,15 @@ Everything runs through `scan.py`. Flags stack; each implies `--archive`
 (folding the scan into `storage.db`) where noted.
 
 ```bash
-python scan.py <channel_id>                      # one-off: links → exports/*.md + *.csv
-python scan.py <channel_id> --limit 500          # only the last 500 messages
-python scan.py <channel_id> --by-user            # per-user breakdown (csv/tsv/xml)
-python scan.py <channel_id> --archive            # fold into storage.db (the journal)
-python scan.py <channel_id> --enrich             # + resolve songs against iTunes
-python scan.py <channel_id> --export xlsx        # + write the spreadsheet
-python scan.py <channel_id> --web \              # + write songs.json for the site
+python -m journal.scan <channel_id>                      # one-off: links → exports/*.md + *.csv
+python -m journal.scan <channel_id> --limit 500          # only the last 500 messages
+python -m journal.scan <channel_id> --by-user            # per-user breakdown (csv/tsv/xml)
+python -m journal.scan <channel_id> --archive            # fold into storage.db (the journal)
+python -m journal.scan <channel_id> --enrich             # + resolve songs against iTunes
+python -m journal.scan <channel_id> --export xlsx        # + write the spreadsheet
+python -m journal.scan <channel_id> --web \              # + write songs.json for the site
     --web-out ../DeetsSolutions/sotd/songs.json
-python scan.py <channel_id> --notion             # + mirror to Notion (legacy; site uses --web)
+python -m journal.scan <channel_id> --notion             # + mirror to Notion (legacy; site uses --web)
 ```
 
 Idempotent: re-scanning the same channel only adds posts it hasn't seen
@@ -64,12 +64,12 @@ purge those with `storage.delete_posts([...])` (see Maintenance below).
 **The typical "do everything" command** (scan → enrich → publish the site JSON):
 
 ```bash
-python scan.py <channel_id> --enrich --web --web-out ../DeetsSolutions/sotd/songs.json
+python -m journal.scan <channel_id> --enrich --web --web-out ../DeetsSolutions/sotd/songs.json
 ```
 
 Other entry points wrap the same core:
-- `python bot.py` — `/links` slash command inside Discord (DMs you the files).
-- `python harness.py` — local web/API trigger at <http://127.0.0.1:8077>.
+- `python -m bot` — `/links` slash command inside Discord (DMs you the files).
+- `python -m journal.harness` — local web/API trigger at <http://127.0.0.1:8077>.
 
 **Correcting matches (`review.py`).** Two failure modes, two entry points.
 
@@ -79,9 +79,9 @@ automatically and a title search for it is unreliable, so the enricher tags thos
 turn up. Walk them by hand:
 
 ```bash
-python review.py                         # walk each flagged song interactively
-python review.py review -c <channel_id>  # ...limited to one channel
-python review.py list                    # just print what's flagged
+python -m journal.review                         # walk each flagged song interactively
+python -m journal.review review -c <channel_id>  # ...limited to one channel
+python -m journal.review list                    # just print what's flagged
 ```
 
 Per song: **[u]** paste the correct Apple Music URL (re-resolves → `manual`),
@@ -93,9 +93,9 @@ song) and validates, so nothing flags it — `review` never shows it. Find it by
 what's on the site, then fix it by id, non-interactively:
 
 ```bash
-python review.py search "<track or artist>"            # → a song_id + current match
-python review.py fix <song_id> --url "<correct link>"  # re-resolve, re-point, tag manual
-python review.py fix <song_id> --accept                # current match is fine — just tag manual
+python -m journal.review search "<track or artist>"            # → a song_id + current match
+python -m journal.review fix <song_id> --url "<correct link>"  # re-resolve, re-point, tag manual
+python -m journal.review fix <song_id> --accept                # current match is fine — just tag manual
 ```
 
 The correct link can be Apple Music (most precise — resolved by track id, and it
@@ -172,9 +172,9 @@ of creating duplicates.
 ### Run it
 
 ```bash
-python notion_sync.py <channel_id>       # standalone full upsert (rate-limited, ~2 min for 300 rows)
+python -m journal.notion_sync <channel_id>       # standalone full upsert (rate-limited, ~2 min for 300 rows)
 # or as part of a scan:
-python scan.py <channel_id> --notion
+python -m journal.scan <channel_id> --notion
 ```
 
 It's a **true mirror**: it creates new posts, updates changed ones, and
@@ -207,7 +207,7 @@ storage.delete_posts([81, 194])
 hit = enrich.enrich(url)
 if hit:
     sid = storage.upsert_song(*hit); storage.link_post_to_song(post_id, sid)
-# ...or, for a confidently-wrong match, just: python review.py fix <song_id> --url <link>
+# ...or, for a confidently-wrong match, just: python -m journal.review fix <song_id> --url <link>
 
 # Remove catalog songs nothing points at anymore
 storage.prune_orphan_songs()

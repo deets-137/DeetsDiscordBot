@@ -13,3 +13,6 @@ __pycache__/
 # Apple Music MusicKit private key — never commit
 *.p8
 secrets/
+
+# deets-tap build output (Cargo.lock is committed)
+crates/*/target/

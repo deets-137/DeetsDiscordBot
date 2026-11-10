@@ -34,7 +34,9 @@ from functools import lru_cache
 
 from dotenv import load_dotenv
 
-load_dotenv()
+from .paths import PROJECT_ROOT
+
+load_dotenv(PROJECT_ROOT / ".env")
 
 API = "https://api.music.apple.com/v1"
 

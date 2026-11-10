@@ -33,12 +33,12 @@ right-click a channel → **Copy ID**.
 ## Run
 
 ```bash
-python scan.py 123456789012345678          # one-off, specific channel
-python scan.py 123456789012345678 --limit 500
+python -m journal.scan 123456789012345678          # one-off, specific channel
+python -m journal.scan 123456789012345678 --limit 500
 
-python bot.py                              # then use /links in Discord
+python -m bot                              # then use /links in Discord
 
-python harness.py                          # open http://127.0.0.1:8077
+python -m journal.harness                          # open http://127.0.0.1:8077
 ```
 
 ### Per-user breakdown
@@ -47,9 +47,9 @@ To see *what each user has sent* in a channel — every user's links grouped
 together, with repeats per user collapsed — add `--by-user`:
 
 ```bash
-python scan.py 123456789012345678 --by-user                 # CSV (default)
-python scan.py 123456789012345678 --by-user --format tsv    # TSV
-python scan.py 123456789012345678 --by-user --format xml    # XML
+python -m journal.scan 123456789012345678 --by-user                 # CSV (default)
+python -m journal.scan 123456789012345678 --by-user --format tsv    # TSV
+python -m journal.scan 123456789012345678 --by-user --format xml    # XML
 ```
 
 This writes `exports/by_user_<channel>_<timestamp>.<ext>` and prints a
@@ -63,8 +63,8 @@ Treat the channel as a Song-of-the-Day journal that accumulates over time in a
 local SQLite DB (`storage.db`, gitignored):
 
 ```bash
-python scan.py <channel_id> --archive   # fold posts into the journal
-python scan.py <channel_id> --enrich    # + resolve each song via iTunes
+python -m journal.scan <channel_id> --archive   # fold posts into the journal
+python -m journal.scan <channel_id> --enrich    # + resolve each song via iTunes
 ```
 
 `--archive` records one **post** per song link a user typed (display name,
@@ -87,7 +87,7 @@ Feed the [Deets.Solutions](https://deets.solutions) Song-of-the-Day page a stati
 display-only JSON straight from the journal:
 
 ```bash
-python scan.py <channel_id> --enrich --web \
+python -m journal.scan <channel_id> --enrich --web \
     --web-out ../deetssolutions/sotd/songs.json
 ```
 
@@ -102,7 +102,7 @@ the site repo and commit the result.
 Regenerating from an existing `storage.db` needs no Discord/iTunes:
 
 ```bash
-python -c "import storage; storage.export_web(<channel_id>, out_path='../deetssolutions/sotd/songs.json')"
+python -c "from journal import storage; storage.export_web(<channel_id>, out_path='../deetssolutions/sotd/songs.json')"
 ```
 
 > Personal, single-user. The harness binds to localhost with no auth — don't

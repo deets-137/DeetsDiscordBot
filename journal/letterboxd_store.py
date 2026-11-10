@@ -42,8 +42,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Optional
 
-from paths import DB_PATH as _DB_PATH
-from paths import EXPORTS_DIR
+from .paths import DB_PATH as _DB_PATH
+from .paths import EXPORTS_DIR
 
 _conn: Optional[sqlite3.Connection] = None
 

@@ -5,15 +5,15 @@ Voice for the bot: join a voice channel and play one Windows app's sound into it
     /vc stop              stop playing, stay in the channel
     /vc leave             stop and leave
 
-The audio comes from `deets-tap.exe` (DeetsAirplay repo, crates/airplay/src/bin),
-which records one app with Windows' per-process loopback and writes 48 kHz /
-16-bit / stereo PCM to stdout — the exact shape discord.py's voice sender eats.
-Build it once:
+The audio comes from `deets-tap.exe` (crates/tap), which records one app with
+Windows' per-process loopback and writes 48 kHz / 16-bit / stereo PCM to stdout —
+the exact shape discord.py's voice sender eats. Build it once:
 
-    cd ../DeetsAirplay/crates/airplay
-    cargo build --release --bin deets-tap
+    cd crates/tap
+    cargo build --release
 
-Override its location with DEETS_TAP=<path> in .env.
+Override its location with DEETS_TAP=<path> in .env. Before streaming, the bot
+checks the helper's `--info` against EXPECTED_TAP (docs/ops/TAP.md §3).
 
 Who may use it: the bot application's owner (or its team), plus any user ids
 in VOICE_USER_IDS (comma-separated, .env). It plays apps from this PC into a
@@ -22,11 +22,12 @@ call, so nobody else gets to pick one.
 Needs `pip install -r requirements-voice.txt` (PyNaCl, davey). Without them
 the rest of the bot runs as before; only /vc says what is missing.
 
-Self-contained on purpose: bot.py calls `register()` and nothing else here
-touches /links, the scanners, or storage.
+Self-contained on purpose: bot/__main__.py calls `register()` and nothing here
+touches /links, the journal, or storage.
 """
 
 import asyncio
+import json
 import logging
 import os
 import subprocess
@@ -36,16 +37,47 @@ import discord
 from discord import app_commands
 
 # Under "discord." so client.run()'s log handler prints it next to discord.py's own lines.
-log = logging.getLogger("discord.deetsotd.voice")
+log = logging.getLogger("discord.lildeets.voice")
 
 HERE = Path(__file__).resolve().parent
-DEFAULT_TAP = HERE.parent / "DeetsAirplay" / "crates" / "airplay" / "target" / "release" / "deets-tap.exe"
+DEFAULT_TAP = HERE.parent / "crates" / "tap" / "target" / "release" / "deets-tap.exe"
 FRAME_BYTES = 3840  # 20 ms of 48 kHz / 16-bit / stereo
 NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 
 def _tap_path() -> Path:
     return Path(os.environ.get("DEETS_TAP") or DEFAULT_TAP)
+
+
+# The stream this file reads, as deets-tap --info states it (crates/tap/src/main.rs
+# CONTRACT). A helper built from older or newer code that disagrees is refused with a
+# rebuild hint instead of being played as noise (docs/ops/TAP.md §3).
+EXPECTED_TAP = {"contract": 1, "rate": 48_000, "channels": 2, "bits": 16, "frame_bytes": FRAME_BYTES}
+_tap_checked: tuple[float, str | None] = (0.0, None)  # (helper mtime, problem)
+
+
+def tap_contract_problem() -> str | None:
+    """None if the helper speaks EXPECTED_TAP; else what's wrong. Rechecked when the exe changes."""
+    global _tap_checked
+    path = _tap_path()
+    try:
+        mtime = path.stat().st_mtime
+    except OSError:
+        return f"deets-tap isn't built yet (looked at `{path}`)."
+    if _tap_checked[0] == mtime:
+        return _tap_checked[1]
+    try:
+        out = subprocess.run([str(path), "--info"], capture_output=True, timeout=5, creationflags=NO_WINDOW)
+        info = json.loads(out.stdout or b"{}")
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        info = {}
+    wrong = {k: info.get(k) for k, v in EXPECTED_TAP.items() if info.get(k) != v}
+    problem = None
+    if wrong:
+        problem = (f"deets-tap at `{path}` doesn't match this bot ({wrong}; expected {EXPECTED_TAP}). "
+                   "Rebuild it: `cd crates/tap && cargo build --release`.")
+    _tap_checked = (mtime, problem)
+    return problem
 
 
 def _extra_user_ids() -> set[int]:
@@ -176,7 +208,10 @@ def register(client: discord.Client, tree: app_commands.CommandTree) -> None:
     def missing_setup() -> str | None:
         if not _tap_path().is_file():
             return (f"deets-tap isn't built yet (looked at `{_tap_path()}`). In "
-                    "`DeetsAirplay/crates/airplay`: `cargo build --release --bin deets-tap`.")
+                    "`crates/tap`: `cargo build --release`.")
+        problem = tap_contract_problem()
+        if problem:
+            return problem
         try:
             import nacl  # noqa: F401
             import davey  # noqa: F401

@@ -39,7 +39,7 @@ gallery. Spreadsheets and Notion are read-only views of the DB.
 
 ## The one routine command
 ```bash
-python scan.py YOUR_CHANNEL_ID --enrich --export xlsx --notion
+python -m journal.scan YOUR_CHANNEL_ID --enrich --export xlsx --notion
 ```
 Scan → archive new posts → enrich → write `exports/SOTD_Export_MMDDYYYY.xlsx`
 (All tab + one per month) → mirror to Notion. Idempotent; safe to re-run.

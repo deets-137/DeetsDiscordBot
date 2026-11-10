@@ -35,8 +35,8 @@ import urllib.parse
 import urllib.request
 from functools import lru_cache
 
-import applemusic
-from linkscan import detect_service
+from . import applemusic
+from .linkscan import detect_service
 
 _UA = "DeetsOTD/0.1 (+https://github.com/deets-137)"
 _TIMEOUT = 10

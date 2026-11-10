@@ -3,16 +3,16 @@ One-off CLI scan. Logs in, fetches a single channel's history, writes
 Markdown + CSV under exports/, logs out.
 
 Usage:
-  python scan.py                 # uses DEFAULT_CHANNEL_ID from config.py
-  python scan.py <channel_id>    # scan a specific channel
-  python scan.py <channel_id> --limit 500
+  python -m journal.scan                 # uses DEFAULT_CHANNEL_ID from config.py
+  python -m journal.scan <channel_id>    # scan a specific channel
+  python -m journal.scan <channel_id> --limit 500
 
   # Per-user breakdown of who sent which links (csv | tsv | xml):
-  python scan.py <channel_id> --by-user
-  python scan.py <channel_id> --by-user --format xml
+  python -m journal.scan <channel_id> --by-user
+  python -m journal.scan <channel_id> --by-user --format xml
 
   # Fold the scan into the persistent archive (storage.db):
-  python scan.py <channel_id> --archive
+  python -m journal.scan <channel_id> --archive
 
 A bot token can read message history over the gateway without staying online, so
 this connects, does its work in on_ready, and closes immediately.
@@ -27,11 +27,13 @@ import time
 import discord
 from dotenv import load_dotenv
 
-import enrich
-import storage
-from linkscan import collect_links, group_by_user, write_by_user, write_outputs
+from .paths import PROJECT_ROOT
 
-load_dotenv()
+from . import enrich
+from . import storage
+from .linkscan import collect_links, group_by_user, write_by_user, write_outputs
+
+load_dotenv(PROJECT_ROOT / ".env")
 
 try:
     import config
@@ -82,7 +84,7 @@ async def scan_channel(channel_id: int, limit: int | None = None,
             if export:
                 result["export"] = storage.export_journal(channel_id, export)
             if notion:
-                import notion_sync
+                from . import notion_sync
                 result["notion"] = notion_sync.sync(channel_id)
             if web:
                 result["web"] = storage.export_web(channel_id, out_path=web_out,
@@ -171,7 +173,7 @@ def main():
         e = result["enriched"]
         print(f"Enriched {e['resolved']}/{e['checked']} posts.")
         if e.get("review"):
-            print(f"  {e['review']} need hand-verification — run `python review.py "
+            print(f"  {e['review']} need hand-verification — run `python -m journal.review "
                   f"{args.channel_id}`.")
     if "export" in result:
         print(f"Exported journal: {result['export']}")

@@ -34,9 +34,9 @@ from typing import Optional
 
 from datetime import timedelta
 
-from linkscan import detect_service, is_non_music
-from paths import DB_PATH as _DB_PATH
-from paths import EXPORTS_DIR
+from .linkscan import detect_service, is_non_music
+from .paths import DB_PATH as _DB_PATH
+from .paths import EXPORTS_DIR
 
 # ── Journal-day semantics ────────────────────────────────────────────
 # posted_at is stored in UTC (the raw truth, never rewritten); the derived

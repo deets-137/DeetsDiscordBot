@@ -15,9 +15,9 @@ sources and rendered to the site from the DB — the JSON is never the state:
   web     — write movies.json for the site's movies page from the DB.
 
 Usage:
-    python letterboxd_web.py import <export-dir> [--web [-o PATH]]
-    python letterboxd_web.py rss [--user d33ts] [--web [-o PATH]]
-    python letterboxd_web.py web [-o PATH]
+    python -m journal.letterboxd_web import <export-dir> [--web [-o PATH]]
+    python -m journal.letterboxd_web rss [--user d33ts] [--web [-o PATH]]
+    python -m journal.letterboxd_web web [-o PATH]
 
 Point -o at the site repo to publish: ../DeetsSolutions/movies/movies.json
 
@@ -51,14 +51,15 @@ from pathlib import Path
 import requests
 from dotenv import load_dotenv
 
-import letterboxd_store as store
+from . import letterboxd_store as store
+from .paths import EXPORTS_DIR, PROJECT_ROOT
 
-load_dotenv(Path(__file__).resolve().parent / ".env")
+load_dotenv(PROJECT_ROOT / ".env")
 
 TMDB_SEARCH = "https://api.themoviedb.org/3/search/movie"
 TMDB_MOVIE = "https://api.themoviedb.org/3/movie/{id}"
 TMDB_IMG = "https://image.tmdb.org/t/p/w342"      # ~card-sized poster
-POSTER_CACHE = Path(__file__).resolve().parent / "exports" / "tmdb_posters.json"
+POSTER_CACHE = EXPORTS_DIR / "tmdb_posters.json"
 
 RSS_URL = "https://letterboxd.com/{user}/rss/"
 RSS_UA = "DeetsOTD film journal (deets.solutions)"

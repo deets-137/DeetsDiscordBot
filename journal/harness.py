@@ -8,7 +8,7 @@ which logs in, fetches, writes exports/, and logs out.
 
 Run:
   pip install -r requirements.txt
-  python harness.py
+  python -m journal.harness
   open http://127.0.0.1:8077
 
 Trigger from a script:
@@ -25,7 +25,7 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 
-from scan import scan_channel
+from .scan import scan_channel
 
 try:
     import config

@@ -55,8 +55,8 @@ Songs the enricher couldn't safely resolve are tagged `review` and surface in
 exports/Notion automatically (it's just a `match_type`). Verify them by hand:
 
 ```bash
-python review.py                 # walk each flagged song interactively
-python review.py list            # just print what's flagged
+python -m journal.review                 # walk each flagged song interactively
+python -m journal.review list            # just print what's flagged
 ```
 
 Per song you can: **[u]** paste the correct Apple Music URL (re-resolves via the
@@ -69,9 +69,9 @@ a cover, a live cut, the wrong artist's same-title song) — never get flagged, 
 the interactive walk won't show them. Correct one by id instead:
 
 ```bash
-python review.py search "<track or artist>"            # → a song_id + current match
-python review.py fix <song_id> --url "<correct link>"  # re-resolve, re-point, tag manual
-python review.py fix <song_id> --accept                # keep the current match, tag manual
+python -m journal.review search "<track or artist>"            # → a song_id + current match
+python -m journal.review fix <song_id> --url "<correct link>"  # re-resolve, re-point, tag manual
+python -m journal.review fix <song_id> --accept                # keep the current match, tag manual
 ```
 
 `--url` resolves via the Apple Music API when a track id is present (falling back
@@ -110,5 +110,5 @@ for r in rows:
         storage.link_post_to_song(r["post_id"], storage.upsert_song(track, mt))
     time.sleep(1.0)
 storage.prune_orphan_songs()
-# then: python review.py <channel>   and   python scan.py <channel> --web --web-out ../DeetsSolutions/sotd/songs.json
+# then: python -m journal.review <channel>   and   python -m journal.scan <channel> --web --web-out ../DeetsSolutions/sotd/songs.json
 ```

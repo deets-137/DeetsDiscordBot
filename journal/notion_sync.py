@@ -18,8 +18,8 @@ Setup (one-time):
      that back into .env as NOTION_DB_ID so later runs reuse it.
 
 Usage:
-  python notion_sync.py                       # uses DEFAULT_CHANNEL_ID
-  python notion_sync.py YOUR_CHANNEL_ID       # a specific channel
+  python -m journal.notion_sync                       # uses DEFAULT_CHANNEL_ID
+  python -m journal.notion_sync YOUR_CHANNEL_ID       # a specific channel
 """
 
 from __future__ import annotations
@@ -31,9 +31,11 @@ import time
 import requests
 from dotenv import load_dotenv
 
-import storage
+from .paths import PROJECT_ROOT
 
-load_dotenv()
+from . import storage
+
+load_dotenv(PROJECT_ROOT / ".env")
 
 API = "https://api.notion.com/v1"
 NOTION_VERSION = "2022-06-28"
