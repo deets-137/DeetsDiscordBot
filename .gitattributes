@@ -1,0 +1,2 @@
+# The parity kit is compared byte for byte: never convert its line endings.
+tests/parity/** -text
