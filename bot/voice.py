@@ -192,6 +192,39 @@ def tapping(guild: discord.Guild) -> str | None:
 ENCODER = dict(signal_type="music", fec=False, bitrate=128)
 
 
+async def start_stream(guild: discord.Guild, channel: discord.abc.Connectable, app: str) -> str | None:
+    """Join (or move to) `channel` and play `app` into it. None on success, else what went
+    wrong, for the user. Shared by /vc play and the resume after a song-boundary restart
+    (bot/live.py)."""
+    app = app if app.lower().endswith(".exe") else app + ".exe"
+    voice = guild.voice_client
+    try:
+        if voice is None:
+            voice = await channel.connect(self_deaf=True)
+        elif voice.channel != channel:
+            await voice.move_to(channel)
+    except Exception as e:
+        log.exception("voice connect failed")
+        return f"Couldn't join {channel.mention}: {e}"
+
+    if voice.is_playing():
+        voice.stop()
+    source = TapSource(app)
+    # A missing app fails in the helper's first moments; catch that before claiming success.
+    await asyncio.sleep(0.5)
+    if source.proc.poll() is not None:
+        err = source.proc.stderr.read().decode(errors="replace").strip()
+        return f"Couldn't capture {app}: {err or 'helper exited'}"
+
+    def after(error: Exception | None):
+        if error:
+            log.error("voice playback ended with %r", error)
+
+    voice.play(discord.PCMVolumeTransformer(source, volume=gain(guild)), after=after, **ENCODER)
+    log.info("playing %s; %s", app, _transport_note(voice))
+    return None
+
+
 def register(client: discord.Client, tree: app_commands.CommandTree) -> None:
     async def allowed(user: discord.abc.User) -> bool:
         return await is_host(client, user)
@@ -255,33 +288,10 @@ def register(client: discord.Client, tree: app_commands.CommandTree) -> None:
         await interaction.response.defer(ephemeral=True, thinking=True)
 
         app = app if app.lower().endswith(".exe") else app + ".exe"
-        voice = interaction.guild.voice_client
-        try:
-            if voice is None:
-                voice = await channel.connect(self_deaf=True)
-            elif voice.channel != channel:
-                await voice.move_to(channel)
-        except Exception as e:
-            log.exception("voice connect failed")
-            await interaction.followup.send(f"Couldn't join {channel.mention}: {e}", ephemeral=True)
+        problem = await start_stream(interaction.guild, channel, app)
+        if problem:
+            await interaction.followup.send(problem, ephemeral=True)
             return
-
-        if voice.is_playing():
-            voice.stop()
-        source = TapSource(app)
-        # A missing app fails in the helper's first moments; catch that before claiming success.
-        await asyncio.sleep(0.5)
-        if source.proc.poll() is not None:
-            err = source.proc.stderr.read().decode(errors="replace").strip()
-            await interaction.followup.send(f"Couldn't capture {app}: {err or 'helper exited'}", ephemeral=True)
-            return
-
-        def after(error: Exception | None):
-            if error:
-                log.error("voice playback ended with %r", error)
-
-        voice.play(discord.PCMVolumeTransformer(source, volume=gain(interaction.guild)), after=after, **ENCODER)
-        log.info("playing %s; %s", app, _transport_note(voice))
         hint = " Everyone here can use `/dm` (see `/dm help`)." if app.lower() == "deetsmusic.exe" else ""
         await interaction.followup.send(f"Playing **{app}** in {channel.mention}.{hint}", ephemeral=True)
 

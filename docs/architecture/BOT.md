@@ -1,19 +1,21 @@
 ---
 status: shipped
 desk_test: passed 2026-11-10
-sources: [bot/__main__.py, bot/__init__.py, journal/__init__.py, journal/paths.py]
+sources: [bot/__main__.py, bot/app.py, bot/live.py, bot/__init__.py, journal/__init__.py, journal/paths.py]
 updated: 2026-11-10
 ---
 # The bot process
 
-## 1. One process
-`python -m bot`, from the repo root, runs `bot/__main__.py`:
+## 1. One process (and its launcher)
+`python -m bot`, from the repo root, runs the launcher (`bot/__main__.py`), which runs the
+bot as `python -m bot.app` and starts it again when it exits with 75 (LIVE-RELOAD.md). The bot,
+`bot/app.py`:
 1. Loads `.env` from the repo root (`journal.paths.PROJECT_ROOT`) and imports `config.py`.
 2. Makes one `discord.Client` with the default intents plus **Message Content** (for `/links`).
    The default intents include **voice states**, which `/vc` and `/dm` need.
 3. Builds one `app_commands.CommandTree`, then lets each module add its group:
    `voice.register(client, tree)` (`/vc`) and `dm.register(client, tree)` (`/dm`).
-   `/links` is defined in `__main__.py` itself.
+   `/links` is defined in `app.py` itself. Then `live.Live(client, tree).install()`.
 4. `on_ready` syncs the tree **globally** and prints "slash commands synced".
 
 A module plugs in with `register(client, tree)`. It may add a command group, a

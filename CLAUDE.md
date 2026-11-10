@@ -29,8 +29,10 @@ until the nightly job runs from here and passes; then it is archived (docs/ops/N
 and one line below.
 
 **`docs/architecture/`** — the engine
-- `BOT.md` — the one process, the one command tree, intents, the token shared with the
-  journal, how modules plug in (`register(client, tree)`), logging (`bot/__main__.py`).
+- `BOT.md` — the launcher and the bot process, the one command tree, intents, the token
+  shared with the journal, how modules plug in (`register(client, tree)`), logging (`bot/app.py`).
+- `LIVE-RELOAD.md` — code goes live by itself: `/dm` reloads in place, the rest restarts at a
+  song boundary (`bot/live.py`). Never keep voice state in `dm.py`.
 - `VOICE-PIPELINE.md` — app → per-process loopback → 48 kHz PCM → Opus (music mode) → DAVE →
   Discord; why davey is pinned below 0.2 (`bot/voice.py`, `crates/tap`).
 - `BRIDGE.md` — DeetsMusic's loopback bridge as the bot uses it: ports, token, routes, caches.
@@ -84,6 +86,9 @@ and one line below.
   outside the bot's voice channel or while the host is not playing DeetsMusic (PERMISSIONS.md).
 - **Never raise davey to 0.2 or above with discord.py 2.7.x.** The DAVE session never gets
   ready and the call hears nothing (VOICE-PIPELINE.md §4).
+- **Never keep voice state in `bot/dm.py` or `bot/dm_bridge.py`.** They are reloaded while the
+  music plays (LIVE-RELOAD.md §5). Before a change across several bot files, create
+  `.lildeets-hold`; delete it when done.
 - **Never edit a Discord message on a timer.** Edit on a change only (CARDS.md §4).
 - **Never change deets-tap's stdout format without bumping `CONTRACT`** in
   `crates/tap/src/main.rs` and `EXPECTED_TAP` in `bot/voice.py` together (TAP.md §3).
@@ -95,7 +100,8 @@ and one line below.
 
 ## How to verify your work
 - **The user runs the bot and tests in Discord.** Do not start a second bot process to test:
-  it would answer interactions too and re-sync commands. Restart only when he says so.
+  it would answer interactions too and re-sync commands. The running bot picks up a saved
+  change by itself (LIVE-RELOAD.md): a `/dm` change at once, anything else at the next song.
 - Cheap checks that ARE worth running:
   - `python -c "import bot.voice, bot.dm, journal.scan, journal.review, journal.letterboxd_web"`
   - `cd crates/tap && cargo build --release`, then `target/release/deets-tap.exe --info`
@@ -127,7 +133,7 @@ and one line below.
 ```
 pip install -r requirements.txt -r requirements-voice.txt
 cd crates/tap && cargo build --release && cd ../..
-python -m bot                                   # the bot (from the repo root)
+python -m bot                                   # the launcher + bot (from the repo root)
 python -m journal.scan <channel> --enrich --web --web-out ../DeetsSolutions/sotd/songs.json
 python -m journal.letterboxd_web rss --web -o ../DeetsSolutions/movies/movies.json
 python -m journal.review list                   # songs flagged for hand-checking

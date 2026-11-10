@@ -438,9 +438,29 @@ def help_text(rights: dict[str, bool], host: bool, session: bool) -> str:
 # --- commands --------------------------------------------------------------------
 
 
+# Everything this module runs in the background, so a live reload (bot/live.py) can stop it
+# before the new code starts its own. Never keep voice state here: dm.py is swapped while
+# the music plays; voice.py is not.
+_tasks: set[asyncio.Task] = set()
+refreshers: dict[int, asyncio.Task] = {}  # channel id → the np card's watcher
+
+
+def _track(task: asyncio.Task) -> asyncio.Task:
+    _tasks.add(task)
+    task.add_done_callback(_tasks.discard)
+    return task
+
+
+def shutdown() -> None:
+    """Stop this module's background tasks (the status watcher, np card watchers). Called by
+    bot/live.py before it reloads dm.py; the cards already posted keep their old buttons."""
+    for task in list(_tasks) + list(refreshers.values()):
+        task.cancel()
+    refreshers.clear()
+
+
 def register(client: discord.Client, tree: app_commands.CommandTree) -> None:
     group = app_commands.Group(name="dm", description="Control DeetsMusic from Discord.")
-    refreshers: dict[int, asyncio.Task] = {}
 
     async def gate(interaction: discord.Interaction, action: str) -> bool:
         reason = await check(client, interaction, action)
@@ -664,12 +684,16 @@ class StatusWatcher:
         self.warned: set[int] = set()
 
     def install(self) -> None:
-        # Start once the client's loop runs, without taking over bot.py's on_ready.
+        # At start-up: begin once the client's loop runs, without taking over on_ready.
+        # After a live reload the client is already running: begin now.
+        if self.client.is_ready():
+            _track(asyncio.create_task(self.run()))
+            return
         previous = self.client.setup_hook
 
         async def setup_hook():
             await previous()
-            asyncio.create_task(self.run())
+            _track(asyncio.create_task(self.run()))
 
         self.client.setup_hook = setup_hook
 

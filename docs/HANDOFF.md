@@ -15,8 +15,8 @@ updated: 2026-11-10
 - **The running bot is still DeetsOTD's** (`python bot.py` in `../DeetsOTD`, on its branch
   `lil-deets-voice`). Next restart: run it from here, `python -m bot`. Stop the old one first:
   two bot processes would both answer and both sync.
-- **The nightly job still runs from `../DeetsOTD`.** This repo passed the side-by-side test;
-  the switch is ops/NIGHTLY.md §4.
+- **The nightly job runs from this repo since 2026-11-10** (first run: 6 PM that day). DeetsOTD's
+  `storage.db` is frozen as the backup (ops/NIGHTLY.md §4).
 - **Built and used today:** `/vc` (play an app into a call), `/dm` (12 commands, native cards,
   Rooms rules), the Explicit/Clean column, the np card that edits on change, the add line
   with its row in Up Next. **Built, not yet seen in Discord:** the channel status and
@@ -24,9 +24,13 @@ updated: 2026-11-10
   §3), the 48 kHz capture's sound in a call.
 
 ## Open now
-1. **Restart the bot from here** (`python -m bot`); desk-test STATUS.md and CARDS.md §3.
-2. **The cut-over** (ops/NIGHTLY.md §4): re-copy `storage.db` after a 6 PM run, switch the
-   DeetsSolutions script, watch one real run, then archive DeetsOTD.
+1. **One last manual restart** (`python -m bot`, at a natural pause): from then on the bot
+   takes code changes by itself (architecture/LIVE-RELOAD.md). Then desk-test LIVE-RELOAD.md §7,
+   STATUS.md, the suggestion words (CARDS.md §3), and pick a queue layout with `/dm preview`.
+2. **The cut-over is under way** (ops/NIGHTLY.md §4): the database was re-copied and the
+   DeetsSolutions script switched on 2026-11-10 at 14:40 (`a935bba`). **The 6 PM run of
+   2026-11-10 is the first from this repo.** After it passes: the other references, DeetsSQL's
+   path, then archive DeetsOTD. Nothing runs from DeetsOTD any more.
 3. **Merge DeetsOTD's `lil-deets-voice` branch** into its main at the archive step.
    (DeetsAirplay's was merged and pushed 2026-11-10: master `4185ed6`, which `crates/tap` pins.)
 4. Later, by his word: in-call extras, the Activity, image cards, the tray app, a Rust bot.

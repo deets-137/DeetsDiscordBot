@@ -6,8 +6,8 @@ updated: 2026-11-10
 ---
 # The nightly publish, and the cut-over from DeetsOTD
 
-> **Status:** project · 2026-11-10. The nightly job still runs from `../DeetsOTD`. This repo
-> passed the side-by-side test (§3). The switch (§4) is next.
+> **Status:** project · 2026-11-10. Switched at 14:40: the 6 PM run of 2026-11-10 is the first
+> from this repo. §4 steps 3–5 follow once it passes.
 
 ## 1. The job
 Windows Task Scheduler, task **"DeetsOTD Nightly SOTD"**, every day at 6 PM, runs
@@ -40,11 +40,14 @@ The `journal-refresh` skill in DeetsSolutions runs the same script.
    film (323), both exit 0.
 
 ## 4. The cut-over checklist
-1. [ ] After a 6 PM run has finished, stop and copy DeetsOTD's `storage.db` here again (it took
-   tonight's posts), and `exports/tmdb_posters.json`. Compare table counts.
-2. [ ] Edit `nightly-sotd.ps1` (§2) and run it by hand with the commit/push step off; the JSON
-   must match what DeetsOTD just published.
-3. [ ] Turn the commit/push step back on. Let one real 6 PM run pass; read `nightly-sotd.log`.
+1. [x] 2026-11-10 14:38: `storage.db` copied again from DeetsOTD (backup API; every table's
+   count equal: 483 posts, 477 songs, 88 scans, 322 films, 213 watches, 87 syncs) and
+   `exports/tmdb_posters.json` (same hash). DeetsOTD's copy is frozen from here.
+2. [x] 2026-11-10 14:40: `nightly-sotd.ps1` runs `python -m journal.scan` /
+   `-m journal.letterboxd_web` in this repo, with a `-Check` preflight (passed). DeetsSolutions
+   `a935bba`, pushed. (No hand run: tonight's real run is the first test, by his choice.)
+3. [ ] The 6 PM run of 2026-11-10 passes: expect 484 songs and 323 films published, one
+   commit and push, DeetsOTD's database unchanged. Read `nightly-sotd.log`.
 4. [ ] Update the other DeetsSolutions references (§2), and DeetsSQL's default database path
    (§2, other repos) — else DeetsSQL keeps showing DeetsOTD's frozen copy.
 5. [ ] DeetsOTD: a README pointer here; merge its `lil-deets-voice` branch; push; archive the
