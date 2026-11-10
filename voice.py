@@ -35,7 +35,8 @@ from pathlib import Path
 import discord
 from discord import app_commands
 
-log = logging.getLogger("deetsotd.voice")
+# Under "discord." so client.run()'s log handler prints it next to discord.py's own lines.
+log = logging.getLogger("discord.deetsotd.voice")
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_TAP = HERE.parent / "DeetsAirplay" / "crates" / "airplay" / "target" / "release" / "deets-tap.exe"
@@ -84,17 +85,84 @@ class TapSource(discord.AudioSource):
             log.info("deets-tap (%s): %s", self.app, err)
 
 
-def register(client: discord.Client, tree: app_commands.CommandTree) -> None:
-    owners: set[int] = set()
+class ToneSource(discord.AudioSource):
+    """A 440 Hz sine at -12 dBFS for `seconds`: Discord's half of the path with no capture."""
 
+    def __init__(self, seconds: float = 5.0):
+        import array
+        import math
+
+        rate, amp, per = 48_000, 0.25 * 32767, 960  # 960 frames = 20 ms
+        self._frames: list[bytes] = []
+        for f in range(int(seconds * 50)):
+            block = array.array("h")
+            for i in range(per):
+                s = int(amp * math.sin(2 * math.pi * 440 * (f * per + i) / rate))
+                block.extend((s, s))
+            self._frames.append(block.tobytes())
+
+    def read(self) -> bytes:
+        return self._frames.pop(0) if self._frames else b""
+
+    def is_opus(self) -> bool:
+        return False
+
+
+def _transport_note(voice: discord.VoiceClient) -> str:
+    state = getattr(voice, "_connection", None)
+    ver = getattr(state, "dave_protocol_version", "?")
+    ready = getattr(state, "can_encrypt", "?")
+    return f"voice E2EE (DAVE) version {ver}, ready {ready}, mode {getattr(voice, 'mode', '?')}"
+
+
+_owners: set[int] = set()
+
+
+async def is_host(client: discord.Client, user: discord.abc.User) -> bool:
+    """The bot application's owner (or team), plus VOICE_USER_IDS: whoever may start /vc."""
+    if not _owners:
+        info = await client.application_info()
+        if info.team:
+            _owners.update(m.id for m in info.team.members)
+        elif info.owner:
+            _owners.add(info.owner.id)
+    return user.id in _owners or user.id in _extra_user_ids()
+
+
+# Output gain per guild (the bot's own volume, applied after the capture), 1.0 = as captured.
+_gain: dict[int, float] = {}
+
+
+def set_gain(guild: discord.Guild, gain: float) -> None:
+    _gain[guild.id] = gain
+    src = getattr(guild.voice_client, "source", None)
+    if isinstance(src, discord.PCMVolumeTransformer):
+        src.volume = gain
+
+
+def gain(guild: discord.Guild) -> float:
+    return _gain.get(guild.id, 1.0)
+
+
+def tapping(guild: discord.Guild) -> str | None:
+    """The app this guild's bot is playing into voice right now, or None."""
+    voice = guild.voice_client
+    if voice is None or not voice.is_connected() or not voice.is_playing():
+        return None
+    src = getattr(voice, "source", None)
+    inner = getattr(src, "original", src)
+    return inner.app if isinstance(inner, TapSource) else None
+
+
+# Opus tuned for music: CELT only ("music" stops the encoder dropping into its speech
+# modes, which cost bass and air), no in-band FEC stealing bits for packet loss that a
+# wired desk connection doesn't have.
+ENCODER = dict(signal_type="music", fec=False, bitrate=128)
+
+
+def register(client: discord.Client, tree: app_commands.CommandTree) -> None:
     async def allowed(user: discord.abc.User) -> bool:
-        if not owners:
-            info = await client.application_info()
-            if info.team:
-                owners.update(m.id for m in info.team.members)
-            elif info.owner:
-                owners.add(info.owner.id)
-        return user.id in owners or user.id in _extra_user_ids()
+        return await is_host(client, user)
 
     async def gate(interaction: discord.Interaction) -> bool:
         if interaction.guild is None:
@@ -177,8 +245,29 @@ def register(client: discord.Client, tree: app_commands.CommandTree) -> None:
             if error:
                 log.error("voice playback ended with %r", error)
 
-        voice.play(source, after=after)
-        await interaction.followup.send(f"Playing **{app}** in {channel.mention}.", ephemeral=True)
+        voice.play(discord.PCMVolumeTransformer(source, volume=gain(interaction.guild)), after=after, **ENCODER)
+        log.info("playing %s; %s", app, _transport_note(voice))
+        hint = " Everyone here can use `/dm` (see `/dm help`)." if app.lower() == "deetsmusic.exe" else ""
+        await interaction.followup.send(f"Playing **{app}** in {channel.mention}.{hint}", ephemeral=True)
+
+    @vc_group.command(name="tone", description="Play a 5 s test tone (checks Discord's side, no app capture).")
+    async def vc_tone(interaction: discord.Interaction):
+        if not await gate(interaction):
+            return
+        member = interaction.guild.get_member(interaction.user.id) or interaction.user
+        channel = getattr(getattr(member, "voice", None), "channel", None)
+        voice = interaction.guild.voice_client
+        if voice is None and channel is None:
+            await interaction.response.send_message("Join a voice channel first.", ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        if voice is None:
+            voice = await channel.connect(self_deaf=True)
+        if voice.is_playing():
+            voice.stop()
+        voice.play(ToneSource(), **ENCODER)
+        log.info("tone; %s", _transport_note(voice))
+        await interaction.followup.send(f"Test tone for 5 s. ({_transport_note(voice)})", ephemeral=True)
 
     @vc_group.command(name="stop", description="Stop playing (stay in the channel).")
     async def vc_stop(interaction: discord.Interaction):

@@ -1,3 +1,6 @@
 # Only for /vc (voice.py). The rest of DeetsOTD runs without these.
 PyNaCl          # voice transport encryption
-davey           # Discord's end-to-end voice encryption (DAVE), required for voice since 2026
+# Discord's end-to-end voice encryption (DAVE). Pinned below 0.2: davey 0.2.0 moved key
+# switching to prepare/execute_transition, which discord.py 2.7.1 never calls, so the
+# session never gets ready and the bot sends audio nobody can hear (found 2026-11-10).
+davey>=0.1.6,<0.2

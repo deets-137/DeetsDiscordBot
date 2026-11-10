@@ -39,8 +39,11 @@ tree = app_commands.CommandTree(client)
 
 # /vc: play one of this PC's apps into a voice channel (voice.py, self-contained).
 import voice  # noqa: E402
+import dm  # noqa: E402
 
 voice.register(client, tree)
+# /dm: control DeetsMusic from Discord through its local bridge (dm.py, dm_bridge.py).
+dm.register(client, tree)
 
 
 @client.event
