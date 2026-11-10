@@ -1,77 +1,56 @@
-# DeetsOTD — handoff notes
+---
+status: sop
+desk_test: none
+sources: []
+updated: 2026-11-10
+---
+# DeetsDiscordBot — Handoff
 
-> Internal working notes for continuing development between sessions — kept
-> as-is for context. Ids below are placeholders. Full how-to is in
-> `docs/USAGE.md`.
+> Cold start: read this first. This file holds what is still true. The record of each sitting
+> is [WORKLOG.md](WORKLOG.md).
 
-Quick orientation for picking this up cold.
+## State of play (2026-11-10)
+- **This repo was made today** from DeetsOTD (all its history) and reorganized into `bot/`,
+  `journal/` and `crates/tap`. The code is the same code that runs on the desk, moved.
+- **The running bot is still DeetsOTD's** (`python bot.py` in `../DeetsOTD`, on its branch
+  `lil-deets-voice`). Next restart: run it from here, `python -m bot`. Stop the old one first:
+  two bot processes would both answer and both sync.
+- **The nightly job still runs from `../DeetsOTD`.** This repo passed the side-by-side test;
+  the switch is ops/NIGHTLY.md §4.
+- **Built and used today:** `/vc` (play an app into a call), `/dm` (12 commands, native cards,
+  Rooms rules), the Explicit/Clean column, the np card that edits on change, the add line
+  with its row in Up Next. **Built, not yet seen in Discord:** the channel status and
+  "Listening to" (features/STATUS.md), the column's width with a long song (features/CARDS.md
+  §3), the 48 kHz capture's sound in a call.
 
-## What DeetsOTD is
-A personal Song-of-the-Day journal: it scans one Discord channel, treats each
-posted song link as a journal entry in local SQLite (`storage.db`, the **source
-of truth**), enriches each to a real track, and mirrors everything to a Notion
-gallery. Spreadsheets and Notion are read-only views of the DB.
+## Open now
+1. **Restart the bot from here** (`python -m bot`); desk-test STATUS.md and CARDS.md §3.
+2. **The cut-over** (ops/NIGHTLY.md §4): re-copy `storage.db` after a 6 PM run, switch the
+   DeetsSolutions script, watch one real run, then archive DeetsOTD.
+3. **Push DeetsAirplay's `lil-deets-voice`** (with `start_process_at`), then pin
+   `crates/tap`'s dependency by git rev and add `scripts/check-airplay.ps1` (ops/TAP.md §3).
+   Needs his word to push.
+4. **Merge DeetsOTD's and DeetsAirplay's `lil-deets-voice` branches** into their main
+   branches (DeetsOTD's at the archive step).
+5. Later, by his word: in-call extras, the Activity, image cards, the tray app, a Rust bot.
 
-## Current state (2026-06-28)
-- **292 posts, 292 resolved (100%). Zero flagged for review — fully clean.**
-  Apple Music API is wired into `enrich.py` (see `docs/APPLE_MUSIC.md`).
-- `match` mix: 208 `direct` (free iTunes id), 66 `search` (validated), 6 `apple`
-  (Apple Music API), 3 `manual` (hand-verified), 1 `spotify` (a Bach/Yo-Yo Ma
-  track Apple search wouldn't validate).
-- **#56/#84 (delisted Apple ids) are resolved and hand-verified.** Both were
-  enriched to `review` guesses, then confirmed via `review.py`: #56 accepted as
-  "Want You Gone — Aperture Science Psychoacoustic Laboratories" (the correct
-  Portal 2 credit); #84 corrected to **Ashe — "We Get High"** (the auto-guess
-  "Logic" was wrong — exactly the case `review` exists to catch). Both now `manual`.
-- Gif/meme noise (10 Tenor + 2 YouTube) has been **purged**; the scanner now
-  filters non-music hosts going forward.
-- Notion "SongOTD Journal" DB is **fully synced** (Apple backfill + the two
-  corrections pushed), views: Covers (gallery), By Poster, Calendar, By Genre.
+## Retired (2026-11-10)
+The harness Discord bot (`../Vibe Coding Era/harness/discord_bot.py`) shared this token. Its
+10 guild commands (`/reset` … `/emergency`) were cleared from the three servers that had them.
+If it ever runs again, they come back. The harness itself was not touched.
 
-## Key identifiers
-- Discord channel id: `YOUR_CHANNEL_ID` (#song-of-the-day)
-- Notion parent page "DeetsOTD": `YOUR_NOTION_PARENT_PAGE_ID`
-- Notion DB "SongOTD Journal": `YOUR_NOTION_DB_ID`
-- All secrets live in `.env` (gitignored): `DISCORD_TOKEN`, `NOTION_TOKEN`,
-  `NOTION_DB_ID`, `NOTION_PARENT_PAGE_ID`, and Apple Music
-  (`APPLE_PRIVATE_KEY_PATH` → `secrets/AuthKey_XXXXXXXXXX.p8`, `APPLE_KEY_ID`,
-  `APPLE_TEAM_ID`) — all live and verified working.
-
-## The one routine command
-```bash
-python -m journal.scan YOUR_CHANNEL_ID --enrich --export xlsx --notion
-```
-Scan → archive new posts → enrich → write `exports/SOTD_Export_MMDDYYYY.xlsx`
-(All tab + one per month) → mirror to Notion. Idempotent; safe to re-run.
-
-## Next session — START HERE
-Apple Music wiring, the `review.py` flow, the backfill, and the #56/#84
-hand-verification + Notion re-sync are all **done (2026-06-28)**. The journal is
-clean (100% resolved, nothing flagged). Next is presentation, not data — pick up
-the largest open arc:
-
-1. **Notion "Wrapped"-style stats dashboard** (discussed; user directs aesthetic):
-   top artists, genre split, posting streaks, busiest months, per-poster
-   leaderboards. All derivable from `storage.db`; mostly a `notion_sync` extension
-   + new views.
-2. **The harness web UI** — the original vision's end state: a UI to browse the
-   journal/catalog (`harness.py` @ `127.0.0.1:8077` is the stub). Notion is the
-   presentation layer today; UI/aesthetic direction is open.
-
-Smaller opportunistic wins:
-- Re-resolve the 66 `search` rows through the Apple API to upgrade them to `apple`
-  (richer genre/preview/art). Low-risk — validation already guards it; just churns
-  rows. Use the backfill recipe in `docs/APPLE_MUSIC.md`, widened to `search`.
-- A Spotify Web API key would unlock the precise ISRC bridge (`song_by_isrc`,
-  currently dormant) and exact-version matching (avoids "(Instrumental)/(Live)"
-  ambiguity in title+artist search).
+## The desk
+- DeetsMusic plays to the Dell monitor's speakers at 100% in the Windows mixer, so the PC is
+  quiet and the call hears full level (VOICE-PIPELINE.md §1).
+- `../DeetsOTD`'s working tree is on `lil-deets-voice`; the nightly job runs that checkout.
+- Python 3.12, discord.py 2.7.1, davey 0.1.7, PyNaCl.
 
 ## Gotchas
-- `notion_sync.py` uses an **internal integration token**, separate from the
-  Claude/OAuth Notion connector. The integration must be added to the DeetsOTD
-  page (⋯ → Connections) or it 403s.
-- The enricher trusts a Spotify page's own `og` metadata over iTunes search
-  results; iTunes is accepted only when it validates. Don't "simplify" that back
-  to a bare-title search — that's what caused the Kidz-Bop / wrong-artist matches.
-- Notion select option names can't contain commas (handled in `notion_sync`).
-</content>
+- **davey must stay below 0.2** with discord.py 2.7.x (VOICE-PIPELINE.md §4).
+- **The capture hears the app after its mixer slider.** A quiet stream is the slider first.
+- **`deetsmusic.exe` is several processes** (the app, plus its CLI and MCP from Claude
+  sessions). The helper picks the top-most and its WebView2 child; `--list` shows who has sound.
+- **The exe is locked while the bot streams.** Rename it aside to swap (ops/TAP.md §1).
+- **Global commands lag in the client.** Ctrl+R.
+- Notion: `notion_sync` uses an internal integration that must be connected to the DeetsOTD
+  page, or it 403s (guide/USAGE.md §4).

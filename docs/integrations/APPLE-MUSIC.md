@@ -1,3 +1,9 @@
+---
+status: foundation
+desk_test: none
+sources: [journal/applemusic.py, journal/enrich.py, journal/review.py]
+updated: 2026-11-10
+---
 # Apple Music API — how it works
 
 `applemusic.py` is the authenticated resolver `enrich.py` prefers. The free,

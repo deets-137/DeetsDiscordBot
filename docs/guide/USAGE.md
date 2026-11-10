@@ -1,4 +1,10 @@
-# Using DeetsOTD
+---
+status: guide
+desk_test: none
+sources: [journal/scan.py, journal/storage.py, journal/review.py, journal/notion_sync.py]
+updated: 2026-11-10
+---
+# Using the journal (was DeetsOTD)
 
 DeetsOTD turns a Discord channel into a **Song-of-the-Day journal**: it reads
 every song link posted, enriches each one against iTunes, and keeps the result
@@ -105,7 +111,7 @@ Spotify/YouTube/etc. URL the enricher can resolve; either way the result is tagg
 
 `storage.db` stays the source of truth — after correcting, regenerate `songs.json`
 (`scan.py --web`, or `storage.export_web(...)` for a no-scan re-export) and commit
-it to the site to publish. See `docs/APPLE_MUSIC.md`.
+it to the site to publish. See `docs/integrations/APPLE-MUSIC.md`.
 
 ---
 
@@ -130,7 +136,7 @@ source_url, apple_music_url, preview_url, artwork_url, jump_url`.
   result validated, so we keep Spotify's title/artist/album + cover art.
 - `manual` — hand-corrected.
 - blank / `resolved=no` — no match (e.g. a real Apple Music track the free iTunes
-  API can't see; the Apple Music API will fix these — see `docs/APPLE_MUSIC.md`).
+  API can't see; the Apple Music API will fix these — see `docs/integrations/APPLE-MUSIC.md`).
 
 You can also generate one without a fresh scan:
 
@@ -222,23 +228,23 @@ overwritten when the page's own metadata confirms it.
 
 | File | Role |
 |------|------|
-| `scan.py` | CLI entry point: scan → archive → enrich → export → `--web` songs.json |
-| `linkscan.py` | link extraction, service detection, non-music filter |
-| `storage.py` | SQLite journal, `export_web()` site JSON, `export_journal()` spreadsheet, maintenance helpers |
-| `enrich.py` | song resolution (Apple Music API → iTunes id → Spotify-truth → search) |
-| `applemusic.py` | authenticated Apple Music API client (preferred resolver) |
-| `review.py` | correct mis-resolved songs: interactive `review`/`list` for flagged ones, `search`/`fix` for any confidently-wrong match |
-| `notion_sync.py` | Notion mirror — **legacy/optional**, not in the publish flow |
-| `bot.py` / `harness.py` | Discord slash-command / local web triggers |
+| `journal/scan.py` | CLI entry point: scan → archive → enrich → export → `--web` songs.json |
+| `journal/linkscan.py` | link extraction, service detection, non-music filter |
+| `journal/storage.py` | SQLite journal, `export_web()` site JSON, `export_journal()` spreadsheet, maintenance helpers |
+| `journal/enrich.py` | song resolution (Apple Music API → iTunes id → Spotify-truth → search) |
+| `journal/applemusic.py` | authenticated Apple Music API client (preferred resolver) |
+| `journal/review.py` | correct mis-resolved songs: interactive `review`/`list` for flagged ones, `search`/`fix` for any confidently-wrong match |
+| `journal/notion_sync.py` | Notion mirror — **legacy/optional**, not in the publish flow |
+| `bot/` / `journal/harness.py` | the Discord bot (`/links`) / local web trigger |
 | `storage.db` | **the database — source of truth** |
 | `exports/` | generated spreadsheets and link dumps |
-| `docs/APPLE_MUSIC.md` | Apple Music API setup, match_type taxonomy, review flow |
+| `docs/integrations/APPLE-MUSIC.md` | Apple Music API setup, match_type taxonomy, review flow |
 
 ---
 
 ## 7. Troubleshooting
 
-- **`DISCORD_TOKEN not set`** — `.env` is missing or not in the working dir.
+- **`DISCORD_TOKEN not set`** — `.env` is missing from the repo root.
 - **`Set NOTION_DB_ID … or NOTION_PARENT_PAGE_ID`** — Notion vars absent from
   `.env`; the sync has no target.
 - **Notion 401/403** — the integration token is wrong, or the DeetsOTD page
@@ -246,5 +252,5 @@ overwritten when the page's own metadata confirms it.
 - **A song didn't resolve** — some links (gifs, odd hosts, or real Apple Music
   tracks the free iTunes API can't see) have no match; those rows show blank
   track fields and `resolved = no`. Re-running `--enrich` retries only the
-  unresolved ones; the Apple Music API (`docs/APPLE_MUSIC.md`) will close most of
+  unresolved ones; the Apple Music API (`docs/integrations/APPLE-MUSIC.md`) will close most of
   the remaining gap.

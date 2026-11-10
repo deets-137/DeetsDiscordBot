@@ -21,7 +21,7 @@ Put them in .env:
   APPLE_TEAM_ID=YYYYYYYYYY
   APPLE_STOREFRONT=us            # optional, defaults to us
 
-Needs PyJWT[crypto] (see requirements.txt). See docs/APPLE_MUSIC.md for setup.
+Needs PyJWT[crypto] (see requirements.txt). See docs/integrations/APPLE-MUSIC.md for setup.
 """
 
 from __future__ import annotations
