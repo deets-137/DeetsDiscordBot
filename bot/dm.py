@@ -53,6 +53,7 @@ RULE = {
     "move": "roomGuests.changeQueue",
     "play": None,
     "volume": None,
+    "preview": None,
 }
 RULE_LABEL = {
     "roomGuests.playPause": "Guests may start and stop",
@@ -73,8 +74,18 @@ def _words(s: str) -> list[str]:
 # Apple's contentRating: "explicit", "clean" (the edited version of an explicit song), or
 # absent (nothing to edit; Apple doesn't call that clean, so neither do we).
 _RATING_WORD = {"explicit": "Explicit", "clean": "Clean"}
-_RATING_MARK = {"explicit": "🅴", "clean": "🅲"}
-_NO_MARK = "▫️"  # same width as the letters, so titles line up in the suggestion list
+NO_RATING = "None"  # the owner, 2026-11-10: words, "clean/explicit/none", not badges
+
+# Suggestions are plain text in Discord's proportional font: no monospace, no tabs, and runs
+# of ordinary spaces collapse. These pads make "Clean" and "None" about as wide as
+# "Explicit" from spaces that do not collapse: a figure space (≈ one digit, ~0.58 em),
+# a thin space (~0.2 em), a hair space (~0.1 em). Estimated from typical sans widths
+# (Explicit ≈ 3.16 em, Clean ≈ 2.49, None ≈ 2.35); tune here after seeing it in Discord.
+_WORD_PAD = {"Explicit": "", "Clean": "  ", NO_RATING: "  "}
+
+
+def rating_word(t: dict) -> str:
+    return _RATING_WORD.get(t.get("contentRating") or "", NO_RATING)
 
 
 def _secs(t: dict) -> float:
@@ -86,10 +97,10 @@ def tag(t: dict, width: int | None = None) -> str:
     `column_width`) every row is the same width in the monospace span: the length is
     right-aligned to the longest on the page and the rating padded to "Explicit". On its
     own (the add line, the now-playing row) an unrated song is just `MM:SS`."""
-    word = _RATING_WORD.get(t.get("contentRating") or "", "")
     if width is None:
+        word = _RATING_WORD.get(t.get("contentRating") or "", "")
         return f"`{mmss(_secs(t))}{' | ' + word if word else ''}`"
-    return f"`{mmss(_secs(t)):>{width}} | {word:<8}`"
+    return f"`{mmss(_secs(t)):>{width}} | {rating_word(t):<8}`"
 
 
 FIGURE_SPACE = " "  # exactly one digit wide, in any font that has it
@@ -97,14 +108,13 @@ FIGURE_SPACE = " "  # exactly one digit wide, in any font that has it
 
 def suggestion(t: dict, width: int = 4) -> str:
     """One autocomplete row. Discord shows these as plain text in a proportional font, cut off
-    on the right, so the column goes on the left: length, then 🅴 / 🅲 / ▫️, then the song.
-    Every row of one query gets the same column width: a shorter length (3:04 next to 12:31)
-    is padded with figure spaces, which are one digit wide, and an unrated song gets the
-    ▫️ emoji, which is as wide as the lettered ones."""
-    mark = _RATING_MARK.get(t.get("contentRating") or "", _NO_MARK)
+    on the right, so the columns go on the left: length, then Explicit / Clean / None, then the
+    song. Every row of one query gets the same column widths: a shorter length (3:04 next to
+    12:31) is padded with figure spaces, and a shorter word with _WORD_PAD."""
+    word = rating_word(t)
     length = mmss(_secs(t))
     length = FIGURE_SPACE * (width - len(length)) + length
-    return _clip(f"{length} {mark} {t.get('title')} — {t.get('artistName')} · {t.get('albumName', '')}", 100)
+    return _clip(f"{length} {word}{_WORD_PAD[word]} {t.get('title')} — {t.get('artistName')} · {t.get('albumName', '')}", 100)
 
 
 def column_width(tracks: list[dict]) -> int:
@@ -323,6 +333,60 @@ class _PickButton(ui.Button):
         await interaction.edit_original_response(view=done)
         line = await _added(interaction.user, [self.track], self.next_up, f"song:{self.track['catalogId']}")
         await interaction.followup.send(line + _notices(reply))
+
+
+# --- a layout preview (host only, visible only to the host) -------------------------
+# The owner, 2026-11-10: the queue row's position must come first; the album must line up
+# with the title; "Explicit / Clean / None" as words. Three ways to draw a row, shown on the
+# real queue so he can pick by eye. Delete the losers (and this command) once he picks.
+
+def _row_list(n: int, t: dict, w: int) -> str:
+    """A: a markdown numbered list: Discord draws the number in a gutter, and a continuation
+    line indented by three spaces should sit under the title."""
+    return (f"{n}. **{_clip(t.get('title', '?'), 70)}** · {_clip(t.get('artistName', ''), 50)}\n"
+            f"   {_clip(t.get('albumName', ''), 60)} · `{mmss(_secs(t)):>{w}}  {rating_word(t):<8}`")
+
+
+def _row_gutter(n: int, t: dict, w: int) -> str:
+    """B: a monospace gutter on every line, so the title, the album and the column start at
+    the same place (the album is normal size: a subtext line would shrink its gutter)."""
+    return (f"`{n:>2}` **{_clip(t.get('title', '?'), 70)}** · {_clip(t.get('artistName', ''), 50)}\n"
+            f"`  ` {_clip(t.get('albumName', ''), 60)}\n"
+            f"`  ` `{mmss(_secs(t)):>{w}}  {rating_word(t):<8}`")
+
+
+def _row_heading(n: int, t: dict, w: int) -> str:
+    """C: the number and the title as a small heading; the artist, album and column below,
+    all from the left edge."""
+    return (f"### {n} · {_clip(t.get('title', '?'), 70)}\n"
+            f"{_clip(t.get('artistName', ''), 50)} · {_clip(t.get('albumName', ''), 60)}\n"
+            f"-# {mmss(_secs(t))} · {rating_word(t)}")
+
+
+async def preview_view() -> ui.LayoutView:
+    q, accent = await asyncio.gather(bridge.queue(), bridge.accent())
+    up = (q.get("upcoming") or [])[:3]
+    w = column_width(up)
+    view = ui.LayoutView(timeout=600)
+    for label, row in (("A · numbered list", _row_list), ("B · monospace gutter", _row_gutter), ("C · number in a heading", _row_heading)):
+        parts: list[ui.Item] = [ui.TextDisplay(f"-# Layout {label}")]
+        parts += [_section(row(n, t, w), artwork(t, 120)) for n, t in enumerate(up, start=1)]
+        view.add_item(ui.Container(*parts, accent_colour=accent))
+    # D: another component. A dropdown of Up Next (up to 25 rows), so a row can be chosen
+    # without typing its number; buttons like Play next / Remove would act on the pick.
+    select = ui.Select(placeholder="D · pick a song in Up Next…", options=[
+        discord.SelectOption(label=_clip(f"{n}. {t.get('title', '?')}", 100),
+                             description=_clip(f"{t.get('artistName', '')} · {mmss(_secs(t))} · {rating_word(t)}", 100),
+                             value=str(n))
+        for n, t in enumerate((q.get("upcoming") or [])[:25], start=1)
+    ] or [discord.SelectOption(label="Up Next is empty", value="0")])
+
+    async def picked(interaction: discord.Interaction):
+        await interaction.response.send_message(f"Preview only: you picked row {select.values[0]}.", ephemeral=True)
+
+    select.callback = picked
+    view.add_item(ui.Container(ui.TextDisplay("-# Layout D · a dropdown of Up Next"), ui.ActionRow(select), accent_colour=accent))
+    return view
 
 
 async def _added(user: discord.abc.User, tracks: list[dict], next_up: bool, song_id: str) -> str:
@@ -555,6 +619,16 @@ def register(client: discord.Client, tree: app_commands.CommandTree) -> None:
             await interaction.followup.send(f"▶ {interaction.user.display_name} played **{_line(tracks[0]) if tracks else 'it'}**." + _notices(reply))
 
         await run(interaction, "play", work)
+
+    @group.command(name="preview", description="Host: compare queue-row layouts (only you see it).")
+    async def dm_preview(interaction: discord.Interaction):
+        if not await gate(interaction, "preview"):
+            return
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        try:
+            await interaction.followup.send(view=await preview_view(), ephemeral=True)
+        except BridgeError as e:
+            await interaction.followup.send(str(e), ephemeral=True)
 
     @group.command(name="volume", description="The bot's volume in the call (host).")
     @app_commands.describe(percent="0–200; 100 = as DeetsMusic plays it.")
