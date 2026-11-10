@@ -27,6 +27,11 @@ The `journal-refresh` skill in DeetsSolutions runs the same script.
 | `docs/data.md`, `docs/architecture.md`, `docs/bluesky.md`, `README.md`, `CLAUDE.md` | links and commands |
 | `cool-stuff/` project card, `movies/`, `sotd/`, `styles/main.css` comments | the repo link (after the archive) |
 
+**Other repos that read DeetsOTD's data:**
+| Repo | Where | Change |
+|---|---|---|
+| `../DeetsSQL` | `src-tauri/src/db.rs` `default_db_path()` hardcodes `Documents\DeetsOTD\storage.db`; also its CLAUDE.md, README, `src/api.ts`, `src/main.ts`, `src/rail.ts` comments | point at `Documents\DeetsDiscordBot\storage.db` (or try it first, then DeetsOTD's). Its rule stays: read-only, three locks. |
+
 ## 3. The side-by-side test (passed 2026-11-10)
 1. Copy `storage.db` with the backup API (architecture/STORAGE.md §5).
 2. Export from both repos and compare, minus `generated_at`:
@@ -40,6 +45,7 @@ The `journal-refresh` skill in DeetsSolutions runs the same script.
 2. [ ] Edit `nightly-sotd.ps1` (§2) and run it by hand with the commit/push step off; the JSON
    must match what DeetsOTD just published.
 3. [ ] Turn the commit/push step back on. Let one real 6 PM run pass; read `nightly-sotd.log`.
-4. [ ] Update the other DeetsSolutions references (§2).
+4. [ ] Update the other DeetsSolutions references (§2), and DeetsSQL's default database path
+   (§2, other repos) — else DeetsSQL keeps showing DeetsOTD's frozen copy.
 5. [ ] DeetsOTD: a README pointer here; merge its `lil-deets-voice` branch; push; archive the
    GitHub repo (read-only). Keep the local folder until he says.
