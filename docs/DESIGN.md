@@ -54,6 +54,7 @@ Task Scheduler 6 PM ── DeetsSolutions/scripts/nightly-sotd.ps1
 | 2026-11-10 | A tray app to start the bot with one click is the release shape; a Rust rewrite is for later, not a priority (features/TRAY.md). |
 | 2026-11-10 | Live reload is automatic (architecture/LIVE-RELOAD.md). |
 | 2026-11-10 | If the bot moves to Rust, **the journal stays Python** (ideas/rust-rewrite.md). |
+| 2026-11-10 | A Rust bot's stack: twilight's pieces (models, gateway), songbird for voice, hand-rolled where it gains functionality or saves resources (REST, command dispatch); never DAVE or Opus (ideas/rust-rewrite.md §3). |
 
 ## 4. Shape rules
 - **`bot/` imports `journal/`; `journal/` never imports `bot/`.** The nightly job never loads

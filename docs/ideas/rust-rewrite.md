@@ -58,16 +58,28 @@ the bot uses today, so this table is not from documentation.
 HTTP call: serenity lacks the cards' types, twilight lacks the voice-status route. Twilight
 also needs the voice glue that songbird gives serenity for free.
 
-### Three ways to build it
-1. **serenity 0.12.5 + poise + songbird** (Claude's lean): the most used path for voice bots
-   (Resonance and nexcord run on it with DAVE). The cards are built as JSON in one module of
-   our own. When serenity releases its `next` branch, that module switches to typed builders.
-2. **twilight 0.18 + songbird driver only:** typed cards today; we own the command routing and
-   the voice event glue. The voice glue is the riskiest piece, because it is the part we must
-   get exactly right.
-3. **serenity `next` from git:** typed cards today, but an unreleased API that can change under us.
+### The stack (the owner, 2026-11-10)
+None of these crates is Discord's: Discord publishes no bot library in any language. Its one
+official piece in this area is `libdave`, the C++ reference for DAVE; `davey` is a community
+Rust implementation of it.
 
-The spike (§7 step 1) decides between 1 and 2 on real evidence: a real call with DAVE, one card.
+**Decided:** use **twilight's pieces as they are meant to be used**, **keep songbird** for
+voice, and **hand-roll where it gains functionality or saves resources.**
+
+| Layer | Choice | Why |
+|---|---|---|
+| Models (payloads, Components V2) | `twilight-model` | full Components V2, typed |
+| Gateway (WebSocket, heartbeat, resume) | `twilight-gateway` | reconnect and resume are where hand-rolled bugs hide |
+| REST (~20 routes we use) | **hand-rolled**, typed with `twilight-model` (or `twilight-http` where it already fits) | exactly our routes; the voice-status route `twilight-http` lacks; one rate-limit layer |
+| Commands, autocomplete, component routing | **hand-rolled** dispatch by command name and `custom_id` | no framework needed for ~20 commands; same shapes as today |
+| Voice (voice gateway, UDP, RTP, transport crypto, Opus, DAVE) | **songbird** 0.6 (`davey`, `opus2`) | real-time networking and cryptography: never hand-rolled. Its mixer's defaults already match `voice.ENCODER` |
+| songbird ↔ twilight | songbird's `driver` feature + our glue (pass it the voice state / server events), since its `twilight` feature stops at twilight 0.17 — **or** twilight 0.17 with that feature | the spike picks: the glue keeps twilight current; 0.17 is less code |
+| Capture | `deets-airplay` linked in; a `MediaSource` into songbird's `RawAdapter` | no helper process, no pipe, no `--info` contract |
+| Bridge to DeetsMusic | a small HTTP client (`ureq` or `reqwest`) | as today |
+
+**Never hand-roll:** DAVE / MLS (use `davey` or `libdave`), the Opus codec (libopus).
+
+The spike (§7 step 1) settles the one open row (the songbird ↔ twilight glue) on a real call.
 
 ## 4. Part by part
 
@@ -101,9 +113,10 @@ The spike (§7 step 1) decides between 1 and 2 on real evidence: a real call wit
   (its own token), never on Lil Deets' token, until it matches (architecture/BOT.md §2).
 
 ## 7. Claude's proposal for the order (not decided; the journal part is his decision)
-1. A spike on a test application (its own token): stack 1 or 2 from §3, `deets-airplay`'s
-   capture straight into songbird, `/vc play` with DAVE in a real call, one Components V2 card
-   with a thumbnail, the voice channel status. It settles §3's choice on evidence.
+1. A spike on a test application (its own token), on the stack in §3: twilight gateway +
+   models, hand-rolled REST, songbird; `deets-airplay`'s capture straight into songbird;
+   `/vc play` with DAVE in a real call; one Components V2 card with a thumbnail; the voice
+   channel status. It settles the songbird ↔ twilight row on evidence.
 2. The bot (voice, /vc, /dm, status, /links) in Rust, with the voice-host / logic split.
 3. The tray app hosts it (features/TRAY.md).
 4. **The journal stays Python** (the owner, 2026-11-10).
