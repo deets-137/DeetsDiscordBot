@@ -70,6 +70,33 @@ def _words(s: str) -> list[str]:
     return re.findall(r"[a-z0-9]+", s.lower())
 
 
+# Apple's contentRating: "explicit", "clean" (the edited version of an explicit song), or
+# absent (nothing to edit; Apple doesn't call that clean, so neither do we).
+_RATING_WORD = {"explicit": "Explicit", "clean": "Clean"}
+_RATING_MARK = {"explicit": "🅴", "clean": "🅲"}
+_NO_MARK = "▫️"  # same width as the letters, so titles line up in the suggestion list
+
+
+def _secs(t: dict) -> float:
+    return (t.get("durationMs") or 0) / 1000
+
+
+def tag(t: dict, column: bool = True) -> str:
+    """`MM:SS | Explicit` in a code span. As a column (queue, picker) it is padded so rows
+    line up in the monospace span; on its own (the add line) an unrated song is `MM:SS`."""
+    word = _RATING_WORD.get(t.get("contentRating") or "", "")
+    if not column:
+        return f"`{mmss(_secs(t))}{' | ' + word if word else ''}`"
+    return f"`{mmss(_secs(t)):>5} | {word:<8}`"
+
+
+def suggestion(t: dict) -> str:
+    """One autocomplete row. Discord shows these as plain text, cut off on the right, so the
+    column goes on the left: length, then 🅴 / 🅲 / ▫️, then the song."""
+    mark = _RATING_MARK.get(t.get("contentRating") or "", _NO_MARK)
+    return _clip(f"{mmss(_secs(t))} {mark} {t.get('title')} — {t.get('artistName')} · {t.get('albumName', '')}", 100)
+
+
 def _line(t: dict) -> str:
     return f"{t.get('title', '?')} — {t.get('artistName', '?')}"
 
@@ -205,12 +232,12 @@ async def queue_view(client: discord.Client, page: int) -> ui.LayoutView:
 
     cur = q.get("current")
     head = (
-        f"-# Now playing\n**{cur.get('title')}** · {cur.get('artistName', '')}" if cur else "-# Nothing playing"
+        f"-# Now playing\n**{cur.get('title')}** · {cur.get('artistName', '')} {tag(cur, column=False)}" if cur else "-# Nothing playing"
     ) + f"\n-# Up Next · {len(upcoming)} songs · {length} · page {page} of {pages}"
     parts: list[ui.Item] = [_section(head, artwork(cur, 300)), ui.Separator()]
     start = (page - 1) * PAGE
     for n, t in enumerate(upcoming[start : start + PAGE], start=start + 1):
-        text = f"`{n}` **{_clip(t.get('title', '?'), 80)}** · {_clip(t.get('artistName', ''), 60)}\n-# {_clip(t.get('albumName', ''), 60)} · {mmss((t.get('durationMs') or 0) / 1000)}"
+        text = f"`{n:>2}` {tag(t)} **{_clip(t.get('title', '?'), 80)}** · {_clip(t.get('artistName', ''), 60)}\n-# {_clip(t.get('albumName', ''), 60)}"
         parts.append(_section(text, artwork(t, 120)))
     if not upcoming:
         parts.append(ui.TextDisplay("Up Next is empty. Add a song with `/dm add`."))
@@ -246,7 +273,7 @@ def picker_view(client: discord.Client, term: str, songs: list[dict], next_up: b
     parts: list[ui.Item] = [ui.TextDisplay(f"Which one? “{_clip(term, 80)}”")]
     row = ui.ActionRow()
     for n, t in enumerate(songs[:5], start=1):
-        parts.append(_section(f"`{n}` **{_clip(t.get('title', '?'), 80)}** · {t.get('artistName', '')}\n-# {t.get('albumName', '')}", artwork(t, 120)))
+        parts.append(_section(f"`{n}` {tag(t)} **{_clip(t.get('title', '?'), 80)}** · {t.get('artistName', '')}\n-# {t.get('albumName', '')}", artwork(t, 120)))
         b = _PickButton(t, next_up, str(n))
         b.client = client
         row.add_item(b)
@@ -284,7 +311,7 @@ class _PickButton(ui.Button):
 async def _added(user: discord.abc.User, tracks: list[dict], next_up: bool, song_id: str) -> str:
     """The channel line for an add, with where it landed in Up Next and when it plays."""
     what = _line(tracks[0]) if tracks else "that"
-    line = f"➕ {user.display_name} added **{what}**"
+    line = f"➕ {user.display_name} added **{what}**{' ' + tag(tracks[0], column=False) if tracks else ''}"
     try:
         q, np = await asyncio.gather(bridge.queue(), bridge.now_playing())
     except BridgeError:
@@ -359,7 +386,7 @@ def register(client: discord.Client, tree: app_commands.CommandTree) -> None:
         except (BridgeError, asyncio.TimeoutError):
             return []
         return [
-            app_commands.Choice(name=_clip(f"{t.get('title')} — {t.get('artistName')} · {t.get('albumName', '')}", 100), value=f"song:{t['catalogId']}")
+            app_commands.Choice(name=suggestion(t), value=f"song:{t['catalogId']}")
             for t in songs[:25]
             if t.get("catalogId")
         ]
