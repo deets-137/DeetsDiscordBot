@@ -90,6 +90,7 @@ dependencies = [
 [[package]]
 name = "deets-airplay"
 version = "0.4.2"
+source = "git+https://github.com/deets-137/DeetsAirplay?rev=4185ed6c1f1feb00f351bb2be368e9bb59f8337e#4185ed6c1f1feb00f351bb2be368e9bb59f8337e"
 dependencies = [
  "chacha20poly1305",
  "num-bigint",

@@ -12,10 +12,9 @@ path = "src/main.rs"
 
 [dependencies]
 # The per-process loopback capture (Capture::start_process_at) and the process helpers.
-# A path while DeetsAirplay's start_process_at is unpushed; once it is on GitHub this
-# becomes { git = "https://github.com/deets-137/DeetsAirplay", rev = "…" }, the way
-# DeetsMusic pins it (docs/ops/TAP.md §3, the drift rules).
-deets-airplay = { path = "../../../DeetsAirplay/crates/airplay" }
+# Pinned by rev, the way DeetsMusic pins it. Bump only after scripts/check-airplay.ps1
+# shows what changed in capture.rs / mixer.rs since this rev (docs/ops/TAP.md §3).
+deets-airplay = { git = "https://github.com/deets-137/DeetsAirplay", rev = "4185ed6c1f1feb00f351bb2be368e9bb59f8337e" }
 
 # OS bindings for --list / --meters (sessions, meters, process snapshot). Same major as
 # deets-airplay's, so the two never pull two copies of the bindings.

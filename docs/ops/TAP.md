@@ -36,15 +36,16 @@ Two things can drift: the helper against the bot, and the helper against DeetsAi
    refuses a mismatch with the rebuild command. **Change the format → bump both, together.**
 2. **The crate.** deets-tap calls `Capture::start_process_at`, `mixer::children_named` and
    `mixer::running_exes`. DeetsAirplay's `CLAUDE.md` names this repo as a consumer of those.
-3. **Pinning.** Today `deets-airplay` is a **path** dependency (`../../../DeetsAirplay`),
-   because `start_process_at` is on DeetsAirplay's unpushed branch `lil-deets-voice`. Once it
-   is pushed: switch to `{ git = "https://github.com/deets-137/DeetsAirplay", rev = "…" }`,
-   commit `Cargo.lock`, and use a gitignored `.cargo/config.toml` `[patch]` to the local
-   checkout while developing (DeetsMusic's pattern).
-   > **Part:** designed · 2026-11-10 — waits on the push.
-4. **A rev check** (with item 3): `scripts/check-airplay.ps1` lists DeetsAirplay commits after
-   the pinned rev that touch `capture.rs` or `mixer.rs`. Run it before bumping the rev.
-   > **Part:** designed · 2026-11-10.
+3. **Pinning.** `deets-airplay` is pinned by **git rev** (DeetsAirplay master `4185ed6`,
+   2026-11-10, the first rev with `start_process_at`), with `Cargo.lock` committed: DeetsMusic's
+   pattern. To try a local DeetsAirplay change before it is pushed, add a gitignored
+   `crates/tap/.cargo/config.toml` with
+   `[patch."https://github.com/deets-137/DeetsAirplay"] deets-airplay = { path = "../../../DeetsAirplay/crates/airplay" }`,
+   and delete it before committing `Cargo.lock`.
+4. **The rev check.** `powershell -File scripts/check-airplay.ps1 [-Ref <commit>]` reads the
+   pin, fetches DeetsAirplay, lists the commits after the pin that touch `capture.rs` or
+   `mixer.rs`, and prints the three signatures deets-tap calls at the newest commit (exit 2 if
+   one is missing). Run it before bumping the rev; then bump, build, `--info`, commit the lock.
 
 ## 4. Measured (2026-11-10)
 - 48 kHz capture of DeetsMusic: 198 blocks in 4.01 s (on pace), 195 with sound, peak 12430.

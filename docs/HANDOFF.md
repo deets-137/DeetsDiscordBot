@@ -27,12 +27,9 @@ updated: 2026-11-10
 1. **Restart the bot from here** (`python -m bot`); desk-test STATUS.md and CARDS.md §3.
 2. **The cut-over** (ops/NIGHTLY.md §4): re-copy `storage.db` after a 6 PM run, switch the
    DeetsSolutions script, watch one real run, then archive DeetsOTD.
-3. **Push DeetsAirplay's `lil-deets-voice`** (with `start_process_at`), then pin
-   `crates/tap`'s dependency by git rev and add `scripts/check-airplay.ps1` (ops/TAP.md §3).
-   Needs his word to push.
-4. **Merge DeetsOTD's and DeetsAirplay's `lil-deets-voice` branches** into their main
-   branches (DeetsOTD's at the archive step).
-5. Later, by his word: in-call extras, the Activity, image cards, the tray app, a Rust bot.
+3. **Merge DeetsOTD's `lil-deets-voice` branch** into its main at the archive step.
+   (DeetsAirplay's was merged and pushed 2026-11-10: master `4185ed6`, which `crates/tap` pins.)
+4. Later, by his word: in-call extras, the Activity, image cards, the tray app, a Rust bot.
 
 ## Retired (2026-11-10)
 The harness Discord bot (`../Vibe Coding Era/harness/discord_bot.py`) shared this token. Its

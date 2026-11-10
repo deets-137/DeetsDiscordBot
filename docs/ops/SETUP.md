@@ -25,8 +25,8 @@ discord.py 2.7.1 includes its own Opus library on Windows.
 - `storage.db` — the journals. Copy it with SQLite's backup API (architecture/STORAGE.md §5).
 
 ## 3. deets-tap
-Needs Rust (stable) and `../DeetsAirplay` beside this repo while the crate is a path
-dependency (TAP.md §3).
+Needs Rust (stable). Cargo fetches DeetsAirplay's crate from GitHub at the pinned rev
+(TAP.md §3).
 ```
 cd crates/tap && cargo build --release
 target/release/deets-tap.exe --info
