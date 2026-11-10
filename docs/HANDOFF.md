@@ -33,7 +33,7 @@ updated: 2026-11-10
    path, then archive DeetsOTD. Nothing runs from DeetsOTD any more.
 3. **Merge DeetsOTD's `lil-deets-voice` branch** into its main at the archive step.
    (DeetsAirplay's was merged and pushed 2026-11-10: master `4185ed6`, which `crates/tap` pins.)
-4. Later, by his word: in-call extras, the Activity, image cards, the tray app, a Rust bot.
+4. Later, by his word: in-call extras, the Activity, image cards, the tray app, a Rust bot (ideas/rust-rewrite.md; the journal stays Python).
 
 ## Retired (2026-11-10)
 The harness Discord bot (`../Vibe Coding Era/harness/discord_bot.py`) shared this token. Its

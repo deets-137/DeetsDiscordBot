@@ -71,6 +71,7 @@ and one line below.
 - `image-cards.md` — rendered PNG cards in DeetsMusic's theme, next to the native ones.
 - `auto-route.md` — `/vc play` moves the app to a silent output by itself.
 - `friends-tapping.md` — why friends do not tap their own apps through this bot.
+- `rust-rewrite.md` — the scope of a Rust port: part by part, measured costs, benefits, order.
 
 **`docs/archive/`** — DeetsOTD's June vision and handoff, kept as a record.
 

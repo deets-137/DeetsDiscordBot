@@ -52,6 +52,8 @@ Task Scheduler 6 PM ── DeetsSolutions/scripts/nightly-sotd.ps1
 | 2026-11-10 | One repo for everything Discord: DeetsOTD moves here whole, as a new public repo. DeetsOTD stays untouched until the migration is confirmed, then becomes an archive. |
 | 2026-11-10 | deets-tap moves into this repo as `crates/tap`, with steps against drift (ops/TAP.md §3). |
 | 2026-11-10 | A tray app to start the bot with one click is the release shape; a Rust rewrite is for later, not a priority (features/TRAY.md). |
+| 2026-11-10 | Live reload is automatic (architecture/LIVE-RELOAD.md). |
+| 2026-11-10 | If the bot moves to Rust, **the journal stays Python** (ideas/rust-rewrite.md). |
 
 ## 4. Shape rules
 - **`bot/` imports `journal/`; `journal/` never imports `bot/`.** The nightly job never loads
