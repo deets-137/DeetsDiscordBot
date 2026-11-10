@@ -81,20 +81,35 @@ def _secs(t: dict) -> float:
     return (t.get("durationMs") or 0) / 1000
 
 
-def tag(t: dict, column: bool = True) -> str:
-    """`MM:SS | Explicit` in a code span. As a column (queue, picker) it is padded so rows
-    line up in the monospace span; on its own (the add line) an unrated song is `MM:SS`."""
+def tag(t: dict, width: int | None = None) -> str:
+    """`MM:SS | Explicit` in a code span. As a column (queue page, picker: pass the page's
+    `column_width`) every row is the same width in the monospace span: the length is
+    right-aligned to the longest on the page and the rating padded to "Explicit". On its
+    own (the add line, the now-playing row) an unrated song is just `MM:SS`."""
     word = _RATING_WORD.get(t.get("contentRating") or "", "")
-    if not column:
+    if width is None:
         return f"`{mmss(_secs(t))}{' | ' + word if word else ''}`"
-    return f"`{mmss(_secs(t)):>5} | {word:<8}`"
+    return f"`{mmss(_secs(t)):>{width}} | {word:<8}`"
 
 
-def suggestion(t: dict) -> str:
-    """One autocomplete row. Discord shows these as plain text, cut off on the right, so the
-    column goes on the left: length, then 🅴 / 🅲 / ▫️, then the song."""
+FIGURE_SPACE = " "  # exactly one digit wide, in any font that has it
+
+
+def suggestion(t: dict, width: int = 4) -> str:
+    """One autocomplete row. Discord shows these as plain text in a proportional font, cut off
+    on the right, so the column goes on the left: length, then 🅴 / 🅲 / ▫️, then the song.
+    Every row of one query gets the same column width: a shorter length (3:04 next to 12:31)
+    is padded with figure spaces, which are one digit wide, and an unrated song gets the
+    ▫️ emoji, which is as wide as the lettered ones."""
     mark = _RATING_MARK.get(t.get("contentRating") or "", _NO_MARK)
-    return _clip(f"{mmss(_secs(t))} {mark} {t.get('title')} — {t.get('artistName')} · {t.get('albumName', '')}", 100)
+    length = mmss(_secs(t))
+    length = FIGURE_SPACE * (width - len(length)) + length
+    return _clip(f"{length} {mark} {t.get('title')} — {t.get('artistName')} · {t.get('albumName', '')}", 100)
+
+
+def column_width(tracks: list[dict]) -> int:
+    """Characters in the longest `M:SS` / `MM:SS` / `MMM:SS` of a query's rows."""
+    return max((len(mmss(_secs(t))) for t in tracks), default=4)
 
 
 def _line(t: dict) -> str:
@@ -232,12 +247,13 @@ async def queue_view(client: discord.Client, page: int) -> ui.LayoutView:
 
     cur = q.get("current")
     head = (
-        f"-# Now playing\n**{cur.get('title')}** · {cur.get('artistName', '')} {tag(cur, column=False)}" if cur else "-# Nothing playing"
+        f"-# Now playing\n**{cur.get('title')}** · {cur.get('artistName', '')} {tag(cur)}" if cur else "-# Nothing playing"
     ) + f"\n-# Up Next · {len(upcoming)} songs · {length} · page {page} of {pages}"
     parts: list[ui.Item] = [_section(head, artwork(cur, 300)), ui.Separator()]
     start = (page - 1) * PAGE
+    width = column_width(upcoming[start : start + PAGE])
     for n, t in enumerate(upcoming[start : start + PAGE], start=start + 1):
-        text = f"`{n:>2}` {tag(t)} **{_clip(t.get('title', '?'), 80)}** · {_clip(t.get('artistName', ''), 60)}\n-# {_clip(t.get('albumName', ''), 60)}"
+        text = f"`{n:>2}` {tag(t, width)} **{_clip(t.get('title', '?'), 80)}** · {_clip(t.get('artistName', ''), 60)}\n-# {_clip(t.get('albumName', ''), 60)}"
         parts.append(_section(text, artwork(t, 120)))
     if not upcoming:
         parts.append(ui.TextDisplay("Up Next is empty. Add a song with `/dm add`."))
@@ -272,8 +288,9 @@ class _PageButton(ui.Button):
 def picker_view(client: discord.Client, term: str, songs: list[dict], next_up: bool, accent: int) -> ui.LayoutView:
     parts: list[ui.Item] = [ui.TextDisplay(f"Which one? “{_clip(term, 80)}”")]
     row = ui.ActionRow()
+    width = column_width(songs[:5])
     for n, t in enumerate(songs[:5], start=1):
-        parts.append(_section(f"`{n}` {tag(t)} **{_clip(t.get('title', '?'), 80)}** · {t.get('artistName', '')}\n-# {t.get('albumName', '')}", artwork(t, 120)))
+        parts.append(_section(f"`{n}` {tag(t, width)} **{_clip(t.get('title', '?'), 80)}** · {t.get('artistName', '')}\n-# {t.get('albumName', '')}", artwork(t, 120)))
         b = _PickButton(t, next_up, str(n))
         b.client = client
         row.add_item(b)
@@ -311,7 +328,7 @@ class _PickButton(ui.Button):
 async def _added(user: discord.abc.User, tracks: list[dict], next_up: bool, song_id: str) -> str:
     """The channel line for an add, with where it landed in Up Next and when it plays."""
     what = _line(tracks[0]) if tracks else "that"
-    line = f"➕ {user.display_name} added **{what}**{' ' + tag(tracks[0], column=False) if tracks else ''}"
+    line = f"➕ {user.display_name} added **{what}**{' ' + tag(tracks[0]) if tracks else ''}"
     try:
         q, np = await asyncio.gather(bridge.queue(), bridge.now_playing())
     except BridgeError:
@@ -385,11 +402,9 @@ def register(client: discord.Client, tree: app_commands.CommandTree) -> None:
             songs = await asyncio.wait_for(bridge.search_songs(current, timeout=2.5), timeout=2.6)
         except (BridgeError, asyncio.TimeoutError):
             return []
-        return [
-            app_commands.Choice(name=suggestion(t), value=f"song:{t['catalogId']}")
-            for t in songs[:25]
-            if t.get("catalogId")
-        ]
+        rows = [t for t in songs[:25] if t.get("catalogId")]
+        width = column_width(rows)
+        return [app_commands.Choice(name=suggestion(t, width), value=f"song:{t['catalogId']}") for t in rows]
 
     async def resolve(song: str) -> tuple[str | None, list[dict]]:
         """(song id to use, candidates). A picked suggestion is an id already."""
@@ -550,3 +565,90 @@ def register(client: discord.Client, tree: app_commands.CommandTree) -> None:
         await interaction.response.send_message(f"🔊 Volume {percent}%.", ephemeral=True)
 
     tree.add_command(group)
+    StatusWatcher(client).install()
+
+
+class StatusWatcher:
+    """While the bot plays DeetsMusic into a voice channel, show the song in two places:
+
+    - the voice channel's status (the line under its name in the channel list), for
+      everyone in the server: "🎵 Title — Artist", or "⏸ …" while paused;
+    - the bot's own profile status: "Listening to Title — Artist".
+
+    Polls the local bridge every 5 s (free) and calls Discord only when the line changes,
+    about once a song. Clears both when the stream stops, the bot leaves, or DeetsMusic
+    quits. Setting a channel status needs the bot's "Set Voice Channel Status" permission
+    there; without it the channel line is skipped and the profile status still updates."""
+
+    EVERY = 5
+    STATUS_MAX = 500  # Discord's limit for a voice channel status
+
+    def __init__(self, client: discord.Client):
+        self.client = client
+        self.channel_line: dict[int, str] = {}  # voice channel id → status we set
+        self.presence_line: str | None = None
+        self.warned: set[int] = set()
+
+    def install(self) -> None:
+        # Start once the client's loop runs, without taking over bot.py's on_ready.
+        previous = self.client.setup_hook
+
+        async def setup_hook():
+            await previous()
+            asyncio.create_task(self.run())
+
+        self.client.setup_hook = setup_hook
+
+    async def run(self) -> None:
+        await self.client.wait_until_ready()
+        while not self.client.is_closed():
+            try:
+                await self.tick()
+            except Exception:
+                log.exception("status watcher")
+            await asyncio.sleep(self.EVERY)
+
+    async def tick(self) -> None:
+        live = {g.voice_client.channel.id: g.voice_client.channel for g in self.client.guilds if voice.tapping(g) == APP}
+        line = None
+        if live:
+            try:
+                np = await bridge.now_playing()
+            except BridgeError:
+                np = {}
+            if np.get("active") and np.get("title"):
+                song = f"{np['title']} — {np.get('artist', '')}"
+                line = ("🎵 " if np.get("playing") else "⏸ ") + song
+                await self.set_presence(song if np.get("playing") else None)
+            else:
+                await self.set_presence(None)
+        else:
+            await self.set_presence(None)
+
+        for cid, channel in live.items():
+            if self.channel_line.get(cid) != line:
+                await self.set_channel(channel, line)
+        for cid in [c for c in self.channel_line if c not in live]:
+            channel = self.client.get_channel(cid)
+            if channel is not None:
+                await self.set_channel(channel, None)
+            self.channel_line.pop(cid, None)
+
+    async def set_channel(self, channel: discord.VoiceChannel, line: str | None) -> None:
+        try:
+            await channel.edit(status=_clip(line, self.STATUS_MAX) if line else None)
+            self.channel_line[channel.id] = line or ""
+        except discord.Forbidden:
+            if channel.id not in self.warned:
+                self.warned.add(channel.id)
+                log.warning("no Set Voice Channel Status permission in #%s; skipping its status", channel.name)
+            self.channel_line[channel.id] = line or ""  # don't retry every 5 s
+        except discord.HTTPException as e:
+            log.warning("voice channel status: %s", e)
+
+    async def set_presence(self, song: str | None) -> None:
+        if song == self.presence_line:
+            return
+        self.presence_line = song
+        activity = discord.Activity(type=discord.ActivityType.listening, name=_clip(song, 128)) if song else None
+        await self.client.change_presence(activity=activity)
