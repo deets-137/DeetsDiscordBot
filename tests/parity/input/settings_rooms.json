@@ -1,0 +1,24 @@
+{
+ "settings": [
+  {
+   "key": "roomGuests.playPause",
+   "value": "everyone"
+  },
+  {
+   "key": "roomGuests.skip",
+   "value": "everyone"
+  },
+  {
+   "key": "roomGuests.seek",
+   "value": "everyone"
+  },
+  {
+   "key": "roomGuests.add",
+   "value": "everyone"
+  },
+  {
+   "key": "roomGuests.changeQueue",
+   "value": "everyone"
+  }
+ ]
+}

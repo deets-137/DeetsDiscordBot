@@ -1,0 +1,41 @@
+[
+ {
+  "accent_color": 14675196,
+  "components": [
+   {
+    "content": "-# Nothing playing\n-# Up Next · 0 songs · 0 m · page 1 of 1",
+    "type": 10
+   },
+   {
+    "divider": true,
+    "spacing": 1,
+    "type": 14
+   },
+   {
+    "content": "Up Next is empty. Add a song with `/dm add`.",
+    "type": 10
+   },
+   {
+    "components": [
+     {
+      "custom_id": "<custom_id>",
+      "disabled": true,
+      "label": "◀",
+      "style": 2,
+      "type": 2
+     },
+     {
+      "custom_id": "<custom_id>",
+      "disabled": true,
+      "label": "▶",
+      "style": 2,
+      "type": 2
+     }
+    ],
+    "type": 1
+   }
+  ],
+  "spoiler": false,
+  "type": 17
+ }
+]

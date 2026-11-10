@@ -1,0 +1,14 @@
+{
+ "active": true,
+ "playing": true,
+ "title": "Pink + White",
+ "artist": "Frank Ocean",
+ "album": "Blonde",
+ "artworkTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/bb/45/68/bb4568f3-68cd-619d-fbcb-4e179916545d/BlondCover-Final.jpg/{w}x{h}bb.jpg",
+ "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/bb/45/68/bb4568f3-68cd-619d-fbcb-4e179916545d/BlondCover-Final.jpg/480x480bb.jpg",
+ "catalogId": "1146195714",
+ "currentTime": 58.0,
+ "duration": 184.516,
+ "progress": 0.31433588415096797,
+ "live": false
+}

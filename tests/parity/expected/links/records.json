@@ -1,0 +1,102 @@
+[
+ {
+  "author": "Ada",
+  "author_id": 11,
+  "jump_url": "https://discord.com/channels/1/2/1001",
+  "link_text": "Pink + White",
+  "message_id": 1001,
+  "source": "text",
+  "timestamp": "2026-01-02T03:04:05+00:00",
+  "url": "https://music.apple.com/us/song/pink-white/1146195714"
+ },
+ {
+  "author": "Ada",
+  "author_id": 11,
+  "jump_url": "https://discord.com/channels/1/2/1001",
+  "link_text": "",
+  "message_id": 1001,
+  "source": "text",
+  "timestamp": "2026-01-02T03:04:05+00:00",
+  "url": "https://open.spotify.com/track/3xKsf9qdS1CyvXSMEid6g8"
+ },
+ {
+  "author": "Bo",
+  "author_id": 22,
+  "jump_url": "https://discord.com/channels/1/2/1002",
+  "link_text": "",
+  "message_id": 1002,
+  "source": "text",
+  "timestamp": "2026-01-02T08:00:00+00:00",
+  "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+ },
+ {
+  "author": "Bo",
+  "author_id": 22,
+  "jump_url": "https://discord.com/channels/1/2/1002",
+  "link_text": "",
+  "message_id": 1002,
+  "source": "text",
+  "timestamp": "2026-01-02T08:00:00+00:00",
+  "url": "https://music.apple.com/us/song/pink-white/1146195714"
+ },
+ {
+  "author": "Bo",
+  "author_id": 22,
+  "jump_url": "https://discord.com/channels/1/2/1002",
+  "link_text": "A video",
+  "message_id": 1002,
+  "source": "embed",
+  "timestamp": "2026-01-02T08:00:00+00:00",
+  "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+ },
+ {
+  "author": "Bo",
+  "author_id": 22,
+  "jump_url": "https://discord.com/channels/1/2/1002",
+  "link_text": "A video",
+  "message_id": 1002,
+  "source": "embed",
+  "timestamp": "2026-01-02T08:00:00+00:00",
+  "url": "https://i.ytimg.com/vi/x/hq.jpg"
+ },
+ {
+  "author": "Ada",
+  "author_id": 11,
+  "jump_url": "https://discord.com/channels/1/2/1003",
+  "link_text": "clip.mp3",
+  "message_id": 1003,
+  "source": "attachment",
+  "timestamp": "2026-01-03T23:59:59+00:00",
+  "url": "https://cdn.discordapp.com/attachments/1/2/clip.mp3"
+ },
+ {
+  "author": "Cy",
+  "author_id": 33,
+  "jump_url": "https://discord.com/channels/1/2/1004",
+  "link_text": "",
+  "message_id": 1004,
+  "source": "text",
+  "timestamp": "2026-01-04T12:00:00+00:00",
+  "url": "https://tenor.com/view/x"
+ },
+ {
+  "author": "Cy",
+  "author_id": 33,
+  "jump_url": "https://discord.com/channels/1/2/1004",
+  "link_text": "",
+  "message_id": 1004,
+  "source": "text",
+  "timestamp": "2026-01-04T12:00:00+00:00",
+  "url": "https://soundcloud.com/a/b?c=1&d=2"
+ },
+ {
+  "author": "Cy",
+  "author_id": 33,
+  "jump_url": "https://discord.com/channels/1/2/1004",
+  "link_text": "",
+  "message_id": 1004,
+  "source": "text",
+  "timestamp": "2026-01-04T12:00:00+00:00",
+  "url": "https://example.com/empty-text"
+ }
+]

@@ -1,0 +1,280 @@
+{
+ "term": "kendrick lamar dna",
+ "songs": [
+  {
+   "catalogId": "1440881357",
+   "title": "DNA.",
+   "artistName": "Kendrick Lamar",
+   "albumName": "DAMN.",
+   "durationMs": 185947,
+   "contentRating": "explicit",
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music112/v4/86/c9/bb/86c9bb30-fe3d-442e-33c1-c106c4d23705/17UMGIM88776.rgb.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1440881990",
+   "title": "DNA.",
+   "artistName": "Kendrick Lamar",
+   "albumName": "DAMN.",
+   "durationMs": 185947,
+   "contentRating": "clean",
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music112/v4/ab/16/ef/ab16efe9-e7f1-66ec-021c-5592a23f0f9e/17UMGIM88793.rgb.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1793843463",
+   "title": "DNA. (Mixed)",
+   "artistName": "Kendrick Lamar",
+   "albumName": "2025 Super Bowl LIX Megamix (DJ Mix)",
+   "durationMs": 116295,
+   "contentRating": "explicit",
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/3e/4d/ca/3e4dca79-a917-4f1a-4d68-4a20effa38f0/922747d5-80dc-4c1a-86f4-1d78f16de4e8.png/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1440819205",
+   "title": "Bitch, Don’t Kill My Vibe (feat. JAŸ-Z) [Remix]",
+   "artistName": "Kendrick Lamar",
+   "albumName": "good kid, m.A.A.d city (Deluxe Version)",
+   "durationMs": 278520,
+   "contentRating": "explicit",
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/ca/5b/c0/ca5bc0b3-d81d-cc6c-0d19-54b9eedb6dbd/12UMGIM52990.rgb.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1471264154",
+   "title": "Swimming Pools (Drank)",
+   "artistName": "Kendrick Lamar",
+   "albumName": "good kid, m.A.A.d city (Deluxe)",
+   "durationMs": 247960,
+   "contentRating": "explicit",
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/ac/9e/6a/ac9e6ad5-27a5-baef-0e33-795b2f42c3cf/12UMGIM52990.rgb.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1403517750",
+   "title": "DNA.",
+   "artistName": "Kendrick Lamar",
+   "albumName": "DAMN. COLLECTORS EDITION.",
+   "durationMs": 185947,
+   "contentRating": "explicit",
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/77/33/13/773313da-f23e-b15e-e110-886f1d8ec0ec/17UM1IM55473.rgb.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1840697133",
+   "title": "DNA. (Remix) / Mo Bamba (Remix) / EXE (Mixed)",
+   "artistName": "Sheck Wes, Kendrick Lamar & HIVEMIND",
+   "albumName": "Tomorrowland Belgium 2025: NGHTMRE b2b Crankdat at Planaxis, Weekend 1 (DJ Mix)",
+   "durationMs": 98521,
+   "contentRating": "explicit",
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/13/48/2c/13482caa-e1bb-1deb-dfe4-023532391524/c432d9d9-7dd6-4777-a593-61f45b082f88.png/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1443203122",
+   "title": "DNA.",
+   "artistName": "Kendrick Lamar",
+   "albumName": "Best Of 2017 Hip Hop",
+   "durationMs": 185947,
+   "contentRating": "explicit",
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/7d/cc/4e/7dcc4ec1-2d0c-c367-248d-dfde503e0b26/17UM1IM55237.rgb.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1440908096",
+   "title": "DNA.",
+   "artistName": "Kendrick Lamar",
+   "albumName": "DAMN. COLLECTORS EDITION.",
+   "durationMs": 185947,
+   "contentRating": "clean",
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/94/28/36/94283609-93bb-db1c-e997-44e82c157e90/00602567261216.rgb.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1436880871",
+   "title": "DNA.",
+   "artistName": "Kendrick Lamar",
+   "albumName": "The Hate U Give (Original Motion Picture Soundtrack)",
+   "durationMs": 185947,
+   "contentRating": "clean",
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/17/97/6d/17976d01-2c5e-1fa5-6127-84c17ffe48f0/18UMGIM58097.rgb.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1440881367",
+   "title": "ELEMENT.",
+   "artistName": "Kendrick Lamar",
+   "albumName": "DAMN.",
+   "durationMs": 208733,
+   "contentRating": "explicit",
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music112/v4/86/c9/bb/86c9bb30-fe3d-442e-33c1-c106c4d23705/17UMGIM88776.rgb.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1440881578",
+   "title": "PRIDE.",
+   "artistName": "Kendrick Lamar",
+   "albumName": "DAMN.",
+   "durationMs": 275253,
+   "contentRating": "explicit",
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music112/v4/86/c9/bb/86c9bb30-fe3d-442e-33c1-c106c4d23705/17UMGIM88776.rgb.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1442975629",
+   "title": "Dna.",
+   "artistName": "Kendrick Lamar",
+   "albumName": "Best of 2017",
+   "durationMs": 185947,
+   "contentRating": "explicit",
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/5a/a3/55/5aa355f5-aede-71dd-6084-599f3821e0ea/17UM1IM53288.rgb.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1436889856",
+   "title": "DNA.",
+   "artistName": "Kendrick Lamar",
+   "albumName": "The Hate U Give (Original Motion Picture Soundtrack)",
+   "durationMs": 185947,
+   "contentRating": "explicit",
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/4a/6f/7c/4a6f7c60-88e5-20d5-fac3-c3c78190e56c/18UMGIM58096.rgb.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1720860402",
+   "title": "DNA. (Remix) [Mixed]",
+   "artistName": "Kendrick Lamar",
+   "albumName": "Apple Music Live: NYE 2024 (DJ Mix)",
+   "durationMs": 251902,
+   "contentRating": "explicit",
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/b8/a0/4b/b8a04b4c-e924-6243-f719-ab82ade27107/bbca25dd-1bf4-48c2-953e-f6279cb74a56.png/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1440820037",
+   "title": "Stay Ready (What a Life) [feat. Kendrick Lamar]",
+   "artistName": "Jhené Aiko",
+   "albumName": "Sail Out - EP",
+   "durationMs": 382588,
+   "contentRating": "explicit",
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/a0/d4/14/a0d414f8-6cf5-bf24-f722-4a4f32770d22/13UAAIM83456.rgb.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "6810394263",
+   "title": "DNA.",
+   "artistName": "Kendrick Lamar",
+   "albumName": "Hip Hop Hit List (Vol. 2)",
+   "durationMs": 186053,
+   "contentRating": "explicit",
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/07/98/f3/0798f3b0-1161-0b23-de3f-1544d048b538/17UM1IM03738.rgb.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1253106460",
+   "title": "Mask Off (feat. Kendrick Lamar) [Remix]",
+   "artistName": "Future",
+   "albumName": "FUTURE",
+   "durationMs": 258427,
+   "contentRating": "explicit",
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/2e/9a/8d/2e9a8da6-4d74-67a8-2952-119c3b4613cb/886446597102.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1440881362",
+   "title": "YAH.",
+   "artistName": "Kendrick Lamar",
+   "albumName": "DAMN.",
+   "durationMs": 160293,
+   "contentRating": "explicit",
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music112/v4/86/c9/bb/86c9bb30-fe3d-442e-33c1-c106c4d23705/17UMGIM88776.rgb.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1471264099",
+   "title": "Money Trees (feat. Jay Rock)",
+   "artistName": "Kendrick Lamar",
+   "albumName": "good kid, m.A.A.d city (Deluxe)",
+   "durationMs": 386905,
+   "contentRating": "explicit",
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/ac/9e/6a/ac9e6ad5-27a5-baef-0e33-795b2f42c3cf/12UMGIM52990.rgb.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1440818980",
+   "title": "Swimming Pools (Drank) [Extended Version]",
+   "artistName": "Kendrick Lamar",
+   "albumName": "good kid, m.A.A.d city (Deluxe Version)",
+   "durationMs": 313729,
+   "contentRating": "explicit",
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/ca/5b/c0/ca5bc0b3-d81d-cc6c-0d19-54b9eedb6dbd/12UMGIM52990.rgb.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1440818964",
+   "title": "Backseat Freestyle",
+   "artistName": "Kendrick Lamar",
+   "albumName": "good kid, m.A.A.d city (Deluxe Version)",
+   "durationMs": 212536,
+   "contentRating": "explicit",
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/ca/5b/c0/ca5bc0b3-d81d-cc6c-0d19-54b9eedb6dbd/12UMGIM52990.rgb.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1440818959",
+   "title": "Bitch, Don’t Kill My Vibe",
+   "artistName": "Kendrick Lamar",
+   "albumName": "good kid, m.A.A.d city (Deluxe Version)",
+   "durationMs": 310758,
+   "contentRating": "explicit",
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/ca/5b/c0/ca5bc0b3-d81d-cc6c-0d19-54b9eedb6dbd/12UMGIM52990.rgb.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1440829137",
+   "title": "King Kunta",
+   "artistName": "Kendrick Lamar",
+   "albumName": "To Pimp a Butterfly",
+   "durationMs": 234690,
+   "contentRating": "explicit",
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music112/v4/0d/ae/61/0dae6140-d4af-d0df-eae0-3c92eb392a33/15UMGIM11922.rgb.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1440881805",
+   "title": "FEAR.",
+   "artistName": "Kendrick Lamar",
+   "albumName": "DAMN.",
+   "durationMs": 460573,
+   "contentRating": "explicit",
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music112/v4/86/c9/bb/86c9bb30-fe3d-442e-33c1-c106c4d23705/17UMGIM88776.rgb.jpg/{w}x{h}bb.jpg"
+   }
+  }
+ ]
+}

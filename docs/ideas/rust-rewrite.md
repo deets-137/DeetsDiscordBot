@@ -112,6 +112,8 @@ The spike (§7 step 1) settles the one open row (the songbird ↔ twilight glue)
 - **Two bots for a while:** the port should run beside the Python bot on a test application
   (its own token), never on Lil Deets' token, until it matches (architecture/BOT.md §2).
 
+> The build plan, with work packages for agents and the parity kit: [rust-port-plan.md](rust-port-plan.md).
+
 ## 7. Claude's proposal for the order (not decided; the journal part is his decision)
 1. A spike on a test application (its own token), on the stack in §3: twilight gateway +
    models, hand-rolled REST, songbird; `deets-airplay`'s capture straight into songbird;

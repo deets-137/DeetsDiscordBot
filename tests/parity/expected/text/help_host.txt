@@ -1,0 +1,11 @@
+### Lil Deets · DeetsMusic
+-# You're the host: everything is open to you.
+✅ `/dm np` — what's playing, with ⏮ ⏯ ⏭
+✅ `/dm queue` — Up Next, 10 a page
+✅ `/dm pause` · `/dm resume`
+✅ `/dm skip` · `/dm back`
+✅ `/dm add` — search as you type; `next: True` plays it next
+✅ `/dm remove` · `/dm move` — edit Up Next by row number
+✅ `/dm play` — replace what's playing
+✅ `/dm volume` — the bot's volume in the call
+-# The host starts and stops the stream with `/vc play` · `/vc stop` · `/vc leave`.

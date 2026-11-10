@@ -1,0 +1,101 @@
+[
+ {
+  "accent_color": 14675196,
+  "components": [
+   {
+    "accessory": {
+     "description": null,
+     "media": {
+      "url": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/bb/45/68/bb4568f3-68cd-619d-fbcb-4e179916545d/BlondCover-Final.jpg/300x300bb.jpg"
+     },
+     "spoiler": false,
+     "type": 11
+    },
+    "components": [
+     {
+      "content": "-# Now playing\n**Pink + White** · Frank Ocean `3:05`\n-# Up Next · 23 songs · 1 h 37 m · page 3 of 3",
+      "type": 10
+     }
+    ],
+    "type": 9
+   },
+   {
+    "divider": true,
+    "spacing": 1,
+    "type": 14
+   },
+   {
+    "accessory": {
+     "description": null,
+     "media": {
+      "url": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/04/f8/63/04f863fc-2852-604f-c910-a97ac069506b/12UMGIM40339.rgb.jpg/120x120bb.jpg"
+     },
+     "spoiler": false,
+     "type": 11
+    },
+    "components": [
+     {
+      "content": "`21` `3:54 | Explicit` **Lost** · Frank Ocean\n-# channel ORANGE",
+      "type": 10
+     }
+    ],
+    "type": 9
+   },
+   {
+    "accessory": {
+     "description": null,
+     "media": {
+      "url": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/13/6f/8e/136f8eb7-34dd-fd32-d103-5528872026eb/spotify_single_art_V2.jpg/120x120bb.jpg"
+     },
+     "spoiler": false,
+     "type": 11
+    },
+    "components": [
+     {
+      "content": "`22` `3:30 | Explicit` **Chanel** · Frank Ocean\n-# Chanel - Single",
+      "type": 10
+     }
+    ],
+    "type": 9
+   },
+   {
+    "accessory": {
+     "description": null,
+     "media": {
+      "url": "https://is1-ssl.mzstatic.com/image/thumb/Music126/v4/f2/c0/39/f2c039d6-a48b-e9ad-2c95-203269a47179/634904052980.png/120x120bb.jpg"
+     },
+     "spoiler": false,
+     "type": 11
+    },
+    "components": [
+     {
+      "content": "`23` `4:13 | Explicit` **She (feat. Frank Ocean)** · Tyler, The Creator\n-# Goblin",
+      "type": 10
+     }
+    ],
+    "type": 9
+   },
+   {
+    "components": [
+     {
+      "custom_id": "<custom_id>",
+      "disabled": false,
+      "label": "◀",
+      "style": 2,
+      "type": 2
+     },
+     {
+      "custom_id": "<custom_id>",
+      "disabled": true,
+      "label": "▶",
+      "style": 2,
+      "type": 2
+     }
+    ],
+    "type": 1
+   }
+  ],
+  "spoiler": false,
+  "type": 17
+ }
+]

@@ -1,0 +1,220 @@
+[
+ {
+  "accent_color": 14675196,
+  "components": [
+   {
+    "accessory": {
+     "description": null,
+     "media": {
+      "url": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/bb/45/68/bb4568f3-68cd-619d-fbcb-4e179916545d/BlondCover-Final.jpg/300x300bb.jpg"
+     },
+     "spoiler": false,
+     "type": 11
+    },
+    "components": [
+     {
+      "content": "-# Now playing\n**Pink + White** · Frank Ocean `3:05`\n-# Up Next · 23 songs · 1 h 37 m · page 1 of 3",
+      "type": 10
+     }
+    ],
+    "type": 9
+   },
+   {
+    "divider": true,
+    "spacing": 1,
+    "type": 14
+   },
+   {
+    "accessory": {
+     "description": null,
+     "media": {
+      "url": "https://is1-ssl.mzstatic.com/image/thumb/Features125/v4/1e/af/d0/1eafd024-7c47-18c9-2007-d36805843d3e/contsched.phsflzfy.jpg/120x120bb.jpg"
+     },
+     "spoiler": false,
+     "type": 11
+    },
+    "components": [
+     {
+      "content": "` 1` ` 2:03 | Explicit` **White (feat. Frank Ocean)** · Odd Future\n-# The OF Tape, Vol. 2",
+      "type": 10
+     }
+    ],
+    "type": 9
+   },
+   {
+    "accessory": {
+     "description": null,
+     "media": {
+      "url": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/bb/45/68/bb4568f3-68cd-619d-fbcb-4e179916545d/BlondCover-Final.jpg/120x120bb.jpg"
+     },
+     "spoiler": false,
+     "type": 11
+    },
+    "components": [
+     {
+      "content": "` 2` ` 4:09 | None    ` **White Ferrari** · Frank Ocean\n-# Blonde",
+      "type": 10
+     }
+    ],
+    "type": 9
+   },
+   {
+    "accessory": {
+     "description": null,
+     "media": {
+      "url": "https://is1-ssl.mzstatic.com/image/thumb/Music112/v4/ab/16/ef/ab16efe9-e7f1-66ec-021c-5592a23f0f9e/17UMGIM88793.rgb.jpg/120x120bb.jpg"
+     },
+     "spoiler": false,
+     "type": 11
+    },
+    "components": [
+     {
+      "content": "` 3` ` 3:06 | Clean   ` **DNA.** · Kendrick Lamar\n-# DAMN.",
+      "type": 10
+     }
+    ],
+    "type": 9
+   },
+   {
+    "accessory": {
+     "description": null,
+     "media": {
+      "url": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/04/f8/63/04f863fc-2852-604f-c910-a97ac069506b/12UMGIM40339.rgb.jpg/120x120bb.jpg"
+     },
+     "spoiler": false,
+     "type": 11
+    },
+    "components": [
+     {
+      "content": "` 4` ` 1:16 | None    ` **White (feat. John Mayer)** · Frank Ocean\n-# channel ORANGE",
+      "type": 10
+     }
+    ],
+    "type": 9
+   },
+   {
+    "accessory": {
+     "description": null,
+     "media": {
+      "url": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/bb/45/68/bb4568f3-68cd-619d-fbcb-4e179916545d/BlondCover-Final.jpg/120x120bb.jpg"
+     },
+     "spoiler": false,
+     "type": 11
+    },
+    "components": [
+     {
+      "content": "` 5` ` 5:07 | Explicit` **Nights** · Frank Ocean\n-# Blonde",
+      "type": 10
+     }
+    ],
+    "type": 9
+   },
+   {
+    "accessory": {
+     "description": null,
+     "media": {
+      "url": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/5d/66/f0/5d66f03d-6557-5ae4-e713-5bec5d7480f4/12UMGIM18954.rgb.jpg/120x120bb.jpg"
+     },
+     "spoiler": false,
+     "type": 11
+    },
+    "components": [
+     {
+      "content": "` 6` `20:33 | None    ` **2112: Overture / The Temples Of Syrinx / Discovery / Presentation / Oracle / So…** · Rush\n-# 2112 (Remastered 2012)",
+      "type": 10
+     }
+    ],
+    "type": 9
+   },
+   {
+    "accessory": {
+     "description": null,
+     "media": {
+      "url": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/66/a6/5b/66a65b9f-ed99-901c-b2f2-a65464a1c089/00602527744186.rgb.jpg/120x120bb.jpg"
+     },
+     "spoiler": false,
+     "type": 11
+    },
+    "components": [
+     {
+      "content": "` 7` ` 5:02 | Explicit` **Novacane** · Frank Ocean\n-# Novacane - Single",
+      "type": 10
+     }
+    ],
+    "type": 9
+   },
+   {
+    "accessory": {
+     "description": null,
+     "media": {
+      "url": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/bb/45/68/bb4568f3-68cd-619d-fbcb-4e179916545d/BlondCover-Final.jpg/120x120bb.jpg"
+     },
+     "spoiler": false,
+     "type": 11
+    },
+    "components": [
+     {
+      "content": "` 8` ` 4:09 | Explicit` **Ivy** · Frank Ocean\n-# Blonde",
+      "type": 10
+     }
+    ],
+    "type": 9
+   },
+   {
+    "accessory": {
+     "description": null,
+     "media": {
+      "url": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/04/f8/63/04f863fc-2852-604f-c910-a97ac069506b/12UMGIM40339.rgb.jpg/120x120bb.jpg"
+     },
+     "spoiler": false,
+     "type": 11
+    },
+    "components": [
+     {
+      "content": "` 9` ` 4:29 | Explicit` **Pink Matter (feat. André 3000)** · Frank Ocean\n-# channel ORANGE",
+      "type": 10
+     }
+    ],
+    "type": 9
+   },
+   {
+    "accessory": {
+     "description": null,
+     "media": {
+      "url": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/bb/45/68/bb4568f3-68cd-619d-fbcb-4e179916545d/BlondCover-Final.jpg/120x120bb.jpg"
+     },
+     "spoiler": false,
+     "type": 11
+    },
+    "components": [
+     {
+      "content": "`10` ` 2:58 | None    ` **Godspeed** · Frank Ocean\n-# Blonde",
+      "type": 10
+     }
+    ],
+    "type": 9
+   },
+   {
+    "components": [
+     {
+      "custom_id": "<custom_id>",
+      "disabled": true,
+      "label": "◀",
+      "style": 2,
+      "type": 2
+     },
+     {
+      "custom_id": "<custom_id>",
+      "disabled": false,
+      "label": "▶",
+      "style": 2,
+      "type": 2
+     }
+    ],
+    "type": 1
+   }
+  ],
+  "spoiler": false,
+  "type": 17
+ }
+]

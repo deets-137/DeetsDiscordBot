@@ -1,0 +1,258 @@
+{
+ "term": "phoebe bridgers kyoto",
+ "songs": [
+  {
+   "catalogId": "1504699860",
+   "title": "Kyoto",
+   "artistName": "Phoebe Bridgers",
+   "albumName": "Punisher",
+   "durationMs": 184524,
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/39/91/4f/39914f60-e9aa-4ae9-3962-44b0a5e5d570/656605150062.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1537676682",
+   "title": "Kyoto (Copycat Killer Version) [feat. Rob Moose]",
+   "artistName": "Phoebe Bridgers",
+   "albumName": "Copycat Killer (feat. Rob Moose) - EP",
+   "durationMs": 181213,
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/5a/5d/1f/5a5d1fde-7f6f-9997-3bca-d75f1e799464/656605154565.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1578964378",
+   "title": "Kyoto (Glitch Gum Remix)",
+   "artistName": "Phoebe Bridgers & Glitch Gum",
+   "albumName": "Kyoto (Glitch Gum Remix) - Single",
+   "durationMs": 159813,
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/dd/9f/de/dd9fdec5-3491-beb6-0b99-0b5a0d53b655/25537.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1578964499",
+   "title": "Kyoto (The Marías Remix)",
+   "artistName": "Phoebe Bridgers",
+   "albumName": "Kyoto (The Marías Remix) - Single",
+   "durationMs": 218293,
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/f3/01/c8/f301c899-a3a5-fa26-6782-05b07d30c7a8/25540.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1256607810",
+   "title": "Motion Sickness",
+   "artistName": "Phoebe Bridgers",
+   "albumName": "Stranger in the Alps",
+   "durationMs": 229760,
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/20/4c/6e/204c6ef3-8e95-4cee-2256-202ca62aebed/60220.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1657869526",
+   "title": "Ghost in the Machine (feat. Phoebe Bridgers)",
+   "artistName": "SZA",
+   "albumName": "SOS",
+   "durationMs": 218587,
+   "contentRating": "explicit",
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/bd/3b/a9/bd3ba9fb-9609-144f-bcfe-ead67b5f6ab3/196589564931.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1697989328",
+   "title": "Waiting Room",
+   "artistName": "Phoebe Bridgers",
+   "albumName": "Lost Ark Studio Compilation, Vol. 8",
+   "durationMs": 393962,
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music126/v4/68/22/26/68222693-dd98-1eae-8862-badf12368162/888295196574_cover.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1256607813",
+   "title": "Scott Street",
+   "artistName": "Phoebe Bridgers",
+   "albumName": "Stranger in the Alps",
+   "durationMs": 305001,
+   "contentRating": "explicit",
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/20/4c/6e/204c6ef3-8e95-4cee-2256-202ca62aebed/60220.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1578964112",
+   "title": "Kyoto (Bartees Strange Remix)",
+   "artistName": "Phoebe Bridgers & Bartees Strange",
+   "albumName": "Kyoto (Bartees Strange Remix) - Single",
+   "durationMs": 166707,
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/ea/99/86/ea9986f6-2dfa-6067-5497-2444f8ec8d42/25539.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1590368762",
+   "title": "Nothing New (Taylor's Version) [From The Vault] [feat. Phoebe Bridgers]",
+   "artistName": "Taylor Swift",
+   "albumName": "Red (Taylor’s Version) [+ A Message from Taylor]",
+   "durationMs": 258807,
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/15/38/9b/15389bf4-8074-06c3-11ee-655b5453af68/21UM1IM25046.rgb.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1504699859",
+   "title": "Garden Song",
+   "artistName": "Phoebe Bridgers",
+   "albumName": "Punisher",
+   "durationMs": 219682,
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/39/91/4f/39914f60-e9aa-4ae9-3962-44b0a5e5d570/656605150062.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1381918220",
+   "title": "The Night We Met (feat. Phoebe Bridgers)",
+   "artistName": "Lord Huron",
+   "albumName": "13 Reasons Why (Season 2)",
+   "durationMs": 208173,
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music126/v4/9b/8a/fb/9b8afb81-03ad-975a-a2d8-93533fb7dd67/18UMGIM26534.rgb.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1504700020",
+   "title": "I Know the End",
+   "artistName": "Phoebe Bridgers",
+   "albumName": "Punisher",
+   "durationMs": 344693,
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/39/91/4f/39914f60-e9aa-4ae9-3962-44b0a5e5d570/656605150062.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1560728961",
+   "title": "Kyoto",
+   "artistName": "Aleko Nunez",
+   "albumName": "Kyoto (Arr.  for Guitar) - Single",
+   "durationMs": 195000,
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/27/ea/f4/27eaf4f9-bda0-2c94-bb15-19491b7df130/9008798376261_cover.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1572953750",
+   "title": "Kyoto",
+   "artistName": "Twinkle Twinkle Little Rock Star",
+   "albumName": "Lullaby Versions of Phoebe Bridgers",
+   "durationMs": 295455,
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/ec/9f/40/ec9f40e0-4904-0919-ec5b-9f9823188944/192641765100_Cover.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1504700016",
+   "title": "Moon Song",
+   "artistName": "Phoebe Bridgers",
+   "albumName": "Punisher",
+   "durationMs": 277677,
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/39/91/4f/39914f60-e9aa-4ae9-3962-44b0a5e5d570/656605150062.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1256607811",
+   "title": "Funeral",
+   "artistName": "Phoebe Bridgers",
+   "albumName": "Stranger in the Alps",
+   "durationMs": 232373,
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/20/4c/6e/204c6ef3-8e95-4cee-2256-202ca62aebed/60220.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1700970838",
+   "title": "Kyoto (Instrumental)",
+   "artistName": "Guitar Dreamers",
+   "albumName": "Guitar Dreamers Play Phoebe Bridgers (Instrumental)",
+   "durationMs": 179013,
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/c3/2a/fa/c32afa3d-0a2d-fafe-60b2-7d384df48c84/789577244191.png/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1405752736",
+   "title": "The Gold",
+   "artistName": "Manchester Orchestra & Phoebe Bridgers",
+   "albumName": "The Gold - Single",
+   "durationMs": 233227,
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/6a/e9/84/6ae98476-5695-d38c-6ad4-3e3cfbb45ad6/656605148144.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1436646797",
+   "title": "Scott Street",
+   "artistName": "Phoebe Bridgers",
+   "albumName": "Stranger in the Alps (Deluxe Edition)",
+   "durationMs": 305001,
+   "contentRating": "explicit",
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/e0/26/47/e02647bc-2135-6bb0-0efe-1fca80dfbd37/60221.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1616736546",
+   "title": "Sidelines",
+   "artistName": "Phoebe Bridgers",
+   "albumName": "Sidelines - Single",
+   "durationMs": 264372,
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music112/v4/95/7b/7c/957b7c50-eac5-4a78-2070-5f30ef4c15c4/dj.auehhwxs.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1436646794",
+   "title": "Motion Sickness",
+   "artistName": "Phoebe Bridgers",
+   "albumName": "Stranger in the Alps (Deluxe Edition)",
+   "durationMs": 229760,
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/e0/26/47/e02647bc-2135-6bb0-0efe-1fca80dfbd37/60221.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1504700019",
+   "title": "Graceland Too",
+   "artistName": "Phoebe Bridgers",
+   "albumName": "Punisher",
+   "durationMs": 236350,
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/39/91/4f/39914f60-e9aa-4ae9-3962-44b0a5e5d570/656605150062.jpg/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1697569522",
+   "title": "Kyoto (Instrumental)",
+   "artistName": "Piano Dreamers",
+   "albumName": "Piano Dreamers Play Phoebe Bridgers (Instrumental)",
+   "durationMs": 179640,
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music126/v4/16/24/e6/1624e6a5-a5b3-0aa3-cb1d-b480db27b5de/789577242098.png/{w}x{h}bb.jpg"
+   }
+  },
+  {
+   "catalogId": "1543636014",
+   "title": "Lovin' Me (feat. Phoebe Bridgers)",
+   "artistName": "Kid Cudi",
+   "albumName": "Man On the Moon III: The Chosen",
+   "durationMs": 165893,
+   "artwork": {
+    "urlTemplate": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/8e/1a/15/8e1a1594-4189-0102-e998-a87f4fbb52ce/20UM1IM12829.rgb.jpg/{w}x{h}bb.jpg"
+   }
+  }
+ ]
+}

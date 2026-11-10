@@ -1,0 +1,11 @@
+url,source,link_text,author,timestamp,jump_url,message_id
+https://music.apple.com/us/song/pink-white/1146195714,text,Pink + White,Ada,2026-01-02T03:04:05+00:00,https://discord.com/channels/1/2/1001,1001
+https://open.spotify.com/track/3xKsf9qdS1CyvXSMEid6g8,text,,Ada,2026-01-02T03:04:05+00:00,https://discord.com/channels/1/2/1001,1001
+https://www.youtube.com/watch?v=dQw4w9WgXcQ,text,,Bo,2026-01-02T08:00:00+00:00,https://discord.com/channels/1/2/1002,1002
+https://music.apple.com/us/song/pink-white/1146195714,text,,Bo,2026-01-02T08:00:00+00:00,https://discord.com/channels/1/2/1002,1002
+https://www.youtube.com/watch?v=dQw4w9WgXcQ,embed,A video,Bo,2026-01-02T08:00:00+00:00,https://discord.com/channels/1/2/1002,1002
+https://i.ytimg.com/vi/x/hq.jpg,embed,A video,Bo,2026-01-02T08:00:00+00:00,https://discord.com/channels/1/2/1002,1002
+https://cdn.discordapp.com/attachments/1/2/clip.mp3,attachment,clip.mp3,Ada,2026-01-03T23:59:59+00:00,https://discord.com/channels/1/2/1003,1003
+https://tenor.com/view/x,text,,Cy,2026-01-04T12:00:00+00:00,https://discord.com/channels/1/2/1004,1004
+https://soundcloud.com/a/b?c=1&d=2,text,,Cy,2026-01-04T12:00:00+00:00,https://discord.com/channels/1/2/1004,1004
+https://example.com/empty-text,text,,Cy,2026-01-04T12:00:00+00:00,https://discord.com/channels/1/2/1004,1004

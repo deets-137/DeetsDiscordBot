@@ -1,0 +1,59 @@
+[
+ {
+  "accent_color": 14675196,
+  "components": [
+   {
+    "accessory": {
+     "description": null,
+     "media": {
+      "url": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/bb/45/68/bb4568f3-68cd-619d-fbcb-4e179916545d/BlondCover-Final.jpg/300x300bb.jpg"
+     },
+     "spoiler": false,
+     "type": 11
+    },
+    "components": [
+     {
+      "content": "-# Paused\n### Pink + White\nFrank Ocean · Blonde\n`0:58` ━━━━━●──────────── `3:05`\n-# 3:05 · paused at 0:58 · up next: White (feat. Frank Ocean) — Odd Future",
+      "type": 10
+     }
+    ],
+    "type": 9
+   },
+   {
+    "components": [
+     {
+      "custom_id": "<custom_id>",
+      "disabled": false,
+      "label": "⏮",
+      "style": 2,
+      "type": 2
+     },
+     {
+      "custom_id": "<custom_id>",
+      "disabled": false,
+      "label": "▶",
+      "style": 2,
+      "type": 2
+     },
+     {
+      "custom_id": "<custom_id>",
+      "disabled": false,
+      "label": "⏭",
+      "style": 2,
+      "type": 2
+     },
+     {
+      "custom_id": "<custom_id>",
+      "disabled": false,
+      "label": "Queue",
+      "style": 2,
+      "type": 2
+     }
+    ],
+    "type": 1
+   }
+  ],
+  "spoiler": false,
+  "type": 17
+ }
+]

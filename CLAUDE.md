@@ -72,6 +72,8 @@ and one line below.
 - `auto-route.md` — `/vc play` moves the app to a silent output by itself.
 - `friends-tapping.md` — why friends do not tap their own apps through this bot.
 - `rust-rewrite.md` — the scope of a Rust port: part by part, measured costs, benefits, order.
+- `rust-port-plan.md` — the build plan for agents: the two-process shape, IPC, work packages
+  P0–P8, the parity kit in `tests/parity/` (`scripts/parity/`) that each package must pass.
 
 **`docs/archive/`** — DeetsOTD's June vision and handoff, kept as a record.
 

@@ -1,0 +1,220 @@
+[
+ {
+  "contexts": null,
+  "default_member_permissions": null,
+  "description": "Control DeetsMusic from Discord.",
+  "dm_permission": true,
+  "integration_types": null,
+  "name": "dm",
+  "nsfw": false,
+  "options": [
+   {
+    "description": "What /dm can do, and what you can do right now.",
+    "name": "help",
+    "options": [],
+    "type": 1
+   },
+   {
+    "description": "What's playing, with controls.",
+    "name": "np",
+    "options": [],
+    "type": 1
+   },
+   {
+    "description": "Pause DeetsMusic.",
+    "name": "pause",
+    "options": [],
+    "type": 1
+   },
+   {
+    "description": "Resume DeetsMusic.",
+    "name": "resume",
+    "options": [],
+    "type": 1
+   },
+   {
+    "description": "Skip to the next song.",
+    "name": "skip",
+    "options": [],
+    "type": 1
+   },
+   {
+    "description": "Go back a song.",
+    "name": "back",
+    "options": [],
+    "type": 1
+   },
+   {
+    "description": "Add a song to Up Next.",
+    "name": "add",
+    "options": [
+     {
+      "autocomplete": true,
+      "description": "Start typing: suggestions appear. Enter on your own text takes a sure match or asks.",
+      "name": "song",
+      "required": true,
+      "type": 3
+     },
+     {
+      "description": "Play it next instead of last.",
+      "name": "next",
+      "required": false,
+      "type": 5
+     }
+    ],
+    "type": 1
+   },
+   {
+    "description": "Up Next, 10 songs a page.",
+    "name": "queue",
+    "options": [
+     {
+      "description": "Which page (default 1).",
+      "max_value": 999,
+      "min_value": 1,
+      "name": "page",
+      "required": false,
+      "type": 4
+     }
+    ],
+    "type": 1
+   },
+   {
+    "description": "Remove a song from Up Next by its row number.",
+    "name": "remove",
+    "options": [
+     {
+      "description": "Row number from /dm queue.",
+      "max_value": 9999,
+      "min_value": 1,
+      "name": "n",
+      "required": true,
+      "type": 4
+     }
+    ],
+    "type": 1
+   },
+   {
+    "description": "Move a song in Up Next.",
+    "name": "move",
+    "options": [
+     {
+      "description": "Row to move.",
+      "max_value": 9999,
+      "min_value": 1,
+      "name": "n",
+      "required": true,
+      "type": 4
+     },
+     {
+      "description": "Row it should end up at (1 = plays next).",
+      "max_value": 9999,
+      "min_value": 1,
+      "name": "to",
+      "required": true,
+      "type": 4
+     }
+    ],
+    "type": 1
+   },
+   {
+    "description": "Play a song now, replacing what's playing (host).",
+    "name": "play",
+    "options": [
+     {
+      "autocomplete": true,
+      "description": "Start typing: suggestions appear.",
+      "name": "song",
+      "required": true,
+      "type": 3
+     }
+    ],
+    "type": 1
+   },
+   {
+    "description": "Host: compare queue-row layouts (only you see it).",
+    "name": "preview",
+    "options": [],
+    "type": 1
+   },
+   {
+    "description": "The bot's volume in the call (host).",
+    "name": "volume",
+    "options": [
+     {
+      "description": "0–200; 100 = as DeetsMusic plays it.",
+      "max_value": 200,
+      "min_value": 0,
+      "name": "percent",
+      "required": true,
+      "type": 4
+     }
+    ],
+    "type": 1
+   }
+  ],
+  "type": 1
+ },
+ {
+  "contexts": null,
+  "default_member_permissions": null,
+  "description": "Scan this channel's history for hyperlinks.",
+  "dm_permission": true,
+  "integration_types": null,
+  "name": "links",
+  "nsfw": false,
+  "options": [
+   {
+    "description": "Max messages to scan (leave blank for all).",
+    "name": "limit",
+    "required": false,
+    "type": 4
+   }
+  ],
+  "type": 1
+ },
+ {
+  "contexts": null,
+  "default_member_permissions": null,
+  "description": "Play one of this PC's apps into a voice channel.",
+  "dm_permission": true,
+  "integration_types": null,
+  "name": "vc",
+  "nsfw": false,
+  "options": [
+   {
+    "description": "Join your voice channel and play an app's sound.",
+    "name": "play",
+    "options": [
+     {
+      "autocomplete": true,
+      "description": "The app's exe, e.g. deetsmusic.exe (suggestions are apps making sound now).",
+      "name": "app",
+      "required": true,
+      "type": 3
+     }
+    ],
+    "type": 1
+   },
+   {
+    "description": "Play a 5 s test tone (checks Discord's side, no app capture).",
+    "name": "tone",
+    "options": [],
+    "type": 1
+   },
+   {
+    "description": "Stop playing (stay in the channel).",
+    "name": "stop",
+    "options": [],
+    "type": 1
+   },
+   {
+    "description": "Stop and leave the voice channel.",
+    "name": "leave",
+    "options": [],
+    "type": 1
+   }
+  ],
+  "type": 1
+ }
+]

@@ -1,0 +1,138 @@
+[
+ {
+  "accent_color": 14675196,
+  "components": [
+   {
+    "content": "Which one? “humble”",
+    "type": 10
+   },
+   {
+    "accessory": {
+     "description": null,
+     "media": {
+      "url": "https://is1-ssl.mzstatic.com/image/thumb/Music112/v4/ab/16/ef/ab16efe9-e7f1-66ec-021c-5592a23f0f9e/17UMGIM88793.rgb.jpg/120x120bb.jpg"
+     },
+     "spoiler": false,
+     "type": 11
+    },
+    "components": [
+     {
+      "content": "`1` `2:57 | Clean   ` **HUMBLE.** · Kendrick Lamar\n-# DAMN.",
+      "type": 10
+     }
+    ],
+    "type": 9
+   },
+   {
+    "accessory": {
+     "description": null,
+     "media": {
+      "url": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/9f/8f/f9/9f8ff9e7-cbb4-efd6-1335-c0b001f2649a/20UMGIM30253.rgb.jpg/120x120bb.jpg"
+     },
+     "spoiler": false,
+     "type": 11
+    },
+    "components": [
+     {
+      "content": "`2` `3:12 | Explicit` **Humble** · Lil Baby\n-# My Turn (Deluxe)",
+      "type": 10
+     }
+    ],
+    "type": 9
+   },
+   {
+    "accessory": {
+     "description": null,
+     "media": {
+      "url": "https://is1-ssl.mzstatic.com/image/thumb/Music112/v4/86/c9/bb/86c9bb30-fe3d-442e-33c1-c106c4d23705/17UMGIM88776.rgb.jpg/120x120bb.jpg"
+     },
+     "spoiler": false,
+     "type": 11
+    },
+    "components": [
+     {
+      "content": "`3` `2:57 | Explicit` **HUMBLE.** · Kendrick Lamar\n-# DAMN.",
+      "type": 10
+     }
+    ],
+    "type": 9
+   },
+   {
+    "accessory": {
+     "description": null,
+     "media": {
+      "url": "https://is1-ssl.mzstatic.com/image/thumb/Music114/v4/88/8d/f9/888df907-51e2-cdf7-60f4-24b87a2c71b4/17UM1IM29711.rgb.jpg/120x120bb.jpg"
+     },
+     "spoiler": false,
+     "type": 11
+    },
+    "components": [
+     {
+      "content": "`4` `2:37 | Explicit` **HUMBLE. (SKRILLEX REMIX)** · Skrillex & Kendrick Lamar\n-# HUMBLE. (SKRILLEX REMIX) - Single",
+      "type": 10
+     }
+    ],
+    "type": 9
+   },
+   {
+    "accessory": {
+     "description": null,
+     "media": {
+      "url": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/84/3d/53/843d5301-b917-79bc-4b14-4551be46fb93/193436433228_HumbleArtworkDIGITALFINAL.jpg/120x120bb.jpg"
+     },
+     "spoiler": false,
+     "type": 11
+    },
+    "components": [
+     {
+      "content": "`5` `3:03 | None    ` **Humble** · Spencer Crandall\n-# Humble - Single",
+      "type": 10
+     }
+    ],
+    "type": 9
+   },
+   {
+    "components": [
+     {
+      "custom_id": "<custom_id>",
+      "disabled": false,
+      "label": "1",
+      "style": 2,
+      "type": 2
+     },
+     {
+      "custom_id": "<custom_id>",
+      "disabled": false,
+      "label": "2",
+      "style": 2,
+      "type": 2
+     },
+     {
+      "custom_id": "<custom_id>",
+      "disabled": false,
+      "label": "3",
+      "style": 2,
+      "type": 2
+     },
+     {
+      "custom_id": "<custom_id>",
+      "disabled": false,
+      "label": "4",
+      "style": 2,
+      "type": 2
+     },
+     {
+      "custom_id": "<custom_id>",
+      "disabled": false,
+      "label": "5",
+      "style": 2,
+      "type": 2
+     }
+    ],
+    "type": 1
+   }
+  ],
+  "spoiler": false,
+  "type": 17
+ }
+]

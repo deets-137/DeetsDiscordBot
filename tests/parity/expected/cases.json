@@ -1,0 +1,582 @@
+{
+ "bar": [
+  {
+   "bar": "●─────────────────",
+   "progress": 0
+  },
+  {
+   "bar": "●─────────────────",
+   "progress": 0.01
+  },
+  {
+   "bar": "━━━━●─────────────",
+   "progress": 0.25
+  },
+  {
+   "bar": "━━━━━━━━●─────────",
+   "progress": 0.5
+  },
+  {
+   "bar": "━━━━━━━━━━━━━━━━━●",
+   "progress": 0.99
+  },
+  {
+   "bar": "━━━━━━━━━━━━━━━━━●",
+   "progress": 1
+  }
+ ],
+ "clip": [
+  {
+   "n": 10,
+   "out": "xxxxxxxxx",
+   "text": "xxxxxxxxx"
+  },
+  {
+   "n": 10,
+   "out": "xxxxxxxxxx",
+   "text": "xxxxxxxxxx"
+  },
+  {
+   "n": 10,
+   "out": "xxxxxxxxx…",
+   "text": "xxxxxxxxxxx"
+  }
+ ],
+ "column_width": [
+  {
+   "durations_ms": [
+    122933,
+    248808,
+    185947,
+    76280,
+    307151,
+    1232869,
+    302347,
+    249191,
+    268813,
+    177922
+   ],
+   "width": 5
+  },
+  {
+   "durations_ms": [
+    142826,
+    165384,
+    221647,
+    120379,
+    216420,
+    153854,
+    314075,
+    160000,
+    249668,
+    230813
+   ],
+   "width": 4
+  },
+  {
+   "durations_ms": [
+    234093,
+    210285,
+    253387
+   ],
+   "width": 4
+  }
+ ],
+ "confident": [
+  {
+   "confident": false,
+   "results_of": "humble",
+   "term": "pink white frank"
+  },
+  {
+   "confident": false,
+   "results_of": "humble",
+   "term": "pink"
+  },
+  {
+   "confident": false,
+   "results_of": "humble",
+   "term": "humble"
+  },
+  {
+   "confident": true,
+   "results_of": "humble",
+   "term": "humble kendrick"
+  },
+  {
+   "confident": true,
+   "results_of": "humble",
+   "term": "hum"
+  },
+  {
+   "confident": false,
+   "results_of": "humble",
+   "term": "dna kendrick"
+  },
+  {
+   "confident": false,
+   "results_of": "humble",
+   "term": "kendrick lamar dna"
+  },
+  {
+   "confident": false,
+   "results_of": "humble",
+   "term": "rush 2112"
+  },
+  {
+   "confident": false,
+   "results_of": "humble",
+   "term": "2112"
+  },
+  {
+   "confident": false,
+   "results_of": "humble",
+   "term": "kyoto phoebe"
+  },
+  {
+   "confident": false,
+   "results_of": "humble",
+   "term": "zzzz"
+  },
+  {
+   "confident": false,
+   "results_of": "humble",
+   "term": ""
+  },
+  {
+   "confident": true,
+   "results_of": "pink white frank ocean",
+   "term": "pink white frank"
+  },
+  {
+   "confident": true,
+   "results_of": "pink white frank ocean",
+   "term": "pink"
+  },
+  {
+   "confident": false,
+   "results_of": "pink white frank ocean",
+   "term": "humble"
+  },
+  {
+   "confident": false,
+   "results_of": "pink white frank ocean",
+   "term": "humble kendrick"
+  },
+  {
+   "confident": false,
+   "results_of": "pink white frank ocean",
+   "term": "hum"
+  },
+  {
+   "confident": false,
+   "results_of": "pink white frank ocean",
+   "term": "dna kendrick"
+  },
+  {
+   "confident": false,
+   "results_of": "pink white frank ocean",
+   "term": "kendrick lamar dna"
+  },
+  {
+   "confident": false,
+   "results_of": "pink white frank ocean",
+   "term": "rush 2112"
+  },
+  {
+   "confident": false,
+   "results_of": "pink white frank ocean",
+   "term": "2112"
+  },
+  {
+   "confident": false,
+   "results_of": "pink white frank ocean",
+   "term": "kyoto phoebe"
+  },
+  {
+   "confident": false,
+   "results_of": "pink white frank ocean",
+   "term": "zzzz"
+  },
+  {
+   "confident": false,
+   "results_of": "pink white frank ocean",
+   "term": ""
+  },
+  {
+   "confident": false,
+   "results_of": "kendrick lamar dna",
+   "term": "pink white frank"
+  },
+  {
+   "confident": false,
+   "results_of": "kendrick lamar dna",
+   "term": "pink"
+  },
+  {
+   "confident": false,
+   "results_of": "kendrick lamar dna",
+   "term": "humble"
+  },
+  {
+   "confident": false,
+   "results_of": "kendrick lamar dna",
+   "term": "humble kendrick"
+  },
+  {
+   "confident": false,
+   "results_of": "kendrick lamar dna",
+   "term": "hum"
+  },
+  {
+   "confident": false,
+   "results_of": "kendrick lamar dna",
+   "term": "dna kendrick"
+  },
+  {
+   "confident": false,
+   "results_of": "kendrick lamar dna",
+   "term": "kendrick lamar dna"
+  },
+  {
+   "confident": false,
+   "results_of": "kendrick lamar dna",
+   "term": "rush 2112"
+  },
+  {
+   "confident": false,
+   "results_of": "kendrick lamar dna",
+   "term": "2112"
+  },
+  {
+   "confident": false,
+   "results_of": "kendrick lamar dna",
+   "term": "kyoto phoebe"
+  },
+  {
+   "confident": false,
+   "results_of": "kendrick lamar dna",
+   "term": "zzzz"
+  },
+  {
+   "confident": false,
+   "results_of": "kendrick lamar dna",
+   "term": ""
+  },
+  {
+   "confident": false,
+   "results_of": "rush 2112",
+   "term": "pink white frank"
+  },
+  {
+   "confident": false,
+   "results_of": "rush 2112",
+   "term": "pink"
+  },
+  {
+   "confident": false,
+   "results_of": "rush 2112",
+   "term": "humble"
+  },
+  {
+   "confident": false,
+   "results_of": "rush 2112",
+   "term": "humble kendrick"
+  },
+  {
+   "confident": false,
+   "results_of": "rush 2112",
+   "term": "hum"
+  },
+  {
+   "confident": false,
+   "results_of": "rush 2112",
+   "term": "dna kendrick"
+  },
+  {
+   "confident": false,
+   "results_of": "rush 2112",
+   "term": "kendrick lamar dna"
+  },
+  {
+   "confident": false,
+   "results_of": "rush 2112",
+   "term": "rush 2112"
+  },
+  {
+   "confident": false,
+   "results_of": "rush 2112",
+   "term": "2112"
+  },
+  {
+   "confident": false,
+   "results_of": "rush 2112",
+   "term": "kyoto phoebe"
+  },
+  {
+   "confident": false,
+   "results_of": "rush 2112",
+   "term": "zzzz"
+  },
+  {
+   "confident": false,
+   "results_of": "rush 2112",
+   "term": ""
+  },
+  {
+   "confident": false,
+   "results_of": "phoebe bridgers kyoto",
+   "term": "pink white frank"
+  },
+  {
+   "confident": false,
+   "results_of": "phoebe bridgers kyoto",
+   "term": "pink"
+  },
+  {
+   "confident": false,
+   "results_of": "phoebe bridgers kyoto",
+   "term": "humble"
+  },
+  {
+   "confident": false,
+   "results_of": "phoebe bridgers kyoto",
+   "term": "humble kendrick"
+  },
+  {
+   "confident": false,
+   "results_of": "phoebe bridgers kyoto",
+   "term": "hum"
+  },
+  {
+   "confident": false,
+   "results_of": "phoebe bridgers kyoto",
+   "term": "dna kendrick"
+  },
+  {
+   "confident": false,
+   "results_of": "phoebe bridgers kyoto",
+   "term": "kendrick lamar dna"
+  },
+  {
+   "confident": false,
+   "results_of": "phoebe bridgers kyoto",
+   "term": "rush 2112"
+  },
+  {
+   "confident": false,
+   "results_of": "phoebe bridgers kyoto",
+   "term": "2112"
+  },
+  {
+   "confident": false,
+   "results_of": "phoebe bridgers kyoto",
+   "term": "kyoto phoebe"
+  },
+  {
+   "confident": false,
+   "results_of": "phoebe bridgers kyoto",
+   "term": "zzzz"
+  },
+  {
+   "confident": false,
+   "results_of": "phoebe bridgers kyoto",
+   "term": ""
+  }
+ ],
+ "frozen_now": 1794340000,
+ "mmss": [
+  {
+   "seconds": 0,
+   "text": "0:00"
+  },
+  {
+   "seconds": 9.4,
+   "text": "0:09"
+  },
+  {
+   "seconds": 59.6,
+   "text": "1:00"
+  },
+  {
+   "seconds": 60,
+   "text": "1:00"
+  },
+  {
+   "seconds": 185.2,
+   "text": "3:05"
+  },
+  {
+   "seconds": 1232,
+   "text": "20:32"
+  },
+  {
+   "seconds": 6000,
+   "text": "100:00"
+  },
+  {
+   "seconds": null,
+   "text": "–:––"
+  }
+ ],
+ "rating_word": [
+  {
+   "contentRating": "explicit",
+   "word": "Explicit"
+  },
+  {
+   "contentRating": "clean",
+   "word": "Clean"
+  },
+  {
+   "contentRating": null,
+   "word": "None"
+  }
+ ],
+ "tag_alone": [
+  {
+   "catalogId": "506428588",
+   "tag": "`2:03 | Explicit`"
+  },
+  {
+   "catalogId": "1146195725",
+   "tag": "`4:09`"
+  },
+  {
+   "catalogId": "1440881990",
+   "tag": "`3:06 | Clean`"
+  },
+  {
+   "catalogId": "1440766795",
+   "tag": "`1:16`"
+  },
+  {
+   "catalogId": "1146195720",
+   "tag": "`5:07 | Explicit`"
+  },
+  {
+   "catalogId": "1445877164",
+   "tag": "`20:33`"
+  },
+  {
+   "catalogId": "1445302721",
+   "tag": "`5:02 | Explicit`"
+  },
+  {
+   "catalogId": "1146195713",
+   "tag": "`4:09 | Explicit`"
+  },
+  {
+   "catalogId": "1440766949",
+   "tag": "`4:29 | Explicit`"
+  },
+  {
+   "catalogId": "1146195727",
+   "tag": "`2:58`"
+  },
+  {
+   "catalogId": "1625405687",
+   "tag": "`2:23 | Explicit`"
+  },
+  {
+   "catalogId": "1507008389",
+   "tag": "`2:45 | Explicit`"
+  },
+  {
+   "catalogId": "1727607759",
+   "tag": "`3:42 | Explicit`"
+  },
+  {
+   "catalogId": "1711618969",
+   "tag": "`2:00 | Explicit`"
+  },
+  {
+   "catalogId": "1397556695",
+   "tag": "`3:36`"
+  },
+  {
+   "catalogId": "1460193258",
+   "tag": "`2:34`"
+  },
+  {
+   "catalogId": "1146195712",
+   "tag": "`5:14 | Explicit`"
+  },
+  {
+   "catalogId": "1250103954",
+   "tag": "`2:40 | Explicit`"
+  },
+  {
+   "catalogId": "1146195718",
+   "tag": "`4:10`"
+  },
+  {
+   "catalogId": "1233869909",
+   "tag": "`3:51 | Explicit`"
+  },
+  {
+   "catalogId": "1440766784",
+   "tag": "`3:54 | Explicit`"
+  },
+  {
+   "catalogId": "1214557446",
+   "tag": "`3:30 | Explicit`"
+  },
+  {
+   "catalogId": "433409598",
+   "tag": "`4:13 | Explicit`"
+  }
+ ],
+ "tag_column": [
+  {
+   "catalogId": "506428588",
+   "tag": "` 2:03 | Explicit`",
+   "width": 5
+  },
+  {
+   "catalogId": "1146195725",
+   "tag": "` 4:09 | None    `",
+   "width": 5
+  },
+  {
+   "catalogId": "1440881990",
+   "tag": "` 3:06 | Clean   `",
+   "width": 5
+  },
+  {
+   "catalogId": "1440766795",
+   "tag": "` 1:16 | None    `",
+   "width": 5
+  },
+  {
+   "catalogId": "1146195720",
+   "tag": "` 5:07 | Explicit`",
+   "width": 5
+  },
+  {
+   "catalogId": "1445877164",
+   "tag": "`20:33 | None    `",
+   "width": 5
+  },
+  {
+   "catalogId": "1445302721",
+   "tag": "` 5:02 | Explicit`",
+   "width": 5
+  },
+  {
+   "catalogId": "1146195713",
+   "tag": "` 4:09 | Explicit`",
+   "width": 5
+  },
+  {
+   "catalogId": "1440766949",
+   "tag": "` 4:29 | Explicit`",
+   "width": 5
+  },
+  {
+   "catalogId": "1146195727",
+   "tag": "` 2:58 | None    `",
+   "width": 5
+  }
+ ]
+}
