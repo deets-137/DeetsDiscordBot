@@ -190,8 +190,10 @@ def render_links() -> None:
         try:
             md, csv_path = linkscan.write_outputs(records, "song-of-the-day")
             write("links/output_name.txt", f"{md.name}\n{csv_path.name}")
-            write("links/output.md", md.read_text(encoding="utf-8").rstrip("\n"))
-            write("links/output.csv", csv_path.read_text(encoding="utf-8").rstrip("\n"))
+            # Byte for byte: Python's csv module ends rows with \r\n, and the port must too.
+            (OUT / "links").mkdir(parents=True, exist_ok=True)
+            (OUT / "links" / "output.md").write_bytes(md.read_bytes())
+            (OUT / "links" / "output.csv").write_bytes(csv_path.read_bytes())
         finally:
             linkscan.datetime, linkscan.EXPORTS_DIR = saved
 
