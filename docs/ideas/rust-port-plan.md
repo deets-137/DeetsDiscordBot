@@ -305,6 +305,9 @@ P0 → (P1, P2, P3, P4 in parallel) → P5 → P6 → P7 → P8.
   `/dm queue` failed (400 `COMPONENT_CUSTOM_ID_DUPLICATED`: on a first, last or only page ◀
   and ▶ clamped to the same `dm:queue:<page>`); the ids are now `dm:queue:<page>:<prev|next>`.
   The parity kit masks custom_ids, so it could not catch this.
+  **Network drops, built 2026-11-10 night** (beyond the Python bot, which had none of it):
+  ops/DEBUGGING.md §6 is the behaviour and its desk test. songbird's `EventHandler` is
+  implemented by hand (no `async-trait` crate).
 
 ### P6 · lildeets-logic: commands and permissions
 - **Reads:** `bot/app.py`, `bot/voice.py` (register), `bot/dm.py` (register, check),

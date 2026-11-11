@@ -4,8 +4,10 @@
 
 use lildeets_rest::routes::{self, deferred, response, MessageBody};
 use lildeets_rest::{File, Rest, RestError};
+use std::sync::atomic::{AtomicBool, Ordering};
+
 use serde_json::{json, Map, Value};
-use tracing::warn;
+use tracing::{info, warn};
 use twilight_model::channel::message::component::Component;
 use twilight_model::http::interaction::{InteractionResponseData, InteractionResponseType as T};
 
@@ -95,12 +97,49 @@ fn log(what: &str, r: Result<Value, RestError>) -> Result<Value, RestError> {
 }
 
 /// The answers, as discord.py makes them.
+///
+/// **A refused reply is rescinded** (the owner, 2026-11-10: "Delete + private note"). When a
+/// public "is thinking…" message is up and the reply that should replace it fails, the
+/// thinking message is deleted and only the asker gets a short private note. Without this
+/// the channel keeps a "thinking" message for good (two in Moshi's, 2026-11-10).
 pub struct Answer<'a> {
     pub rest: &'a Rest,
     pub ix: &'a Ix,
+    /// A public "is thinking…" message is up and no reply has replaced it yet.
+    thinking: AtomicBool,
 }
 
-impl Answer<'_> {
+impl<'a> Answer<'a> {
+    pub fn new(rest: &'a Rest, ix: &'a Ix) -> Self {
+        Self { rest, ix, thinking: AtomicBool::new(false) }
+    }
+
+    /// After a reply that should replace the thinking message: on success it is gone; when
+    /// Discord refused it, rescind it once. A network failure is not rescinded: the delete
+    /// and the note would fail the same way, and "Discord refused it" would be wrong.
+    async fn after_reply(&self, r: Result<Value, RestError>) -> Result<Value, RestError> {
+        match &r {
+            Ok(_) => self.thinking.store(false, Ordering::Relaxed),
+            Err(RestError::Status { .. }) if self.thinking.swap(false, Ordering::Relaxed) => self.rescind().await,
+            Err(_) => {}
+        }
+        r
+    }
+
+    async fn rescind(&self) {
+        let what = match self.ix.kind {
+            COMMAND => {
+                let (name, sub, _) = self.ix.command();
+                format!("`/{}`", if sub.is_empty() { name } else { format!("{name} {sub}") })
+            }
+            _ => "that".to_owned(),
+        };
+        let deleted = self.delete().await.is_ok();
+        let note = MessageBody::text(format!("Couldn't post the reply to {what}: Discord refused it."), true);
+        let told = log("rescind note", self.rest.send(&routes::followup(self.ix.app_id, &self.ix.token, &note, vec![])).await).is_ok();
+        info!(deleted, told, user = self.ix.user, "interaction: a refused reply; rescinded the thinking message");
+    }
+
     async fn callback(&self, kind: T, data: Option<InteractionResponseData>) -> Result<Value, RestError> {
         log("callback", self.rest.send(&routes::interaction_callback(self.ix.id, &self.ix.token, &response(kind, data))).await)
     }
@@ -117,7 +156,9 @@ impl Answer<'_> {
 
     /// `response.defer(ephemeral=…, thinking=True)`.
     pub async fn defer(&self, ephemeral: bool) -> Result<Value, RestError> {
-        log("defer", self.rest.send(&routes::interaction_callback(self.ix.id, &self.ix.token, &deferred(ephemeral))).await)
+        let r = log("defer", self.rest.send(&routes::interaction_callback(self.ix.id, &self.ix.token, &deferred(ephemeral))).await);
+        self.thinking.store(r.is_ok() && !ephemeral, Ordering::Relaxed);
+        r
     }
 
     /// A button's `response.defer()`: no visible change yet.
@@ -143,22 +184,22 @@ impl Answer<'_> {
 
     /// `followup.send(text, ephemeral=…)`.
     pub async fn follow_text(&self, content: impl Into<String>, ephemeral: bool) -> Result<Value, RestError> {
-        log("followup", self.rest.send(&routes::followup(self.ix.app_id, &self.ix.token, &MessageBody::text(content, ephemeral), vec![])).await)
+        self.after_reply(log("followup", self.rest.send(&routes::followup(self.ix.app_id, &self.ix.token, &MessageBody::text(content, ephemeral), vec![])).await)).await
     }
 
     /// `followup.send(view=…, ephemeral=…)`.
     pub async fn follow_card(&self, components: Vec<Component>, ephemeral: bool) -> Result<Value, RestError> {
-        log("followup", self.rest.send(&routes::followup(self.ix.app_id, &self.ix.token, &MessageBody::card(components, ephemeral), vec![])).await)
+        self.after_reply(log("followup", self.rest.send(&routes::followup(self.ix.app_id, &self.ix.token, &MessageBody::card(components, ephemeral), vec![])).await)).await
     }
 
     /// `followup.send(text, files=…, ephemeral=…)`.
     pub async fn follow_files(&self, content: impl Into<String>, files: Vec<File>, ephemeral: bool) -> Result<Value, RestError> {
-        log("followup", self.rest.send(&routes::followup(self.ix.app_id, &self.ix.token, &MessageBody::text(content, ephemeral), files)).await)
+        self.after_reply(log("followup", self.rest.send(&routes::followup(self.ix.app_id, &self.ix.token, &MessageBody::text(content, ephemeral), files)).await)).await
     }
 
     /// `edit_original_response(view=…)`.
     pub async fn edit_card(&self, components: Vec<Component>) -> Result<Value, RestError> {
-        log("edit", self.rest.send(&routes::edit_original(self.ix.app_id, &self.ix.token, &MessageBody::card(components, false))).await)
+        self.after_reply(log("edit", self.rest.send(&routes::edit_original(self.ix.app_id, &self.ix.token, &MessageBody::card(components, false))).await)).await
     }
 
     /// `delete_original_response()`.

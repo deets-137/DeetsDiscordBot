@@ -29,6 +29,26 @@ history is in `git log` and docs/archive/.
   rewrite; `bot/` to the archive; the merge into main. The host logs a WARN when it stops an
   old logic (os error 10054); it is expected and should be quiet (a host change: it goes
   live through the restart, so do it with him listening).
+- **Later the same night.** The two stuck "thinking" messages deleted by hand (REST, bot
+  token). His choice for a refused reply: "Delete + private note" (built, `ix.rs`). "My network
+  seems to drop often": the System log shows daily ephemeral-port exhaustion (Tcpip 4266/4231)
+  and Ethernet at 100 Mbps; a separate session hunts the cause. He said "Build it" to the
+  drop plan: the host now notices a lost call (songbird's DriverDisconnect), pauses
+  DeetsMusic, rejoins while someone is in the channel, plays again; follows a voice server
+  move; probes the network and swaps in a resuming shard instead of twilight's waits up to
+  255 s; re-sends presence after a new session. The watchers retry a failed write; the np
+  card stops only when deleted. Fixed: "Listening to" never cleared (twilight refused an
+  empty activity list); the 10054 warning is quiet. Live through the host restart at 04:55
+  (no call, back in 2 s). Desk test of the drops: ops/DEBUGGING.md §6.
+- **The UX pass (Sonnet agent) on the drop handling** found 15 items; 12 fixed and live
+  (05:01, second host restart, back in 2 s): one host-wide pause record for DeetsMusic (a
+  second drop, two servers, a command during a rejoin, a restart could leave it paused for
+  good); stale joins and captures dropped by driver number; a failed capture is not "back";
+  leave when alone after a rejoin or resume; a restart carries a rejoin in the resume file;
+  presence re-sent after any reconnect; the status watcher stops on a 4xx; a reply is
+  rescinded only when Discord refused it. Left: the guest wording during a drop (his call);
+  a rejoin may start before the gateway notices; the np card shows "paused" during a drop
+  (intended).
 
 ## 2026-11-10 (evening) — the Rust port, P0–P8, on branch `rust-rewrite`
 

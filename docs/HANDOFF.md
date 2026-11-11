@@ -36,8 +36,11 @@ updated: 2026-11-10
 
 ## Open now
 0. **Desk-test the Rust bot** (running since 2026-11-10 night). **Passed so far:** `/vc play`,
-   the status line, "Listening to", the logic swap. `/dm queue` failed (duplicated button
-   ids), fixed and swapped in: retry it. Still to try:
+   the status line, "Listening to", the logic swap, leave-when-alone, the host restart with
+   no call (04:55, back in 2 s). `/dm queue` failed (duplicated button ids), fixed and
+   swapped in: retry it. **New, not yet seen:** a refused reply is rescinded (the "thinking"
+   message deleted, a private note to the asker); the network-drop handling: desk test in
+   ops/DEBUGGING.md §6 (unplug the cable for 10 s, 60 s, 5 min). Still to try:
    `/vc play app:deetsmusic.exe` (DeetsMusic on this PC, not AirPlay), `/vc stop`, `/vc leave`;
    `/dm np` and its ⏮ ⏯ ⏭ Queue buttons; `/dm queue` (layout C) and ◀ ▶; `/dm add` with a
    suggestion and with free text (the picker); the channel status line and "Listening to";

@@ -53,7 +53,7 @@ pub async fn handle(ctx: Arc<Ctx>, event: Value) {
         warn!("interaction: unreadable");
         return;
     };
-    let a = Answer { rest: &ctx.rest, ix: &ix };
+    let a = Answer::new(&ctx.rest, &ix);
     match ix.kind {
         COMMAND => {
             let (name, sub, opts) = ix.command();
@@ -114,6 +114,10 @@ async fn check(ctx: &Ctx, ix: &Ix, action: &str) -> Option<String> {
     }
     let Some(rule) = rule(action) else { return Some("Only the host can do that.".into()) };
     if !ctx.tapping_app(guild) {
+        // The owner, 2026-11-10: a drop must not read as a rules problem.
+        if ctx.guild_voice(guild).is_some_and(|g| g.rejoining) {
+            return Some("Lil Deets lost the call and is getting back in.".into());
+        }
         return Some("/dm opens up to everyone while the host is playing DeetsMusic in voice.".into());
     }
     let bot_channel = ctx.guild_voice(guild).and_then(|g| g.bot_channel)?;

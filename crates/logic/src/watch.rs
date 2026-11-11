@@ -56,29 +56,45 @@ pub async fn status_watcher(ctx: Arc<Ctx>) {
         }
         for &cid in &live {
             let want = line.clone().unwrap_or_default();
-            if channel_line.get(&cid) != Some(&want) {
-                set_status(&ctx, cid, &want, &mut warned).await;
+            // Remembered only once Discord took it: a write lost to a network drop is tried
+            // again on the next look (every 5 s), not left stale until the next song.
+            if channel_line.get(&cid) != Some(&want) && set_status(&ctx, cid, &want, &mut warned).await {
                 channel_line.insert(cid, want);
             }
         }
         let gone: Vec<u64> = channel_line.keys().copied().filter(|c| !live.contains(c)).collect();
         for cid in gone {
-            set_status(&ctx, cid, "", &mut warned).await;
-            channel_line.remove(&cid);
+            if set_status(&ctx, cid, "", &mut warned).await {
+                channel_line.remove(&cid);
+            }
         }
     }
 }
 
-async fn set_status(ctx: &Ctx, channel: u64, line: &str, warned: &mut HashSet<u64>) {
+/// Writes a channel's status. True when it is settled: written, or refused for good (403:
+/// no permission, or the bot has left the channel; Discord clears an empty channel's status).
+async fn set_status(ctx: &Ctx, channel: u64, line: &str, warned: &mut HashSet<u64>) -> bool {
     let status = clip(line, STATUS_MAX);
     match ctx.rest.send(&routes::put_voice_status(channel, &status)).await {
-        Ok(_) => info!(channel, %status, "status watcher: channel status"),
+        Ok(_) => {
+            info!(channel, %status, "status watcher: channel status");
+            true
+        }
         Err(RestError::Status { status: 403, .. }) => {
             if warned.insert(channel) {
-                warn!(channel, "status watcher: no Set Voice Channel Status permission there; skipping its status");
+                warn!(channel, "status watcher: no Set Voice Channel Status permission there (or not in the channel); skipping its status");
             }
+            true
         }
-        Err(e) => warn!(channel, error = %e, "status watcher: channel status"),
+        // Any other refusal (the channel is gone, a bad request) will not change on a retry.
+        Err(RestError::Status { status, .. }) if (400..500).contains(&status) && status != 429 => {
+            warn!(channel, status, "status watcher: Discord refused the channel status; not retrying");
+            true
+        }
+        Err(e) => {
+            warn!(channel, error = %e, "status watcher: channel status not written; trying again in 5 s");
+            false
+        }
     }
 }
 
@@ -99,13 +115,21 @@ pub fn watch_np(ctx: Arc<Ctx>, channel: u64, card_channel: u64, message: u64, gu
                 None => last = Some(key),
                 Some(k) if *k == key => {}
                 Some(_) => {
-                    last = Some(key);
                     let Ok(card) = crate::commands::np_card(&ctx, guild).await else { continue };
-                    if let Err(e) = ctx.rest.send(&routes::edit_message(card_channel, message, &MessageBody::card(card, false))).await {
-                        warn!(channel, error = %e, "np watcher: the edit failed; stopping");
-                        return;
+                    match ctx.rest.send(&routes::edit_message(card_channel, message, &MessageBody::card(card, false))).await {
+                        Ok(_) => {
+                            last = Some(key);
+                            info!(channel, message, "np watcher: edited (song or play state changed)");
+                        }
+                        // The card is gone (deleted) or out of reach: nothing left to edit.
+                        Err(RestError::Status { status: 403 | 404, .. }) => {
+                            info!(channel, message, "np watcher: the card is gone; stopping");
+                            return;
+                        }
+                        // A network drop or a Discord hiccup: `last` stays, so the next look
+                        // (5 s) tries the edit again.
+                        Err(e) => warn!(channel, error = %e, "np watcher: the edit failed; trying again in 5 s"),
                     }
-                    info!(channel, message, "np watcher: edited (song or play state changed)");
                 }
             }
         }

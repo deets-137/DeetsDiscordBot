@@ -54,6 +54,7 @@ use tokio::process::Child;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 use twilight_gateway::{Event, EventTypeFlags, Intents, MessageSender, Shard, ShardId, StreamExt as _};
+use twilight_model::gateway::payload::outgoing::update_presence::UpdatePresencePayload;
 use twilight_model::gateway::payload::outgoing::{UpdatePresence, UpdateVoiceState};
 use twilight_model::gateway::presence::{ActivityType, MinimalActivity, Status};
 use twilight_model::id::marker::{ChannelMarker, GuildMarker};
@@ -77,6 +78,13 @@ const DEETSMUSIC: &str = "deetsmusic.exe";
 const DAVE_SETTLE: Duration = Duration::from_secs(2);
 /// The command-sync record of `lildeets-logic` (crates/logic commands.rs). Cleared at start.
 const SYNC_FILE: &str = ".lildeets-commands.sync";
+/// The network probe while the gateway is down: the gateway's host, how soon after the
+/// close, how often (also the connect timeout), and the least time between shard swaps.
+const PROBE_HOST: &str = "gateway.discord.gg:443";
+const PROBE_AFTER: Duration = Duration::from_secs(3);
+const PROBE_EVERY: Duration = Duration::from_secs(3);
+const REPLACE_EVERY: Duration = Duration::from_secs(15);
+const INTENTS: Intents = Intents::GUILDS.union(Intents::GUILD_VOICE_STATES);
 const JOIN_TIMEOUT: Duration = Duration::from_secs(15);
 const TONE_SECS: u64 = 5;
 
@@ -108,12 +116,68 @@ enum Inbox {
     /// A logic process connected and sent this Hello.
     Hello { token: String, version: u32, reader: tokio::net::tcp::OwnedReadHalf, writer: OwnedWriteHalf },
     FromLogic { gen: u64, msg: ToHost },
-    LogicGone { gen: u64 },
+    /// The logic's connection ended; `error` when it was not a clean close.
+    LogicGone { gen: u64, error: Option<String> },
     /// `sound` is `None` for a join with nothing to play (a resume of a silent call).
-    Connected { guild: u64, request_id: u64, channel: u64, sound: Option<Sound>, result: Result<(), String> },
-    TapOpened { guild: u64, request_id: u64, exe: String, result: Result<TapStream, String> },
+    /// `gen`: the driver it was for; a newer driver (a leave, a newer join) drops it.
+    Connected { guild: u64, gen: u64, request_id: u64, channel: u64, sound: Option<Sound>, result: Result<(), String> },
+    TapOpened { guild: u64, gen: u64, request_id: u64, exe: String, result: Result<TapStream, String> },
     /// The song boundary came (or no wait was needed): restart now.
     RestartNow { paused_by_us: bool },
+    /// songbird gave up on a call (its own retries failed). `gen` is the driver's.
+    VoiceLost { guild: u64, gen: u64, reason: String },
+    /// The pause asked for when a call was lost: did we pause DeetsMusic?
+    LostPaused { paused: bool },
+    /// A call moved to a new voice server (VOICE_SERVER_UPDATE): songbird's reconnect.
+    Moved { guild: u64, gen: u64, result: Result<(), String> },
+    /// The gateway is down and Discord answered a TCP probe: the network is back.
+    ProbeOk,
+}
+
+/// songbird's driver events for one call, into the main loop (rule 12: log what acts alone).
+/// Written without `async_trait` (no new crate): the boxed future is what that macro makes.
+struct DriverEvents {
+    guild: u64,
+    gen: u64,
+    inbox: mpsc::UnboundedSender<Inbox>,
+}
+
+impl songbird::EventHandler for DriverEvents {
+    fn act<'life0, 'life1, 'life2, 'async_trait>(
+        &'life0 self,
+        ctx: &'life1 songbird::EventContext<'life2>,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Option<songbird::Event>> + Send + 'async_trait>>
+    where
+        'life0: 'async_trait,
+        'life1: 'async_trait,
+        'life2: 'async_trait,
+        Self: 'async_trait,
+    {
+        use songbird::events::context_data::DisconnectReason as R;
+        match ctx {
+            songbird::EventContext::DriverDisconnect(d) => match &d.reason {
+                // Ours (a leave, a new connect on this driver): nothing was lost.
+                None | Some(R::Requested) | Some(R::AttemptDiscarded) => {}
+                Some(reason) => {
+                    let _ = self.inbox.send(Inbox::VoiceLost { guild: self.guild, gen: self.gen, reason: format!("{:?}: {reason:?}", d.kind) });
+                }
+            },
+            songbird::EventContext::DriverReconnect(_) => info!(guild = self.guild, "voice: songbird reconnected the call by itself"),
+            _ => {}
+        }
+        Box::pin(async { None })
+    }
+}
+
+/// A call the bot lost and is getting back (the owner, 2026-11-10: "Build it").
+struct Lost {
+    channel: u64,
+    app: Option<String>,
+    since: Instant,
+    next_try: Instant,
+    tries: u32,
+    /// A join for it is in flight.
+    rejoining: bool,
 }
 
 // --- voice state --------------------------------------------------------------------------
@@ -127,7 +191,11 @@ enum Playing {
 
 struct Call {
     driver: Driver,
+    /// This driver's number: songbird events from an older driver are ignored.
+    gen: u64,
     channel: Option<u64>,
+    /// Our voice session (VOICE_STATE_UPDATE), for a move to a new voice server.
+    session: Option<String>,
     connected: bool,
     playing: Playing,
     track: Option<TrackHandle>,
@@ -270,8 +338,25 @@ struct Host {
     bridge: Arc<Bridge>,
     /// A rebuilt host is waiting for its song boundary.
     restarting: bool,
-    /// After a resume: the guilds still joining, and whether we paused DeetsMusic.
-    resume_wait: Option<(HashSet<u64>, bool)>,
+    /// We paused DeetsMusic (a drop, a restart) and owe it a play (`maybe_resume_dm`).
+    dm_paused: bool,
+    /// Guilds whose GUILD_CREATE (the voice list) has arrived.
+    loaded: HashSet<u64>,
+    /// A change the logic has not seen yet (set where `push_snapshot` cannot be awaited).
+    snapshot_stale: bool,
+    /// Calls lost to a network drop, being rejoined.
+    lost: HashMap<u64, Lost>,
+    /// The next driver's number.
+    driver_gen: u64,
+    /// "Listening to", as last asked: sent again after a new gateway session.
+    listening: Option<String>,
+    /// How many READYs: from the second on, Discord has forgotten presence and voice.
+    readies: u32,
+    /// Since when the gateway is down (a GatewayClose with no READY / RESUMED since).
+    gateway_down: Option<Instant>,
+    /// When the last TCP probe was sent, and when the shard was last replaced.
+    last_probe: Instant,
+    last_replace: Instant,
 }
 
 impl Host {
@@ -307,8 +392,10 @@ impl Host {
     }
 
     fn snapshot(&self) -> Vec<GuildVoice> {
-        self.calls
+        let mut v: Vec<GuildVoice> = self
+            .calls
             .iter()
+            .filter(|(g, _)| !self.lost.contains_key(*g))
             .filter_map(|(g, c)| {
                 let channel = c.channel?;
                 Some(GuildVoice {
@@ -321,9 +408,21 @@ impl Host {
                     gain: self.gain(*g),
                     dave_ready: c.connected,
                     members_in_bot_channel: self.people_in(channel),
+                    rejoining: false,
                 })
             })
-            .collect()
+            .collect();
+        // A call being rejoined after a drop: not in it yet, but on its way back.
+        v.extend(self.lost.keys().map(|g| GuildVoice {
+            guild: *g,
+            bot_channel: None,
+            tapping_app: None,
+            gain: self.gain(*g),
+            dave_ready: false,
+            members_in_bot_channel: Vec::new(),
+            rejoining: true,
+        }));
+        v
     }
 
     async fn push_snapshot(&mut self, request_id: Option<u64>) {
@@ -339,13 +438,16 @@ impl Host {
     }
 
     fn call(&mut self, guild: u64) -> &mut Call {
-        self.calls.entry(guild).or_insert_with(|| Call {
-            driver: Driver::new(Config::default()),
-            channel: None,
-            connected: false,
-            playing: Playing::Nothing,
-            track: None,
-        })
+        if !self.calls.contains_key(&guild) {
+            self.driver_gen += 1;
+            let gen = self.driver_gen;
+            let mut driver = Driver::new(Config::default());
+            for event in [songbird::CoreEvent::DriverDisconnect, songbird::CoreEvent::DriverReconnect] {
+                driver.add_global_event(songbird::Event::Core(event), DriverEvents { guild, gen, inbox: self.inbox.clone() });
+            }
+            self.calls.insert(guild, Call { driver, gen, channel: None, session: None, connected: false, playing: Playing::Nothing, track: None });
+        }
+        self.calls.get_mut(&guild).expect("inserted")
     }
 
     // --- voice ops ------------------------------------------------------------------------
@@ -381,15 +483,18 @@ impl Host {
         }
         let p = self.pending.remove(&guild).expect("checked");
         let (token, endpoint) = p.server.expect("checked");
+        let session = p.session.expect("checked");
         let info = ConnectionInfo {
             channel_id: nz(p.channel).into(),
             endpoint,
             guild_id: nz(guild).into(),
-            session_id: p.session.expect("checked"),
+            session_id: session.clone(),
             token,
             user_id: nz(me).into(),
         };
-        let connect = self.call(guild).driver.connect(info);
+        let call = self.call(guild);
+        call.session = Some(session);
+        let (connect, gen) = (call.driver.connect(info), call.gen);
         let inbox = self.inbox.clone();
         let (request_id, channel, sound) = (p.request_id, p.channel, p.sound);
         tokio::spawn(async move {
@@ -398,7 +503,7 @@ impl Host {
             if result.is_ok() {
                 info!(guild, channel, ms = started.elapsed().as_millis() as u64, "voice: connected (DAVE by songbird)");
             }
-            let _ = inbox.send(Inbox::Connected { guild, request_id, channel, sound, result });
+            let _ = inbox.send(Inbox::Connected { guild, gen, request_id, channel, sound, result });
         });
     }
 
@@ -418,15 +523,22 @@ impl Host {
             Sound::App { exe } => {
                 let exe = if exe.to_ascii_lowercase().ends_with(".exe") { exe } else { format!("{exe}.exe") };
                 let inbox = self.inbox.clone();
+                let gen = self.calls.get(&guild).map_or(0, |c| c.gen);
                 tokio::task::spawn_blocking(move || {
                     let result = TapStream::for_exe(&exe);
-                    let _ = inbox.send(Inbox::TapOpened { guild, request_id, exe, result });
+                    let _ = inbox.send(Inbox::TapOpened { guild, gen, request_id, exe, result });
                 });
             }
         }
     }
 
-    async fn tap_opened(&mut self, guild: u64, request_id: u64, exe: String, result: Result<TapStream, String>) {
+    async fn tap_opened(&mut self, guild: u64, gen: u64, request_id: u64, exe: String, result: Result<TapStream, String>) {
+        // The call this capture was opened for is gone (a leave, or a newer join).
+        if !self.calls.get(&guild).is_some_and(|c| c.gen == gen && c.connected) {
+            debug!(guild, gen, %exe, "voice: a capture for an older call; dropped");
+            self.done(request_id, Some("The bot left that call before the app started.".into())).await;
+            return;
+        }
         match result {
             Ok(tap) => {
                 info!(guild, %exe, note = tap.format_note(), "voice: streaming");
@@ -438,6 +550,7 @@ impl Host {
                 call.playing = Playing::App(exe);
                 self.done(request_id, None).await;
                 self.push_snapshot(None).await;
+                self.maybe_resume_dm("a call hears DeetsMusic again");
             }
             Err(e) => {
                 if request_id == 0 {
@@ -449,28 +562,155 @@ impl Host {
         self.settled(guild);
     }
 
-    /// One resumed guild has joined and started (or failed to). When the last one has, and
-    /// the old host paused DeetsMusic, play it again after [`DAVE_SETTLE`].
+    /// A join or a capture for `guild` finished (or failed).
     fn settled(&mut self, guild: u64) {
-        let Some((waiting, _)) = self.resume_wait.as_mut() else { return };
-        if !waiting.remove(&guild) || !waiting.is_empty() {
-            return;
-        }
-        let (_, paused_by_us) = self.resume_wait.take().expect("checked");
-        if paused_by_us {
-            self.resume_deetsmusic();
-        } else {
-            info!("resume: back after the restart");
+        self.rejoin_settled(guild);
+    }
+
+    fn taps_dm(c: &Call) -> bool {
+        c.connected && matches!(&c.playing, Playing::App(exe) if exe.eq_ignore_ascii_case(DEETSMUSIC))
+    }
+
+    /// Plays DeetsMusic again if we paused it (a drop, a restart), only once a call hears it
+    /// and no call that heard it is still lost. One DeetsMusic serves every call, so this is
+    /// one flag for the host, not one per call. Nobody listening: it stays paused.
+    fn maybe_resume_dm(&mut self, why: &'static str) {
+        let dm_lost = self.lost.values().any(|l| l.app.as_deref().is_some_and(|a| a.eq_ignore_ascii_case(DEETSMUSIC)));
+        if self.dm_paused && !dm_lost && self.calls.values().any(Self::taps_dm) {
+            self.dm_paused = false;
+            self.resume_deetsmusic(why);
         }
     }
 
-    fn resume_deetsmusic(&self) {
+    /// Plays DeetsMusic again after [`DAVE_SETTLE`] (we paused it; the call hears again).
+    fn resume_deetsmusic(&self, why: &'static str) {
         let bridge = self.bridge.clone();
         tokio::spawn(async move {
             tokio::time::sleep(DAVE_SETTLE).await;
             match bridge.command("play", None).await {
-                Ok(_) => info!("resume: back after the restart; DeetsMusic playing again"),
-                Err(e) => warn!(error = %e, "resume: back after the restart, but DeetsMusic could not be resumed"),
+                Ok(_) => info!(why, "resume: DeetsMusic playing again"),
+                Err(e) => warn!(why, error = %e, "resume: DeetsMusic could not be resumed"),
+            }
+        });
+    }
+
+    // --- network drops (docs/ops/DEBUGGING.md, "the network dropped") -----------------------
+
+    /// The bot lost its call in `guild` (songbird gave up, or a new gateway session dropped
+    /// it): forget the driver, pause DeetsMusic if the call was hearing it, and rejoin from
+    /// [`Host::tick`] while a person is still in the channel.
+    async fn lose_call(&mut self, guild: u64, why: &str) {
+        let Some(mut call) = self.calls.remove(&guild) else { return };
+        call.driver.leave();
+        let Some(channel) = call.channel else { return };
+        let app = match &call.playing {
+            Playing::App(exe) => Some(exe.clone()),
+            _ => None,
+        };
+        warn!(guild, channel, why, app = app.as_deref().unwrap_or("-"), "voice: lost the call; rejoining it");
+        // Discord may still list us in the channel; a clean leave makes the rejoin start fresh.
+        self.op4(guild, None);
+        // Pause only if no other call still hears DeetsMusic (one DeetsMusic serves them all).
+        let was_dm = app.as_deref().is_some_and(|a| a.eq_ignore_ascii_case(DEETSMUSIC));
+        if was_dm && !self.calls.values().any(Self::taps_dm) {
+            let (bridge, inbox) = (self.bridge.clone(), self.inbox.clone());
+            tokio::spawn(async move {
+                let paused = pause_if_playing(&bridge).await;
+                if paused {
+                    info!(guild, "voice: paused DeetsMusic while the call can't hear it");
+                }
+                let _ = inbox.send(Inbox::LostPaused { paused });
+            });
+        }
+        let now = Instant::now();
+        // A second drop before the first rejoin finished keeps its start time and tries.
+        let (since, tries) = self.lost.get(&guild).map_or((now, 0), |l| (l.since, l.tries));
+        self.lost.insert(guild, Lost { channel, app, since, next_try: now + Duration::from_secs(2), tries, rejoining: false });
+        self.push_snapshot(None).await;
+    }
+
+    /// Drops a rejoin in progress for `guild`. True if there was one.
+    fn forget_lost(&mut self, guild: u64, by: &str) -> bool {
+        let Some(l) = self.lost.remove(&guild) else { return false };
+        self.snapshot_stale = true;
+        info!(guild, by, dm_paused = self.dm_paused, "voice: the rejoin is cancelled by a command");
+        if l.rejoining {
+            self.op4(guild, None);
+            self.pending.remove(&guild);
+            self.calls.remove(&guild);
+        }
+        // Another call may still hear DeetsMusic; a /vc play of it resumes from tap_opened.
+        self.maybe_resume_dm("a lost call was cancelled; another call hears DeetsMusic");
+        true
+    }
+
+    /// Once a second: start the rejoins that are due (only while the gateway is up).
+    async fn rejoin_due(&mut self) {
+        if self.gateway_down.is_some() {
+            return;
+        }
+        let now = Instant::now();
+        let due: Vec<u64> = self.lost.iter().filter(|(_, l)| !l.rejoining && now >= l.next_try).map(|(g, _)| *g).collect();
+        for guild in due {
+            // Until its GUILD_CREATE, a guild's voice list is empty: wait for it.
+            if !self.loaded.contains(&guild) {
+                continue;
+            }
+            let channel = self.lost[&guild].channel;
+            if self.people_in(channel).is_empty() {
+                self.lost.remove(&guild);
+                self.snapshot_stale = true;
+                info!(guild, channel, dm_paused = self.dm_paused, "voice: nobody is left in the channel; not rejoining");
+                self.maybe_resume_dm("a lost call was given up; another call hears DeetsMusic");
+                continue;
+            }
+            let l = self.lost.get_mut(&guild).expect("listed");
+            l.rejoining = true;
+            l.tries += 1;
+            let (tries, app) = (l.tries, l.app.clone());
+            info!(guild, channel, tries, "voice: rejoining the lost call");
+            self.play(0, guild, channel, app.map(|exe| Sound::App { exe })).await;
+        }
+    }
+
+    /// A rejoin's join finished (or failed): back, or try again later.
+    fn rejoin_settled(&mut self, guild: u64) {
+        if !self.lost.get(&guild).is_some_and(|l| l.rejoining) {
+            return;
+        }
+        // Back means in the call AND hearing the app again (a failed capture is not back:
+        // the next try finds the call ready and only opens the capture again).
+        let wanted = self.lost[&guild].app.is_some();
+        let back = self.calls.get(&guild).is_some_and(|c| c.connected && (!wanted || matches!(c.playing, Playing::App(_))));
+        if back {
+            let l = self.lost.remove(&guild).expect("checked");
+            self.snapshot_stale = true;
+            info!(guild, secs = l.since.elapsed().as_secs(), tries = l.tries, "voice: back in the call");
+            // If everyone left during the handshake, `alone_check` (each second) leaves.
+            self.maybe_resume_dm("back in the call after a drop");
+        } else {
+            let l = self.lost.get_mut(&guild).expect("checked");
+            l.rejoining = false;
+            let wait = Duration::from_secs((2u64 << l.tries.min(3)).min(15));
+            l.next_try = Instant::now() + wait;
+            warn!(guild, tries = l.tries, wait_secs = wait.as_secs(), "voice: the rejoin failed; trying again");
+        }
+    }
+
+    /// Once a second while the gateway is down: every 3 s, can Discord be reached? (One TCP
+    /// connect to the gateway's host; no Discord API call.) twilight's own retry waits grow
+    /// to 255 s, so the host replaces the shard once the network answers.
+    fn probe_if_down(&mut self) {
+        let Some(since) = self.gateway_down else { return };
+        if since.elapsed() < PROBE_AFTER || self.last_probe.elapsed() < PROBE_EVERY {
+            return;
+        }
+        self.last_probe = Instant::now();
+        let inbox = self.inbox.clone();
+        tokio::spawn(async move {
+            let ok = matches!(tokio::time::timeout(PROBE_EVERY, tokio::net::TcpStream::connect(PROBE_HOST)).await, Ok(Ok(_)));
+            if ok {
+                let _ = inbox.send(Inbox::ProbeOk);
             }
         });
     }
@@ -488,18 +728,25 @@ impl Host {
         let bridge = self.bridge.clone();
         let inbox = self.inbox.clone();
         tokio::spawn(async move {
-            let paused_by_us = if playing_dm { wait_for_boundary(&bridge).await } else { false };
+            let paused_by_us = if playing_dm {
+                wait_for_boundary(&bridge).await;
+                pause_if_playing(&bridge).await
+            } else {
+                false
+            };
             let _ = inbox.send(Inbox::RestartNow { paused_by_us });
         });
     }
 
-    /// Where every call is, for the new host (bot/live.py `restart`'s fields).
+    /// Where every call is, for the new host (bot/live.py `restart`'s fields). A call being
+    /// rejoined after a drop is written too, so the new host carries on with it, and a
+    /// pause owed from a drop counts as ours.
     fn resume_state(&self, paused_by_us: bool) -> Value {
         let at = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).map(|d| d.as_secs_f64()).unwrap_or(0.0);
-        let streams: Vec<Value> = self
+        let mut streams: Vec<Value> = self
             .calls
             .iter()
-            .filter(|(_, c)| c.connected)
+            .filter(|(g, c)| c.connected && !self.lost.contains_key(*g))
             .filter_map(|(g, c)| {
                 let app = match &c.playing {
                     Playing::App(exe) => Some(exe.clone()),
@@ -508,7 +755,8 @@ impl Host {
                 Some(serde_json::json!({"guild": g, "channel": c.channel?, "app": app, "gain": self.gain(*g)}))
             })
             .collect();
-        serde_json::json!({"at": at, "paused_by_us": paused_by_us, "streams": streams, "reason": ["lildeets-host.exe"]})
+        streams.extend(self.lost.iter().map(|(g, l)| serde_json::json!({"guild": g, "channel": l.channel, "app": l.app, "gain": self.gain(*g)})));
+        serde_json::json!({"at": at, "paused_by_us": paused_by_us || self.dm_paused, "streams": streams, "reason": ["lildeets-host.exe"]})
     }
 
     fn is_playing(&self, guild: u64) -> bool {
@@ -558,17 +806,27 @@ impl Host {
         self.push_snapshot(None).await;
     }
 
+    /// Sets "Listening to …", or clears it. Built by hand: twilight's `UpdatePresence::new`
+    /// refuses an empty activity list, which is how Discord clears one (seen 2026-11-10).
     fn presence(&self, listening: Option<String>) {
         let activities = listening
             .map(|name| vec![MinimalActivity { kind: ActivityType::Listening, name, url: None }.into()])
             .unwrap_or_default();
-        match UpdatePresence::new(activities, false, None, Status::Online) {
-            Ok(cmd) => {
-                if let Err(e) = self.sender.command(&cmd) {
-                    warn!(error = %e, "gateway: presence could not be sent");
-                }
-            }
-            Err(e) => warn!(error = %e, "gateway: presence refused"),
+        let cmd = UpdatePresence {
+            d: UpdatePresencePayload { activities, afk: false, since: None, status: Status::Online },
+            op: twilight_model::gateway::OpCode::PresenceUpdate,
+        };
+        if let Err(e) = self.sender.command(&cmd) {
+            warn!(error = %e, "gateway: presence could not be sent");
+        }
+    }
+
+    fn gateway_up(&mut self, how: &str) {
+        if let Some(since) = self.gateway_down.take() {
+            info!(how, secs = since.elapsed().as_secs(), "gateway: back");
+            // A new session forgot "Listening to"; a swapped shard lost what was queued on
+            // the old sender. Either way: send it again (one gateway op).
+            self.presence(self.listening.clone());
         }
     }
 
@@ -579,11 +837,30 @@ impl Host {
                 let channel = self.voice.get(&user).filter(|(g, _)| *g == guild).map(|(_, c)| *c);
                 self.send_logic(ToLogic::MemberVoice { request_id, user, guild, channel }).await;
             }
-            ToHost::Play { request_id, guild, channel, sound } => self.play(request_id, guild, channel, Some(sound)).await,
-            ToHost::Stop { request_id, guild } => self.stop(request_id, guild).await,
-            ToHost::Leave { request_id, guild } => self.leave(request_id, guild, "asked").await,
+            // A person's /vc command replaces a rejoin in progress.
+            ToHost::Play { request_id, guild, channel, sound } => {
+                self.forget_lost(guild, "/vc play");
+                self.play(request_id, guild, channel, Some(sound)).await;
+            }
+            ToHost::Stop { request_id, guild } => {
+                if self.forget_lost(guild, "/vc stop") {
+                    self.done(request_id, None).await;
+                } else {
+                    self.stop(request_id, guild).await;
+                }
+            }
+            ToHost::Leave { request_id, guild } => {
+                if self.forget_lost(guild, "/vc leave") {
+                    self.done(request_id, None).await;
+                } else {
+                    self.leave(request_id, guild, "asked").await;
+                }
+            }
             ToHost::SetGain { request_id, guild, gain } => self.set_gain(request_id, guild, gain).await,
-            ToHost::Presence { listening } => self.presence(listening),
+            ToHost::Presence { listening } => {
+                self.listening = listening.clone();
+                self.presence(listening);
+            }
             ToHost::Snapshot { request_id } => self.push_snapshot(Some(request_id)).await,
         }
     }
@@ -596,19 +873,40 @@ impl Host {
                 self.me = Some(ready.user.id.get());
                 self.app_id = Some(ready.application.id.get());
                 self.guilds = ready.guilds.iter().map(|g| g.id.get()).collect();
-                info!(user = %ready.user.name, guilds = self.guilds.len(), "gateway: ready");
+                self.readies += 1;
+                self.gateway_up("a new session");
+                info!(user = %ready.user.name, guilds = self.guilds.len(), session = self.readies, "gateway: ready");
                 self.send_ready().await;
+            }
+            Event::Resumed => self.gateway_up("resumed"),
+            Event::GatewayClose(frame) => {
+                if self.gateway_down.is_none() {
+                    self.gateway_down = Some(Instant::now());
+                    warn!(code = frame.as_ref().map(|f| f.code), "gateway: the connection closed; twilight reconnects, and the host probes the network");
+                }
             }
             Event::GuildCreate(gc) => {
                 if let twilight_model::gateway::payload::incoming::GuildCreate::Available(g) = &*gc {
+                    let gid = g.id.get();
+                    self.loaded.insert(gid);
                     self.bots.extend(g.members.iter().filter(|m| m.user.bot).map(|m| m.user.id.get()));
+                    // The guild's whole voice list: drop what we had (people who left while
+                    // the gateway was down), then take Discord's.
+                    self.voice.retain(|_, (vg, _)| *vg != gid);
                     for vs in &g.voice_states {
                         if let Some(c) = vs.channel_id {
-                            self.voice.insert(vs.user_id.get(), (g.id.get(), c.get()));
+                            self.voice.insert(vs.user_id.get(), (gid, c.get()));
                         }
                     }
-                    if !self.guilds.contains(&g.id.get()) {
-                        self.guilds.push(g.id.get());
+                    if !self.guilds.contains(&gid) {
+                        self.guilds.push(gid);
+                    }
+                    // After a new session: is the bot still in its call there?
+                    let in_call = self.calls.get(&gid).filter(|c| c.connected).and_then(|c| c.channel);
+                    if let (Some(channel), Some(me)) = (in_call, self.me) {
+                        if self.voice.get(&me) != Some(&(gid, channel)) {
+                            self.lose_call(gid, "not in the call after a new gateway session").await;
+                        }
                     }
                 }
                 self.try_resume().await;
@@ -644,6 +942,7 @@ impl Host {
                             }
                         } else if let Some(call) = self.calls.get_mut(&g) {
                             call.channel = vs.channel_id.map(|c| c.get());
+                            call.session = Some(vs.session_id.clone());
                         }
                     }
                 } else if let Some((g, old_channel)) = before {
@@ -669,6 +968,25 @@ impl Host {
                         }
                         None => warn!(guild = g, "voice: the voice server has no endpoint yet"),
                     }
+                } else if let (Some(endpoint), Some(me)) = (&vsu.endpoint, self.me) {
+                    // Discord moved a call in progress to another voice server: connect this
+                    // driver to it (songbird keeps the track playing across a connect).
+                    let Some(call) = self.calls.get_mut(&g).filter(|c| c.connected) else { return };
+                    let (Some(channel), Some(session)) = (call.channel, call.session.clone()) else { return };
+                    info!(guild = g, "voice: Discord moved the call to another voice server; following it");
+                    let info = ConnectionInfo {
+                        channel_id: nz(channel).into(),
+                        endpoint: endpoint.clone(),
+                        guild_id: nz(g).into(),
+                        session_id: session,
+                        token: vsu.token.clone(),
+                        user_id: nz(me).into(),
+                    };
+                    let (connect, gen, inbox) = (call.driver.connect(info), call.gen, self.inbox.clone());
+                    tokio::spawn(async move {
+                        let result = connect.await.map_err(|e| e.to_string());
+                        let _ = inbox.send(Inbox::Moved { guild: g, gen, result });
+                    });
                 }
             }
             Event::InteractionCreate(ic) => match serde_json::to_value(&ic.0) {
@@ -716,22 +1034,48 @@ impl Host {
             .filter_map(|s| Some((s["guild"].as_u64()?, s["channel"].as_u64()?, s["app"].as_str().map(str::to_owned), s["gain"].as_f64().unwrap_or(1.0) as f32)))
             .collect();
         info!(calls = streams.len(), paused_by_us, "resume: replaying the hand-off");
-        if streams.is_empty() {
-            if paused_by_us {
-                self.resume_deetsmusic();
-            }
-            return;
-        }
-        self.resume_wait = Some((streams.iter().map(|(g, ..)| *g).collect(), paused_by_us));
+        // Each call goes through the rejoin path (retries, the "anyone there?" check), and
+        // DeetsMusic plays again once a call hears it (`maybe_resume_dm`).
+        self.dm_paused = paused_by_us;
+        let now = Instant::now();
         for (guild, channel, app, gain) in streams {
             self.gains.insert(guild, gain);
             info!(guild, channel, app = app.as_deref().unwrap_or("-"), "resume: rejoining");
-            self.play(0, guild, channel, app.map(|exe| Sound::App { exe })).await;
+            self.lost.insert(guild, Lost { channel, app, since: now, next_try: now, tries: 0, rejoining: false });
         }
     }
 
-    /// Once a second: joins that never completed.
+    /// Once a second: joins that never completed, rejoins that are due, the network probe.
     async fn tick(&mut self) {
+        self.timeouts().await;
+        self.alone_check().await;
+        self.rejoin_due().await;
+        self.probe_if_down();
+        if std::mem::take(&mut self.snapshot_stale) {
+            self.push_snapshot(None).await;
+        }
+    }
+
+    /// Leave-when-alone, as a safety net: `VoiceStateUpdate` catches the last person
+    /// leaving, but not a call that ends up empty on its own (everyone left during a rejoin
+    /// or a resume). Only while the gateway is up: the voice list is stale when it is down.
+    async fn alone_check(&mut self) {
+        if self.gateway_down.is_some() {
+            return;
+        }
+        let alone: Vec<u64> = self
+            .calls
+            .iter()
+            .filter(|(g, c)| c.connected && !self.pending.contains_key(*g))
+            .filter(|(_, c)| c.channel.is_some_and(|ch| self.people_in(ch).is_empty()))
+            .map(|(g, _)| *g)
+            .collect();
+        for g in alone {
+            self.leave(0, g, "nobody is in the channel").await;
+        }
+    }
+
+    async fn timeouts(&mut self) {
         let late: Vec<u64> = self.pending.iter().filter(|(_, p)| p.started.elapsed() > JOIN_TIMEOUT).map(|(g, _)| *g).collect();
         for g in late {
             if let Some(p) = self.pending.remove(&g) {
@@ -746,8 +1090,8 @@ impl Host {
 }
 
 /// Waits until the song DeetsMusic plays now ends or pauses (checked each second, as
-/// bot/live.py does), then pauses DeetsMusic if it plays. True when we paused it.
-async fn wait_for_boundary(bridge: &Bridge) -> bool {
+/// bot/live.py does).
+async fn wait_for_boundary(bridge: &Bridge) {
     let start = bridge.now_playing().await.ok();
     if let Some(np) = start.as_ref().filter(|np| np.playing) {
         if let Some(first) = np.catalog_id.clone().or_else(|| np.title.clone()) {
@@ -765,11 +1109,15 @@ async fn wait_for_boundary(bridge: &Bridge) -> bool {
             }
         }
     }
+}
+
+/// Pauses DeetsMusic if it plays. True when we paused it (so we play it again later).
+async fn pause_if_playing(bridge: &Bridge) -> bool {
     match bridge.now_playing().await {
         Ok(np) if np.playing => match bridge.command("pause", None).await {
             Ok(_) => true,
             Err(e) => {
-                warn!(error = %e, "restart: could not pause DeetsMusic");
+                warn!(error = %e, "could not pause DeetsMusic");
                 false
             }
         },
@@ -848,8 +1196,9 @@ async fn run() -> Result<i32, String> {
         }
     });
 
-    let mut shard = Shard::new(ShardId::ONE, token, Intents::GUILDS | Intents::GUILD_VOICE_STATES);
+    let mut shard = Shard::new(ShardId::ONE, token.clone(), INTENTS);
     let wanted = EventTypeFlags::READY
+        | EventTypeFlags::RESUMED
         | EventTypeFlags::GUILD_CREATE
         | EventTypeFlags::VOICE_STATE_UPDATE
         | EventTypeFlags::VOICE_SERVER_UPDATE
@@ -869,7 +1218,16 @@ async fn run() -> Result<i32, String> {
         resumed: false,
         bridge: Arc::new(Bridge::default()),
         restarting: false,
-        resume_wait: None,
+        dm_paused: false,
+        loaded: HashSet::new(),
+        snapshot_stale: false,
+        lost: HashMap::new(),
+        driver_gen: 0,
+        listening: None,
+        readies: 0,
+        gateway_down: None,
+        last_probe: Instant::now(),
+        last_replace: Instant::now() - REPLACE_EVERY,
     };
     info!(%addr, logic = %sup.source.display(), "host: starting");
     if let Err(e) = sup.spawn().await {
@@ -906,14 +1264,21 @@ async fn run() -> Result<i32, String> {
                         host.on_logic(msg).await;
                     }
                 }
-                Inbox::LogicGone { gen } => {
+                Inbox::LogicGone { gen, error } => {
                     if host.logic.as_ref().is_some_and(|(g, _)| *g == gen) {
-                        warn!(gen, "logic: disconnected; starting it again in 2 s");
+                        warn!(gen, error = error.as_deref().unwrap_or("-"), "logic: disconnected; starting it again in 2 s");
                         host.logic = None;
                         sup.next_try = Instant::now() + Duration::from_secs(2);
+                    } else {
+                        // An old logic we stopped after a swap: its socket resets (os error 10054).
+                        debug!(gen, error = error.as_deref().unwrap_or("-"), "ipc: an old logic's connection ended");
                     }
                 }
-                Inbox::Connected { guild, request_id, channel, sound, result } => match result {
+                Inbox::Connected { guild, gen, request_id, .. } if host.calls.get(&guild).is_none_or(|c| c.gen != gen) => {
+                    debug!(guild, gen, "voice: a connect for an older call; dropped");
+                    host.done(request_id, Some("Another join replaced this one.".into())).await;
+                }
+                Inbox::Connected { guild, request_id, channel, sound, result, .. } => match result {
                     Ok(()) => {
                         let call = host.call(guild);
                         call.connected = true;
@@ -935,7 +1300,7 @@ async fn run() -> Result<i32, String> {
                         host.settled(guild);
                     }
                 },
-                Inbox::TapOpened { guild, request_id, exe, result } => host.tap_opened(guild, request_id, exe, result).await,
+                Inbox::TapOpened { guild, gen, request_id, exe, result } => host.tap_opened(guild, gen, request_id, exe, result).await,
                 Inbox::RestartNow { paused_by_us } => {
                     let state = host.resume_state(paused_by_us);
                     let calls = state["streams"].as_array().map_or(0, Vec::len);
@@ -945,6 +1310,40 @@ async fn run() -> Result<i32, String> {
                     }
                     exit_code = RESTART_CODE;
                     break;
+                }
+                Inbox::VoiceLost { guild, gen, reason } => {
+                    if host.calls.get(&guild).is_some_and(|c| c.gen == gen) {
+                        host.lose_call(guild, &reason).await;
+                    } else {
+                        debug!(guild, gen, %reason, "voice: a disconnect from an old driver; ignored");
+                    }
+                }
+                Inbox::LostPaused { paused } => {
+                    host.dm_paused |= paused;
+                    // Back already, faster than the pause: play again now (if a call hears it).
+                    host.maybe_resume_dm("back in the call before the pause landed");
+                }
+                Inbox::Moved { guild, gen, result } => {
+                    if host.calls.get(&guild).is_some_and(|c| c.gen == gen) {
+                        match result {
+                            Ok(()) => info!(guild, "voice: on the new voice server"),
+                            Err(e) => host.lose_call(guild, &format!("the move to a new voice server failed: {e}")).await,
+                        }
+                    }
+                }
+                Inbox::ProbeOk => {
+                    // The network answers but twilight may sit in a long retry wait: a new
+                    // shard that resumes the same session connects now.
+                    if host.gateway_down.is_some() && host.last_replace.elapsed() >= REPLACE_EVERY {
+                        host.last_replace = Instant::now();
+                        let mut config = twilight_gateway::ConfigBuilder::new(token.clone(), INTENTS);
+                        if let (Some(session), Some(url)) = (shard.session().cloned(), shard.resume_url().map(str::to_owned)) {
+                            config = config.session(session).resume_url(url);
+                        }
+                        shard = Shard::with_config(ShardId::ONE, config.build());
+                        host.sender = shard.sender();
+                        info!(down_secs = host.gateway_down.map_or(0, |d| d.elapsed().as_secs()), "gateway: the network answers; reconnecting now (a new shard resuming the session)");
+                    }
                 }
             },
             _ = ticker.tick() => host.tick().await,
@@ -993,20 +1392,18 @@ async fn run() -> Result<i32, String> {
 
 fn spawn_reader(gen: u64, mut reader: tokio::net::tcp::OwnedReadHalf, inbox: mpsc::UnboundedSender<Inbox>) {
     tokio::spawn(async move {
-        loop {
+        let error = loop {
             match lildeets_ipc::read::<_, ToHost>(&mut reader).await {
                 Ok(Some(msg)) => {
                     if inbox.send(Inbox::FromLogic { gen, msg }).is_err() {
                         return;
                     }
                 }
-                Ok(None) => break,
-                Err(e) => {
-                    warn!(gen, error = %e, "ipc: a bad frame from the logic");
-                    break;
-                }
+                Ok(None) => break None,
+                // A reset or a bad frame: the main loop decides whether it matters.
+                Err(e) => break Some(e.to_string()),
             }
-        }
-        let _ = inbox.send(Inbox::LogicGone { gen });
+        };
+        let _ = inbox.send(Inbox::LogicGone { gen, error });
     });
 }

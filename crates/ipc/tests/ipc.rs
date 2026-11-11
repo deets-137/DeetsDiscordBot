@@ -23,7 +23,7 @@ async fn the_handshake_then_messages_both_ways() {
     let dispatch = ToLogic::Dispatch { event: json!({"t": "INTERACTION_CREATE", "d": {"id": "9", "token": "abc", "data": {"name": "dm"}}}) };
     let snap = ToLogic::VoiceSnapshot {
         request_id: Some(7),
-        guilds: vec![GuildVoice { guild: 3, bot_channel: Some(5), tapping_app: Some("deetsmusic.exe".into()), gain: 1.0, dave_ready: true, members_in_bot_channel: vec![11, 12] }],
+        guilds: vec![GuildVoice { guild: 3, bot_channel: Some(5), tapping_app: Some("deetsmusic.exe".into()), gain: 1.0, dave_ready: true, members_in_bot_channel: vec![11, 12], rejoining: false }],
     };
     for m in [&ready, &dispatch, &snap] {
         write(&mut host, m).await.unwrap();

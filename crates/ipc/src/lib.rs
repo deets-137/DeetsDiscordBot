@@ -37,6 +37,10 @@ pub struct GuildVoice {
     pub dave_ready: bool,
     /// People (not bots) in the bot's channel.
     pub members_in_bot_channel: Vec<u64>,
+    /// The bot lost its call here to a network drop and is getting back in. While so,
+    /// `bot_channel` is `None` (it is not in the call). Defaults to false for an older host.
+    #[serde(default)]
+    pub rejoining: bool,
 }
 
 /// Host → logic.
