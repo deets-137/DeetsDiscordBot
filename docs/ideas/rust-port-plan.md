@@ -30,7 +30,8 @@ handrolling where we can gain more functionality or resource savings." The journ
 6. **Windows first.** Code that only builds on Windows sits behind `cfg(windows)`.
 7. **Never edit `bot/` or `journal/`** (the Python bot runs from them live and reloads on save).
    Never edit `../DeetsMusic` or `../DeetsAirplay`.
-8. One package per branch: `rust/<package-id>`. Commit when its tests pass; the owner merges.
+8. All packages go on one branch, `rust-rewrite`, built in the main session with no agents
+   (the owner, 2026-11-10). Commit only when the owner asks; the owner merges.
 9. **Never block the async runtime.** Blocking I/O (the capture's reads, file writes, the
    bridge if it uses `ureq`) runs in `tokio::task::spawn_blocking` or its own named thread.
    For the tray app later: a synchronous `#[tauri::command]` runs on the UI thread, so it is
@@ -131,6 +132,14 @@ P0 → (P1, P2, P3, P4 in parallel) → P5 → P6 → P7 → P8.
   module (in `crates/cards/tests/support.rs`, copied where needed) that loads `tests/parity/*` and
   normalizes `custom_id`s.
 - **Done when:** `cargo test --workspace` runs (and `crates/tap` still builds and prints `--info`).
+- **Built 2026-11-10** (branch `rust-rewrite`). Decided inside the package:
+  - `crates/tap` is **excluded** from the workspace until P2. A member builds into the root
+    `target/`, but the running bot runs `crates/tap/target/release/deets-tap.exe`
+    (`bot/voice.py` `DEFAULT_TAP`). P2 moves the tap in, and that path changes with it.
+  - The loader is `crates/cards/tests/support/mod.rs`, not `tests/support.rs`: Cargo builds
+    every `tests/*.rs` file as its own test binary.
+  - `tests/parity_kit.rs` checks the loader: every kit file loads, the `/links` files keep
+    `\r\n`, `custom_id`s are normalized at any depth, and a changed card or a `\n` text fails.
 
 ### P1 · lildeets-cards (pure; the most parity in the least risk)
 - **Reads:** `bot/dm.py` (everything above `register`), features/CARDS.md, features/DM.md §2–3,

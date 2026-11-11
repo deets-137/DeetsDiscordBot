@@ -16,6 +16,8 @@ secrets/
 
 # deets-tap build output (Cargo.lock is committed)
 crates/*/target/
+# the Rust port's workspace build output (the root Cargo.lock is committed)
+/target/
 
 # the song-boundary restart hand-off (bot/live.py)
 .lildeets-resume.json

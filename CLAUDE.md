@@ -143,10 +143,10 @@ the shots runner, publishing) do not apply here.
   repeats, and ask the cost before a design that polls or fetches a lot.
 - **A file we cannot lose half of** (the resume hand-off, settings, tokens, `storage.db` copies)
   is written beside, flushed, then renamed over the old one (DeetsMusic's `safe_file`).
-- **Agents.** Build and explore in the main context. Two standing uses of Sonnet agents
-  (`model: "sonnet"`): the Rust port's work packages (his ask, 2026-11-10;
-  docs/ideas/rust-port-plan.md), and after a feature is built, a pass asking how a user might
-  break it from a UX or workflow view (DeetsMusic, 2026-10-17). Read every diff an agent makes
+- **Agents.** Build and explore in the main context. The Rust port is built here too, with no
+  agents, on the `rust-rewrite` branch (his word, 2026-11-10; docs/ideas/rust-port-plan.md).
+  One standing use of a Sonnet agent (`model: "sonnet"`): after a feature is built, a pass
+  asking how a user might break it from a UX or workflow view (DeetsMusic, 2026-10-17). Read every diff an agent makes
   and run the checks yourself: an agent's report is not proof.
 - **Commit only when he asks.** Co-author trailer: name the model that did the work (today
   `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`); update this line when it changes.
