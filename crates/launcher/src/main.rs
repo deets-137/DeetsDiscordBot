@@ -1,4 +1,4 @@
-//! `lildeets`: the launcher (the port of `bot/__main__.py`). It runs `lildeets-host.exe` (beside
+//! `lildeets`: the launcher (the port of `docs/archive/bot/__main__.py`). It runs `lildeets-host.exe` (beside
 //! this exe) and starts it again whenever the host exits with [`RESTART_CODE`]: that is how a
 //! change to the host goes live at a song boundary. Any other exit ends the launcher with the
 //! host's exit code. Ctrl+C reaches both (they share the console); the launcher waits for the
@@ -15,7 +15,7 @@
 use std::process::{Command, ExitCode};
 use std::time::Instant;
 
-/// EX_TEMPFAIL, "run me again" (bot/live.py `RESTART_CODE`).
+/// EX_TEMPFAIL, "run me again" (docs/archive/bot/live.py `RESTART_CODE`).
 const RESTART_CODE: i32 = 75;
 /// Set for the host: a launcher will start it again on [`RESTART_CODE`].
 const ENV_LAUNCHED: &str = "LILDEETS_LAUNCHED";

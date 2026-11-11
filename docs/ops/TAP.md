@@ -1,22 +1,22 @@
 ---
 status: foundation
 desk_test: passed 2026-11-10
-sources: [crates/tap/src/main.rs, crates/tap/Cargo.toml, bot/voice.py]
+sources: [crates/tap/src/lib.rs, crates/tap/src/main.rs, crates/tap/Cargo.toml]
 updated: 2026-11-10
 ---
 # deets-tap
 
-The capture helper `/vc` runs. Rust, Windows only. Moved here from DeetsAirplay
+The capture `/vc` uses. Rust, Windows only. Two faces: **a library** (`TapStream`, `crates/tap/src/lib.rs`) that the bot's host links in, and **the `deets-tap.exe` tool** for looking at apps' sound by hand (the archived Python bot ran it as a helper). Moved here from DeetsAirplay
 (`crates/airplay/src/bin/deets-tap.rs`) on 2026-11-10; its history is in DeetsAirplay's log.
 
 ## 1. Build
 ```
 cd crates/tap
-cargo build --release          # → target/release/deets-tap.exe, where bot/voice.py looks
+cargo build --release          # → target/release/deets-tap.exe, the tool
 ```
-The bot never rebuilds it. While the bot streams, the exe is locked: build to another folder
-(`--target-dir target/next`) and swap after the bot stops, or rename the running exe aside
-(Windows allows a rename of a running exe) and copy the new one in.
+The library builds with the bot (`cargo build --workspace --release` at the root; the host
+depends on `crates/tap` by path, though `crates/tap` is outside the workspace). The Rust bot
+never runs the exe, so it is never locked by the bot.
 
 ## 2. Flags
 | Flag | Prints / does |
@@ -31,9 +31,10 @@ Exit 2 with a message on stderr for a bad argument or an app that isn't running.
 
 ## 3. Against drift (the owner, 2026-11-10)
 Two things can drift: the helper against the bot, and the helper against DeetsAirplay's crate.
-1. **The stream contract.** `CONTRACT` in `src/main.rs` and `EXPECTED_TAP` in `bot/voice.py`
-   describe the same stream. `/vc play` runs `--info` (again whenever the exe changes) and
-   refuses a mismatch with the rebuild command. **Change the format → bump both, together.**
+1. **The stream contract** (the archived Python bot only). `CONTRACT` in `src/main.rs` and
+   `EXPECTED_TAP` in `docs/archive/bot/voice.py` describe the exe's stdout stream; the Python
+   `/vc play` checked `--info` against it. The Rust bot reads `TapStream` directly, so the
+   compiler is its contract. Change the stdout format → still bump `CONTRACT`.
 2. **The crate.** deets-tap calls `Capture::start_process_at`, `mixer::children_named` and
    `mixer::running_exes`. DeetsAirplay's `CLAUDE.md` names this repo as a consumer of those.
 3. **Pinning.** `deets-airplay` is pinned by **git rev** (DeetsAirplay master `4185ed6`,

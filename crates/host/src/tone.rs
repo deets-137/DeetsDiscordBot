@@ -1,4 +1,4 @@
-//! `/vc tone`: a 440 Hz sine at -12 dBFS (`bot/voice.py` `ToneSource`), as f32 LE stereo for
+//! `/vc tone`: a 440 Hz sine at -12 dBFS (`docs/archive/bot/voice.py` `ToneSource`), as f32 LE stereo for
 //! songbird's `RawAdapter`. It ends after its seconds (a read returns 0: the track ends).
 
 use std::io::{Read, Seek, SeekFrom};

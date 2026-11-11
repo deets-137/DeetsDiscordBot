@@ -1,5 +1,5 @@
-//! Every command, button and autocomplete: the port of `bot/app.py` (`/links`),
-//! `bot/voice.py` (`/vc`) and `bot/dm.py` (`/dm`). Replies, their wording and who sees them
+//! Every command, button and autocomplete: the port of `docs/archive/bot/app.py` (`/links`),
+//! `docs/archive/bot/voice.py` (`/vc`) and `docs/archive/bot/dm.py` (`/dm`). Replies, their wording and who sees them
 //! follow the Python bot. Differences, on purpose:
 //! - `/vc tone` says "Test tone for 5 s." without discord.py's transport note.
 //! - `/vc play` needs no "deets-tap isn't built" check: the capture is linked in.
@@ -83,7 +83,7 @@ pub async fn handle(ctx: Arc<Ctx>, event: Value) {
     }
 }
 
-// --- permissions (bot/dm.py RULE, check) --------------------------------------------------
+// --- permissions (docs/archive/bot/dm.py RULE, check) --------------------------------------------------
 
 /// action → the Rooms rule that lets a guest do it ("read": any guest in the call; None: host only).
 fn rule(action: &str) -> Option<&'static str> {
@@ -134,7 +134,7 @@ async fn check(ctx: &Ctx, ix: &Ix, action: &str) -> Option<String> {
     None
 }
 
-// --- /links (bot/app.py) ------------------------------------------------------------------
+// --- /links (docs/archive/bot/app.py) ------------------------------------------------------------------
 
 async fn links_cmd(ctx: &Ctx, ix: &Ix, a: &Answer<'_>, opts: &Map<String, Value>) {
     let Some(channel) = ix.channel else { return };
@@ -180,7 +180,7 @@ async fn links_cmd(ctx: &Ctx, ix: &Ix, a: &Answer<'_>, opts: &Map<String, Value>
     }
 }
 
-// --- /vc (bot/voice.py) -------------------------------------------------------------------
+// --- /vc (docs/archive/bot/voice.py) -------------------------------------------------------------------
 
 async fn vc(ctx: &Ctx, ix: &Ix, a: &Answer<'_>, sub: &str, opts: &Map<String, Value>) {
     let Some(guild) = ix.guild else {
@@ -248,7 +248,7 @@ async fn app_choices(current: &str) -> Vec<(String, String)> {
     names.into_iter().filter(|n| n.to_lowercase().contains(&cur)).take(25).map(|n| (n.clone(), n)).collect()
 }
 
-// --- /dm (bot/dm.py) ----------------------------------------------------------------------
+// --- /dm (docs/archive/bot/dm.py) ----------------------------------------------------------------------
 
 /// `run`: gate, defer (bridge calls can take seconds), do the work, show a BridgeError.
 async fn run<F, Fut>(ctx: &Ctx, ix: &Ix, a: &Answer<'_>, action: &str, ephemeral: bool, work: F)

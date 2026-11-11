@@ -21,6 +21,6 @@ crates/*/target/
 
 # the Rust logic's last command sync (crates/logic commands.rs)
 .lildeets-commands.sync
-# the song-boundary restart hand-off (bot/live.py)
+# the song-boundary restart hand-off (crates/host)
 .lildeets-resume.json
 .lildeets-hold

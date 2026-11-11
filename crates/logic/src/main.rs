@@ -4,7 +4,7 @@
 //! and asks the host for anything voice or gateway.
 //!
 //! The Python bot is the specification: every reply, its wording and who sees it follow
-//! `bot/app.py`, `bot/voice.py` and `bot/dm.py` (see `commands.rs`).
+//! `docs/archive/bot/app.py`, `docs/archive/bot/voice.py` and `docs/archive/bot/dm.py` (see `commands.rs`).
 //!
 //! Threads (rule 10): tokio workers (the process); the blocking pool for `deets_tap::list_apps`
 //! (`/vc play`'s autocomplete, < 2 s); nothing else.
@@ -105,7 +105,7 @@ pub struct Ctx {
     pub np_watchers: Mutex<HashMap<u64, tokio::task::JoinHandle<()>>>,
 }
 
-/// The app `/dm` opens up for (bot/dm.py `APP`).
+/// The app `/dm` opens up for (docs/archive/bot/dm.py `APP`).
 pub const APP: &str = "deetsmusic.exe";
 
 impl Ctx {

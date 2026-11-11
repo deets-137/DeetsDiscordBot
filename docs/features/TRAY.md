@@ -24,10 +24,10 @@ for release." A Rust rewrite "for efficiency" is for later, "not a priority for 
 
 ## 3. Proposed: the repo shape
 ```
-bot/            the bot (unchanged)
+crates/         the bot (Rust: launcher, host, logic)
 journal/        the nightly pipeline (unchanged)
 crates/tap/     deets-tap as a library and a program: the tray links the library for meters
-src-tauri/      the tray app (Rust): supervises `python -m bot`, ships deets-tap beside it
+src-tauri/      the tray app (Rust): supervises `lildeets.exe`, links `crates/tap` for meters
 src/            the tray panel (vanilla TS)
 ```
 - **The tray talks to the bot over a local status channel**, a small localhost port with a

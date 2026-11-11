@@ -1,15 +1,16 @@
 ---
-status: idea
-desk_test: none
-sources: [bot/app.py, bot/voice.py, bot/dm.py, bot/dm_bridge.py, bot/live.py, journal/linkscan.py, crates/tap/src/main.rs, scripts/parity/capture_inputs.py, scripts/parity/render_expected.py]
+status: shipped
+desk_test: passed 2026-11-10 (commands); open (drops, restart in a call)
+sources: [docs/archive/bot/app.py, docs/archive/bot/voice.py, docs/archive/bot/dm.py, docs/archive/bot/dm_bridge.py, docs/archive/bot/live.py, journal/linkscan.py, crates/tap/src/main.rs, scripts/parity/capture_inputs.py, scripts/parity/render_expected.py]
 updated: 2026-11-10
 ---
 # The Rust port: build plan for agents
 
-> **Status:** in progress on branch `rust-rewrite` (2026-11-10). Built: P0–P7 and P8's
-> launcher; the voice spike passed by ear (§6); the whole bot passed a smoke test (connect,
-> logic, command sync, a no-gap logic swap). **Next: the desk tests in Discord** (with the
-> Python bot stopped, §6), then the song-boundary host restart, the docs rewrite, the switch.
+> **Status: done (2026-11-10).** Every package is built; the Rust bot is Lil Deets (the
+> switch, P8) and passed his desk test of the commands. The docs are rewritten for it
+> (architecture/BOT.md, LIVE-RELOAD.md, ops/SETUP.md). **The Python bot moved to
+> `docs/archive/bot/`:** every `bot/…` path below means `docs/archive/bot/…`. Open: the
+> network-drop and the restart-in-a-call desk tests (HANDOFF.md), the merge into main.
 > The *why* and the stack are in
 > [rust-rewrite.md](rust-rewrite.md) (§3 is decided). This doc is the *how*: the shape, the
 > behaviour to match, and work packages a coding agent can take one at a time. §1 is the owner's.

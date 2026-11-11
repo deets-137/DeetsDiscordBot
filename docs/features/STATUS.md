@@ -1,12 +1,12 @@
 ---
 status: built
 desk_test: open
-sources: [bot/dm.py]
+sources: [crates/logic/src/watch.rs, crates/host/src/main.rs]
 updated: 2026-11-10
 ---
 # The channel status and "Listening to"
 
-While the bot plays DeetsMusic into a call (`StatusWatcher` in `bot/dm.py`):
+While the bot plays DeetsMusic into a call (`status_watcher` in `crates/logic/src/watch.rs`; the presence goes through the host):
 - **The voice channel's status** — the line under the channel's name in the channel list,
   seen by the whole server — reads `🎵 Title — Artist`, or `⏸ Title — Artist` while paused.
 - **The bot's profile status** reads "Listening to Title — Artist" (cleared while paused).

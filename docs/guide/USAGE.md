@@ -74,7 +74,7 @@ python -m journal.scan <channel_id> --enrich --web --web-out ../DeetsSolutions/s
 ```
 
 Other entry points wrap the same core:
-- `python -m bot` — `/links` slash command inside Discord (DMs you the files).
+- Lil Deets (`target\release\lildeets.exe`, Rust) — the `/links` slash command inside Discord (DMs you the files).
 - `python -m journal.harness` — local web/API trigger at <http://127.0.0.1:8077>.
 
 **Correcting matches (`review.py`).** Two failure modes, two entry points.
@@ -235,7 +235,7 @@ overwritten when the page's own metadata confirms it.
 | `journal/applemusic.py` | authenticated Apple Music API client (preferred resolver) |
 | `journal/review.py` | correct mis-resolved songs: interactive `review`/`list` for flagged ones, `search`/`fix` for any confidently-wrong match |
 | `journal/notion_sync.py` | Notion mirror — **legacy/optional**, not in the publish flow |
-| `bot/` / `journal/harness.py` | the Discord bot (`/links`) / local web trigger |
+| `crates/` / `journal/harness.py` | the Discord bot (Rust; `/links`) / local web trigger |
 | `storage.db` | **the database — source of truth** |
 | `exports/` | generated spreadsheets and link dumps |
 | `docs/integrations/APPLE-MUSIC.md` | Apple Music API setup, match_type taxonomy, review flow |

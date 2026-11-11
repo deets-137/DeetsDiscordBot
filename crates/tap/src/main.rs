@@ -38,7 +38,7 @@ use deets_tap::{list_apps, meters, resolve_exe, BLOCK_FRAMES, PRIME_FRAMES, RATE
 
 /// One Discord frame: 20 ms.
 const BLOCK: Duration = Duration::from_millis(20);
-/// Bumped whenever the stdout format changes; bot/voice.py refuses a helper whose
+/// Bumped whenever the stdout format changes; docs/archive/bot/voice.py refuses a helper whose
 /// contract differs from the one it was written for (docs/ops/TAP.md §3).
 const CONTRACT: u32 = 1;
 

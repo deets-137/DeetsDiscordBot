@@ -12,10 +12,10 @@
 //! - **Voice.** `Play` joins (op 4, self-deafened), collects our VOICE_STATE_UPDATE (session)
 //!   and VOICE_SERVER_UPDATE (token, endpoint), and hands them to `Driver::connect`. The
 //!   capture opens on a blocking thread (`spawn_blocking`), never on the runtime.
-//! - **Leave when alone**, as `bot/voice.py` does: when someone leaves the bot's channel and
+//! - **Leave when alone**, as `docs/archive/bot/voice.py` does: when someone leaves the bot's channel and
 //!   no person is left in it.
 //!
-//! - **The song-boundary restart** (bot/live.py, LIVE-RELOAD.md §4). The launcher runs this
+//! - **The song-boundary restart** (docs/archive/bot/live.py, LIVE-RELOAD.md §4). The launcher runs this
 //!   host as a copy (`lildeets-host.run.exe`), so cargo can write a new `lildeets-host.exe`.
 //!   When that original changes and stays the same for one more look (2 s), the host waits
 //!   for the song to end (or for a pause) if it is playing DeetsMusic, pauses DeetsMusic
@@ -64,7 +64,7 @@ mod tone;
 
 const RESUME_FILE: &str = ".lildeets-resume.json";
 const RESUME_MAX_AGE: Duration = Duration::from_secs(180);
-/// While this file exists, changes queue up and nothing goes live (bot/live.py `HOLD_FILE`).
+/// While this file exists, changes queue up and nothing goes live (docs/archive/bot/live.py `HOLD_FILE`).
 const HOLD_FILE: &str = ".lildeets-hold";
 /// EX_TEMPFAIL, "run me again": the launcher starts the new host (crates/launcher).
 const RESTART_CODE: i32 = 75;
@@ -73,7 +73,7 @@ const ENV_LAUNCHED: &str = "LILDEETS_LAUNCHED";
 /// The app whose song boundary the restart waits for.
 const DEETSMUSIC: &str = "deetsmusic.exe";
 /// After a resume, the wait before DeetsMusic plays again. songbird sends the first packets
-/// before the call's DAVE session is ready and does not say when it is (bot/live.py waits on
+/// before the call's DAVE session is ready and does not say when it is (docs/archive/bot/live.py waits on
 /// discord.py's `can_encrypt`, up to 6 s); the spike connected in 258–741 ms.
 const DAVE_SETTLE: Duration = Duration::from_secs(2);
 /// The command-sync record of `lildeets-logic` (crates/logic commands.rs). Cleared at start.
@@ -738,7 +738,7 @@ impl Host {
         });
     }
 
-    /// Where every call is, for the new host (bot/live.py `restart`'s fields). A call being
+    /// Where every call is, for the new host (docs/archive/bot/live.py `restart`'s fields). A call being
     /// rejoined after a drop is written too, so the new host carries on with it, and a
     /// pause owed from a drop counts as ours.
     fn resume_state(&self, paused_by_us: bool) -> Value {
@@ -946,7 +946,7 @@ impl Host {
                         }
                     }
                 } else if let Some((g, old_channel)) = before {
-                    // Leave when alone (bot/voice.py on_voice_state_update).
+                    // Leave when alone (docs/archive/bot/voice.py on_voice_state_update).
                     let bot_channel = self.calls.get(&g).and_then(|c| c.channel);
                     let left_it = vs.channel_id.map(|c| c.get()) != Some(old_channel);
                     if bot_channel == Some(old_channel) && left_it && self.people_in(old_channel).is_empty() {
@@ -1010,7 +1010,7 @@ impl Host {
         }
     }
 
-    /// Replays a fresh `.lildeets-resume.json` once (bot/live.py's fields): rejoin and play.
+    /// Replays a fresh `.lildeets-resume.json` once (docs/archive/bot/live.py's fields): rejoin and play.
     async fn try_resume(&mut self) {
         if self.resumed || self.me.is_none() {
             return;
@@ -1090,7 +1090,7 @@ impl Host {
 }
 
 /// Waits until the song DeetsMusic plays now ends or pauses (checked each second, as
-/// bot/live.py does).
+/// docs/archive/bot/live.py does).
 async fn wait_for_boundary(bridge: &Bridge) {
     let start = bridge.now_playing().await.ok();
     if let Some(np) = start.as_ref().filter(|np| np.playing) {

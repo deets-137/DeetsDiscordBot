@@ -1,4 +1,4 @@
-//! Lil Deets' client for DeetsMusic's loopback bridge: the Rust port of `bot/dm_bridge.py`.
+//! Lil Deets' client for DeetsMusic's loopback bridge: the Rust port of `docs/archive/bot/dm_bridge.py`.
 //! architecture/BRIDGE.md is its doc. Read-only toward DeetsMusic's code: it only calls the
 //! routes in BRIDGE.md §2, and **only those** (a guest must never reach any other).
 //!

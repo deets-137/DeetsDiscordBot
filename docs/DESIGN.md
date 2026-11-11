@@ -1,7 +1,7 @@
 ---
 status: foundation
 desk_test: none
-sources: [bot/__main__.py, bot/voice.py, bot/dm.py, journal/scan.py, crates/tap/src/main.rs]
+sources: [crates/launcher/src/main.rs, crates/host/src/main.rs, crates/logic/src/commands.rs, journal/scan.py, crates/tap/src/lib.rs]
 updated: 2026-11-10
 ---
 # DeetsDiscordBot — design
@@ -19,10 +19,10 @@ what the parts are for and which decisions shaped them.
 ## 2. The parts
 
 ```
-Discord ──── Lil Deets (python -m bot) ──────────────────────────────────────────┐
-              ├─ /links ── journal.linkscan                                       │
-              ├─ /vc ───── deets-tap.exe (crates/tap) ── per-process loopback ── DeetsMusic's WebView2
-              └─ /dm ───── bot.dm_bridge ── http://127.0.0.1:47825 (DeetsMusic's bridge)
+Discord ──── Lil Deets (lildeets.exe → host + logic, Rust) ─────────────────────────┐
+              ├─ /links ── logic (links.rs, a byte-for-byte port of journal.linkscan)    │
+              ├─ /vc ───── host ── TapStream (crates/tap) ── per-process loopback ── DeetsMusic's WebView2
+              └─ /dm ───── logic ── lildeets-bridge ── http://127.0.0.1:47825 (DeetsMusic's bridge)
 Task Scheduler 6 PM ── DeetsSolutions/scripts/nightly-sotd.ps1
               ├─ python -m journal.scan … --web ──── storage.db ── songs.json
               └─ python -m journal.letterboxd_web rss --web ── storage.db ── movies.json
@@ -30,7 +30,7 @@ Task Scheduler 6 PM ── DeetsSolutions/scripts/nightly-sotd.ps1
 
 | Part | Doc |
 |---|---|
-| The bot process, its command tree, its modules | architecture/BOT.md |
+| The bot's three processes, the commands, the IPC | architecture/BOT.md, architecture/LIVE-RELOAD.md |
 | The audio path into a call | architecture/VOICE-PIPELINE.md, ops/TAP.md |
 | Talking to DeetsMusic | architecture/BRIDGE.md |
 | Who may do what | architecture/PERMISSIONS.md |
@@ -55,11 +55,14 @@ Task Scheduler 6 PM ── DeetsSolutions/scripts/nightly-sotd.ps1
 | 2026-11-10 | Live reload is automatic (architecture/LIVE-RELOAD.md). |
 | 2026-11-10 | If the bot moves to Rust, **the journal stays Python** (ideas/rust-rewrite.md). |
 | 2026-11-10 | A Rust bot's stack: twilight's pieces (models, gateway), songbird for voice, hand-rolled where it gains functionality or saves resources (REST, command dispatch); never DAVE or Opus (ideas/rust-rewrite.md §3). |
+| 2026-11-10 | **The switch:** "I'll switch to the rust bot entirely now, no need to spend a week testing since no one uses this live for now". The Python bot moved to `docs/archive/bot/` (BOT.md §9). |
+| 2026-11-10 | Network drops: the bot rejoins by itself and pauses DeetsMusic while the call can't hear it ("Build it"; ops/DEBUGGING.md §6). A refused reply is deleted with a private note ("Delete + private note"). |
 
 ## 4. Shape rules
-- **`bot/` imports `journal/`; `journal/` never imports `bot/`.** The nightly job never loads
-  Discord voice code.
-- **One process owns the slash commands** (BOT.md §2).
+- **The bot (Rust) and the journal (Python) share no code.** `/links` is a port of
+  `journal.linkscan`, held to it byte for byte by the parity kit (`tests/parity/`). The
+  nightly job never loads Discord voice code.
+- **One process owns the slash commands:** the logic (BOT.md §6).
 - **DeetsMusic is a service on 127.0.0.1**, reached only through its bridge; nothing here
   reads its files except the bridge token in its settings.
 - **Everything private stays at the repo root and is gitignored.** The repo is public.

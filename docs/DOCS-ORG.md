@@ -32,7 +32,7 @@ Every doc starts with this block, above the `#` title.
 ---
 status: shipped | built | designed | project | parked | idea | foundation | sop | guide | archived
 desk_test: passed 2026-11-10 | open | none
-sources: [bot/dm.py, bot/dm_bridge.py]
+sources: [crates/logic/src/commands.rs, crates/bridge/src/lib.rs]
 updated: 2026-11-10
 ---
 ```

@@ -46,7 +46,16 @@ history is in `git log` and docs/archive/.
   good); stale joins and captures dropped by driver number; a failed capture is not "back";
   leave when alone after a rejoin or resume; a restart carries a rejoin in the resume file;
   presence re-sent after any reconnect; the status watcher stops on a 4xx; a reply is
-  rescinded only when Discord refused it. Left: the guest wording during a drop (his call);
+  rescinded only when Discord refused it. Then his wording for a guest during a drop ("Lil
+  Deets lost the call and is getting back in.", the snapshot's `rejoining`); committed and
+  pushed (`0c07386`).
+- **His desk test passed** ("tested and good to go on the desk test"). **"Rewrite the docs
+  and move bot/ into archive please":** `bot/` and `requirements-voice.txt` → `docs/archive/bot/`
+  (the parity scripts import it from there; not run since); BOT.md, LIVE-RELOAD.md, SETUP.md
+  rewritten for Rust; VOICE-PIPELINE.md, TAP.md, DEBUGGING.md §1–5, DESIGN.md, HANDOFF.md,
+  README, AGENTS.md and CLAUDE.md follow; every doc's `sources:` names the Rust files; Rust
+  comments point to the archive. Not confirmed by him: the drop and restart-in-a-call desk
+  tests (HANDOFF Open now 0). Earlier left: the guest wording during a drop (his call);
   a rejoin may start before the gateway notices; the np card shows "paused" during a drop
   (intended).
 

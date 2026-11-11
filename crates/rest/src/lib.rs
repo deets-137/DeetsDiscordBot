@@ -138,7 +138,7 @@ impl Rest {
     }
 
     /// Who may start `/vc` (with `VOICE_USER_IDS`): the application's team members, or its
-    /// owner when it has no team (`bot/voice.py` `is_host`).
+    /// owner when it has no team (`docs/archive/bot/voice.py` `is_host`).
     pub async fn owners(&self) -> Result<Vec<u64>, RestError> {
         let app: twilight_model::oauth::Application = self.send_as(&routes::get_current_application()).await?;
         Ok(match (app.team, app.owner) {

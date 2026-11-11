@@ -1,4 +1,4 @@
-//! The text formats of `bot/dm.py` (and `mmss` from `bot/dm_bridge.py`), character for
+//! The text formats of `docs/archive/bot/dm.py` (and `mmss` from `docs/archive/bot/dm_bridge.py`), character for
 //! character. The parity kit checks each one (tests/parity_text.rs).
 //!
 //! Python details kept on purpose:
@@ -163,7 +163,7 @@ pub fn bar(progress: f64) -> String {
     format!("{}●{}", "━".repeat(k as usize), "─".repeat((CELLS - 1 - k) as usize))
 }
 
-/// The actions in `bot/dm.py` `RULE`'s order.
+/// The actions in `docs/archive/bot/dm.py` `RULE`'s order.
 pub const ACTIONS: [&str; 11] = ["np", "queue", "pause", "resume", "skip", "back", "add", "remove", "move", "play", "volume"];
 
 /// `_row_heading`: a queue row in layout C (the owner, 2026-11-10; CARDS.md §1): the number

@@ -1,7 +1,7 @@
 ---
 status: foundation
 desk_test: none
-sources: [bot/dm.py]
+sources: [crates/cards/src/cards.rs, crates/logic/src/commands.rs]
 updated: 2026-11-10
 ---
 # Discord limits the bot designs around

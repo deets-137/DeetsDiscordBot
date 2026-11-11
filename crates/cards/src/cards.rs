@@ -1,5 +1,5 @@
 //! The Components V2 cards (features/CARDS.md), built with twilight-model 0.18 types: the
-//! port of `bot/dm.py` `np_view`, `queue_view` and `picker_view`. Pure: the caller passes
+//! port of `docs/archive/bot/dm.py` `np_view`, `queue_view` and `picker_view`. Pure: the caller passes
 //! the bridge's replies, the accent and the time.
 //!
 //! Each builder returns the message's top-level `components` (one container). Send them

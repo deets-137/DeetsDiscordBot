@@ -18,6 +18,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
+# The Python bot is a record now (docs/archive/bot/, 2026-11-10); import it from there.
+sys.path.insert(0, str(ROOT / "docs" / "archive"))
 
 from bot.dm_bridge import Bridge  # noqa: E402
 

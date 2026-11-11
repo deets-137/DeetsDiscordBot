@@ -1,7 +1,7 @@
 //! What acts on its own (P7), each logging when it arms, fires and stops:
 //! - [`status_watcher`]: while the bot plays DeetsMusic into a call, the voice channel's status
-//!   line ("🎵 Title — Artist", "⏸ …") and the bot's "Listening to" (`bot/dm.py` StatusWatcher).
-//! - [`watch_np`]: keeps a `/dm np` card on the current song (`bot/dm.py` refresh).
+//!   line ("🎵 Title — Artist", "⏸ …") and the bot's "Listening to" (`docs/archive/bot/dm.py` StatusWatcher).
+//! - [`watch_np`]: keeps a `/dm np` card on the current song (`docs/archive/bot/dm.py` refresh).
 //!
 //! Both poll the local bridge every 5 s (free) and call Discord only on a change: about once
 //! a song (CARDS.md §4: never edit on a timer).

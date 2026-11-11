@@ -1,7 +1,7 @@
 ---
 status: shipped
 desk_test: passed 2026-11-10
-sources: [bot/voice.py]
+sources: [crates/logic/src/commands.rs, crates/host/src/main.rs]
 updated: 2026-11-10
 ---
 # /vc — play one of this PC's apps into a call

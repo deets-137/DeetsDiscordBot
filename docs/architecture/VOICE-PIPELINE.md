@@ -1,20 +1,20 @@
 ---
 status: shipped
 desk_test: passed 2026-11-10
-sources: [bot/voice.py, crates/tap/src/main.rs, requirements-voice.txt]
+sources: [crates/tap/src/lib.rs, crates/host/src/main.rs, crates/host/Cargo.toml]
 updated: 2026-11-10
 ---
 # The voice pipeline
 
-How one Windows app's sound reaches a Discord call.
+How one Windows app's sound reaches a Discord call (the Rust bot, since 2026-11-10).
 
 ```
 app (DeetsMusic's msedgewebview2.exe child)
-  → Windows per-process loopback, 48 kHz / 16-bit / stereo     deets-tap (crates/tap)
-  → stdout, 20 ms blocks of 3840 bytes, paced in real time
-  → TapSource.read() → PCMVolumeTransformer (/dm volume)        bot/voice.py
-  → Opus encoder: music, no FEC, 128 kbps                       discord.py
-  → DAVE end-to-end encryption (davey 0.1.x)                    discord.py + davey
+  → Windows per-process loopback, 48 kHz stereo           deets_tap::TapStream (crates/tap, a library)
+  → f32 PCM, 20 ms a tick, pulled by songbird's mixer    RawAdapter + symphonia's pcm decoder
+  → track volume = the guild's gain (/dm volume)         lildeets-host
+  → Opus encoder: Audio (music) mode, 128 kbps, no FEC   songbird 0.6.1
+  → DAVE end-to-end encryption (Rust davey 0.1.5)        songbird
   → Discord voice server → the call
 ```
 
@@ -35,29 +35,33 @@ app (DeetsMusic's msedgewebview2.exe child)
   to the asked rate, so nothing is resampled in the helper. Until 2026-11-10 it captured
   44.1 kHz and a sinc resampler took it back to 48 kHz.
 
-## 2. The helper's pacing
-deets-tap writes one 20 ms block every 20 ms on an absolute schedule. It holds 40 ms back
-before it starts (and again after an underrun), so the loopback's ~10 ms packets never land
-late and click. It writes silence while the app is quiet. It exits when the bot stops reading
-or the app quits. TAP.md has the flags and the contract.
+## 2. The pacing
+songbird's mixer pulls 20 ms each tick on its own clock, so `TapStream` **never sleeps**: a
+read hands over what the capture holds. After a start or an underrun it holds back until
+40 ms are queued (`PRIME_FRAMES`), so the loopback's ~10 ms packets never land late and
+click. While the app is quiet it gives 20 ms of silence. It never returns 0, which would end
+the track. Settled by ear with the voice spike (2026-11-10, "clean").
 
 ## 3. The encoder
-`voice.ENCODER = dict(signal_type="music", fec=False, bitrate=128)`, passed to every
-`voice_client.play`. discord.py's defaults (`signal_type="auto"`, FEC on at 15% expected loss)
-let Opus drop into its speech modes and spend bits on loss recovery: the stream sounded grainy
-and lost bass. A server's voice channel bitrate (64 kbps in an unboosted server) limits the
+songbird encodes in Opus's Audio (music) mode at 128 kbps with no FEC: what the Python bot
+had to ask discord.py for (its defaults, speech-capable modes and 15 % FEC, sounded grainy
+and lost bass). A server's voice channel bitrate (64 kbps in an unboosted server) limits the
 clients' own encoders; the bot sends its own bitrate.
 
-## 4. DAVE, and the davey pin
-Discord requires end-to-end encryption (DAVE) in voice. discord.py 2.7.1 does it with the
-`davey` package. **davey 0.2.0 changed how a key change is applied
-(`prepare_transition` / `execute_transition`), and discord.py 2.7.1 never calls those.** The
-DAVE session never becomes ready, frames go out unencrypted, and the call hears nothing while
-the bot's ring shows green. Pinned `davey>=0.1.6,<0.2` in `requirements-voice.txt`.
-
-`/vc tone` prints `voice E2EE (DAVE) version N, ready X`. `ready False` right after joining is
-normal (the handshake finishes a moment later); silence with a working tone path is not.
+## 4. DAVE
+Discord requires end-to-end encryption (DAVE) in voice; songbird does it with the Rust
+`davey` crate (0.1.5, pinned by songbird). Sound in a call proves DAVE works. songbird gives
+no "DAVE ready" signal, so after a rejoin or a restart the host waits 2 s before DeetsMusic
+plays again (`DAVE_SETTLE`, architecture/LIVE-RELOAD.md §4). `/vc tone` plays a 5 s tone to
+check the path without an app.
 
 ## 5. Volume
-`/dm volume` sets a per-guild gain on a `PCMVolumeTransformer` around the source (0–200%).
-It never moves DeetsMusic's slider, which the capture sits after.
+`/dm volume` sets a per-guild gain (0–200 %) as the songbird track's volume. It never moves
+DeetsMusic's slider, which the capture sits after.
+
+## 6. The Python bot's pipeline (archived)
+`docs/archive/bot/voice.py` ran `deets-tap.exe` as a helper and read its stdout (20 ms blocks
+of 3840 bytes, paced by the helper; ops/TAP.md). It needed two fixes the Rust bot does not:
+the encoder had to be set to music / no FEC / 128 kbps by hand, and **discord.py 2.7.1 needs
+the Python `davey` below 0.2** (`docs/archive/bot/requirements-voice.txt`): davey 0.2.0
+changed how a key change is applied, discord.py never calls it, and the call hears nothing.

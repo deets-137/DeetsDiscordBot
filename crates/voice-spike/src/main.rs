@@ -14,7 +14,7 @@
 //! - registers no commands (CLAUDE.md › Never: one command list per application).
 //!
 //! The Python bot ignores voice events in a server where it has no voice connection
-//! (`bot/voice.py` `on_voice_state_update`), so it does not react to the spike.
+//! (`docs/archive/bot/voice.py` `on_voice_state_update`), so it does not react to the spike.
 //!
 //! What it does:
 //! 1. Connects to the gateway (intents: guilds, guild voice states). It registers no commands.

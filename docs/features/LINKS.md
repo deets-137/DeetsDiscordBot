@@ -1,7 +1,7 @@
 ---
 status: shipped
 desk_test: open
-sources: [bot/app.py, journal/linkscan.py]
+sources: [crates/logic/src/links.rs, crates/logic/src/commands.rs, journal/linkscan.py]
 updated: 2026-11-10
 ---
 # /links — a channel's links
