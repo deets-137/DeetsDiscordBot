@@ -49,7 +49,12 @@ impl std::fmt::Display for RestError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             RestError::Status { status, body } => {
-                write!(f, "Discord said {status}: {}", body.get("message").and_then(Value::as_str).unwrap_or("(no message)"))
+                write!(f, "Discord said {status}: {}", body.get("message").and_then(Value::as_str).unwrap_or("(no message)"))?;
+                // A 400's `errors` names the field Discord refused; the message alone does not.
+                match body.get("errors") {
+                    Some(errors) => write!(f, " {errors}"),
+                    None => Ok(()),
+                }
             }
             RestError::RateLimited { retry_after } => write!(f, "still rate limited ({retry_after:?})"),
             RestError::Transport(e) => write!(f, "no answer from Discord: {e}"),

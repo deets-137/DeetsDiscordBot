@@ -15,24 +15,34 @@
 //! - **Leave when alone**, as `bot/voice.py` does: when someone leaves the bot's channel and
 //!   no person is left in it.
 //!
-//! Not yet: the song-boundary self-restart of the host and writing `.lildeets-resume.json`
-//! (P8; the host *reads* a fresh resume file at start).
+//! - **The song-boundary restart** (bot/live.py, LIVE-RELOAD.md §4). The launcher runs this
+//!   host as a copy (`lildeets-host.run.exe`), so cargo can write a new `lildeets-host.exe`.
+//!   When that original changes and stays the same for one more look (2 s), the host waits
+//!   for the song to end (or for a pause) if it is playing DeetsMusic, pauses DeetsMusic
+//!   through the bridge, writes `.lildeets-resume.json` (beside, flushed, renamed over),
+//!   leaves voice and exits with 75. The launcher starts the new host, which rejoins, starts
+//!   the same app, waits [`DAVE_SETTLE`], and presses play. Not playing DeetsMusic: at once.
+//! - **`.lildeets-hold`**: while it exists, neither a logic swap nor a host restart happens;
+//!   changes wait (CLAUDE.md › Never).
 //!
 //! Threads (rule 10):
 //! | thread | does | lives |
 //! |---|---|---|
-//! | tokio workers | the gateway, IPC, voice glue | the process |
+//! | tokio workers | the gateway, IPC, voice glue, the wait for a song boundary | the process |
 //! | tokio blocking pool | opening a capture (`TapStream::for_exe`) | per open, < 5 s |
 //! | deets-airplay capture | per-process loopback for one stream | as long as the stream |
 //! | songbird mixer / UDP / WS | Opus, DAVE, RTP | as long as a call |
 
 use std::collections::{HashMap, HashSet};
 use std::num::NonZeroU64;
+use std::io::Write as _;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
+use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
 
 use deets_tap::TapStream;
+use lildeets_bridge::Bridge;
 use lildeets_ipc::{GuildVoice, Sound, ToHost, ToLogic, ENV_ADDR, ENV_TOKEN, PROTOCOL};
 use serde_json::Value;
 use songbird::input::{Input, RawAdapter};
@@ -53,6 +63,20 @@ mod tone;
 
 const RESUME_FILE: &str = ".lildeets-resume.json";
 const RESUME_MAX_AGE: Duration = Duration::from_secs(180);
+/// While this file exists, changes queue up and nothing goes live (bot/live.py `HOLD_FILE`).
+const HOLD_FILE: &str = ".lildeets-hold";
+/// EX_TEMPFAIL, "run me again": the launcher starts the new host (crates/launcher).
+const RESTART_CODE: i32 = 75;
+/// Set by the launcher: it will start the host again on [`RESTART_CODE`].
+const ENV_LAUNCHED: &str = "LILDEETS_LAUNCHED";
+/// The app whose song boundary the restart waits for.
+const DEETSMUSIC: &str = "deetsmusic.exe";
+/// After a resume, the wait before DeetsMusic plays again. songbird sends the first packets
+/// before the call's DAVE session is ready and does not say when it is (bot/live.py waits on
+/// discord.py's `can_encrypt`, up to 6 s); the spike connected in 258–741 ms.
+const DAVE_SETTLE: Duration = Duration::from_secs(2);
+/// The command-sync record of `lildeets-logic` (crates/logic commands.rs). Cleared at start.
+const SYNC_FILE: &str = ".lildeets-commands.sync";
 const JOIN_TIMEOUT: Duration = Duration::from_secs(15);
 const TONE_SECS: u64 = 5;
 
@@ -85,8 +109,11 @@ enum Inbox {
     Hello { token: String, version: u32, reader: tokio::net::tcp::OwnedReadHalf, writer: OwnedWriteHalf },
     FromLogic { gen: u64, msg: ToHost },
     LogicGone { gen: u64 },
-    Connected { guild: u64, request_id: u64, channel: u64, sound: Sound, result: Result<(), String> },
+    /// `sound` is `None` for a join with nothing to play (a resume of a silent call).
+    Connected { guild: u64, request_id: u64, channel: u64, sound: Option<Sound>, result: Result<(), String> },
     TapOpened { guild: u64, request_id: u64, exe: String, result: Result<TapStream, String> },
+    /// The song boundary came (or no wait was needed): restart now.
+    RestartNow { paused_by_us: bool },
 }
 
 // --- voice state --------------------------------------------------------------------------
@@ -109,7 +136,7 @@ struct Call {
 struct Pending {
     request_id: u64,
     channel: u64,
-    sound: Sound,
+    sound: Option<Sound>,
     session: Option<String>,
     server: Option<(String, String)>,
     started: Instant,
@@ -177,6 +204,48 @@ impl Supervisor {
     }
 }
 
+fn held() -> bool {
+    root().join(HOLD_FILE).exists()
+}
+
+fn mtime_of(path: &Path) -> Option<SystemTime> {
+    std::fs::metadata(path).and_then(|m| m.modified()).ok()
+}
+
+/// The host's own exe, watched for a rebuild. Only under the launcher: it runs this host as
+/// a copy, so the original is free to change and someone will start the new one.
+struct SelfWatch {
+    /// `lildeets-host.exe` beside the running copy.
+    source: PathBuf,
+    /// Its mtime when this host started.
+    started: Option<SystemTime>,
+    /// Its mtime on the last look (a rebuild must be stable for one tick).
+    seen: Option<SystemTime>,
+}
+
+impl SelfWatch {
+    fn new() -> Option<Self> {
+        let me = std::env::current_exe().ok()?;
+        let source = me.with_file_name("lildeets-host.exe");
+        if std::env::var_os(ENV_LAUNCHED).is_none() || me == source {
+            info!("host: not run by lildeets.exe; a rebuilt host goes live only by hand");
+            return None;
+        }
+        let started = mtime_of(&source);
+        info!(watching = %source.display(), "host: armed the song-boundary restart");
+        Some(Self { source, started, seen: started })
+    }
+
+    /// True while the original differs from the one this host started from and stayed the
+    /// same for one look ([`Host::request_restart`] acts on the first).
+    fn rebuilt(&mut self) -> bool {
+        let now = mtime_of(&self.source);
+        let stable = now.is_some() && now == self.seen;
+        self.seen = now;
+        stable && now != self.started
+    }
+}
+
 fn same(a: &[u8], b: &[u8]) -> bool {
     a.len() == b.len() && a.iter().zip(b).fold(0u8, |acc, (x, y)| acc | (x ^ y)) == 0
 }
@@ -197,6 +266,12 @@ struct Host {
     pending: HashMap<u64, Pending>,
     logic: Option<(u64, OwnedWriteHalf)>,
     resumed: bool,
+    /// DeetsMusic's bridge, for the song-boundary restart and its resume.
+    bridge: Arc<Bridge>,
+    /// A rebuilt host is waiting for its song boundary.
+    restarting: bool,
+    /// After a resume: the guilds still joining, and whether we paused DeetsMusic.
+    resume_wait: Option<(HashSet<u64>, bool)>,
 }
 
 impl Host {
@@ -275,10 +350,17 @@ impl Host {
 
     // --- voice ops ------------------------------------------------------------------------
 
-    async fn play(&mut self, request_id: u64, guild: u64, channel: u64, sound: Sound) {
+    /// Joins `channel` if needed, then plays `sound` (`None`: join only).
+    async fn play(&mut self, request_id: u64, guild: u64, channel: u64, sound: Option<Sound>) {
         let ready = self.calls.get(&guild).is_some_and(|c| c.connected && c.channel == Some(channel));
         if ready {
-            self.start_sound(guild, request_id, sound).await;
+            match sound {
+                Some(sound) => self.start_sound(guild, request_id, sound).await,
+                None => {
+                    self.done(request_id, None).await;
+                    self.settled(guild);
+                }
+            }
             return;
         }
         if let Some(old) = self.pending.remove(&guild) {
@@ -357,8 +439,76 @@ impl Host {
                 self.done(request_id, None).await;
                 self.push_snapshot(None).await;
             }
-            Err(e) => self.done(request_id, Some(format!("Couldn't capture {exe}: {e}"))).await,
+            Err(e) => {
+                if request_id == 0 {
+                    error!(guild, %exe, error = %e, "resume: could not capture the app again");
+                }
+                self.done(request_id, Some(format!("Couldn't capture {exe}: {e}"))).await;
+            }
         }
+        self.settled(guild);
+    }
+
+    /// One resumed guild has joined and started (or failed to). When the last one has, and
+    /// the old host paused DeetsMusic, play it again after [`DAVE_SETTLE`].
+    fn settled(&mut self, guild: u64) {
+        let Some((waiting, _)) = self.resume_wait.as_mut() else { return };
+        if !waiting.remove(&guild) || !waiting.is_empty() {
+            return;
+        }
+        let (_, paused_by_us) = self.resume_wait.take().expect("checked");
+        if paused_by_us {
+            self.resume_deetsmusic();
+        } else {
+            info!("resume: back after the restart");
+        }
+    }
+
+    fn resume_deetsmusic(&self) {
+        let bridge = self.bridge.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(DAVE_SETTLE).await;
+            match bridge.command("play", None).await {
+                Ok(_) => info!("resume: back after the restart; DeetsMusic playing again"),
+                Err(e) => warn!(error = %e, "resume: back after the restart, but DeetsMusic could not be resumed"),
+            }
+        });
+    }
+
+    // --- the song-boundary restart --------------------------------------------------------
+
+    /// The host's exe was rebuilt: wait for a song boundary, then send [`Inbox::RestartNow`].
+    fn request_restart(&mut self) {
+        if self.restarting {
+            return;
+        }
+        self.restarting = true;
+        let playing_dm = self.calls.values().any(|c| matches!(&c.playing, Playing::App(exe) if exe.eq_ignore_ascii_case(DEETSMUSIC)));
+        info!(playing_dm, "restart: lildeets-host.exe changed; restarting at the next song boundary");
+        let bridge = self.bridge.clone();
+        let inbox = self.inbox.clone();
+        tokio::spawn(async move {
+            let paused_by_us = if playing_dm { wait_for_boundary(&bridge).await } else { false };
+            let _ = inbox.send(Inbox::RestartNow { paused_by_us });
+        });
+    }
+
+    /// Where every call is, for the new host (bot/live.py `restart`'s fields).
+    fn resume_state(&self, paused_by_us: bool) -> Value {
+        let at = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).map(|d| d.as_secs_f64()).unwrap_or(0.0);
+        let streams: Vec<Value> = self
+            .calls
+            .iter()
+            .filter(|(_, c)| c.connected)
+            .filter_map(|(g, c)| {
+                let app = match &c.playing {
+                    Playing::App(exe) => Some(exe.clone()),
+                    _ => None,
+                };
+                Some(serde_json::json!({"guild": g, "channel": c.channel?, "app": app, "gain": self.gain(*g)}))
+            })
+            .collect();
+        serde_json::json!({"at": at, "paused_by_us": paused_by_us, "streams": streams, "reason": ["lildeets-host.exe"]})
     }
 
     fn is_playing(&self, guild: u64) -> bool {
@@ -429,7 +579,7 @@ impl Host {
                 let channel = self.voice.get(&user).filter(|(g, _)| *g == guild).map(|(_, c)| *c);
                 self.send_logic(ToLogic::MemberVoice { request_id, user, guild, channel }).await;
             }
-            ToHost::Play { request_id, guild, channel, sound } => self.play(request_id, guild, channel, sound).await,
+            ToHost::Play { request_id, guild, channel, sound } => self.play(request_id, guild, channel, Some(sound)).await,
             ToHost::Stop { request_id, guild } => self.stop(request_id, guild).await,
             ToHost::Leave { request_id, guild } => self.leave(request_id, guild, "asked").await,
             ToHost::SetGain { request_id, guild, gain } => self.set_gain(request_id, guild, gain).await,
@@ -558,13 +708,25 @@ impl Host {
             info!("resume: the hand-off is stale; ignored");
             return;
         }
-        for s in state["streams"].as_array().into_iter().flatten() {
-            let (Some(guild), Some(channel)) = (s["guild"].as_u64(), s["channel"].as_u64()) else { continue };
-            self.gains.insert(guild, s["gain"].as_f64().unwrap_or(1.0) as f32);
-            if let Some(app) = s["app"].as_str() {
-                info!(guild, channel, app, "resume: rejoining");
-                self.play(0, guild, channel, Sound::App { exe: app.to_owned() }).await;
+        let paused_by_us = state["paused_by_us"].as_bool().unwrap_or(false);
+        let streams: Vec<(u64, u64, Option<String>, f32)> = state["streams"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|s| Some((s["guild"].as_u64()?, s["channel"].as_u64()?, s["app"].as_str().map(str::to_owned), s["gain"].as_f64().unwrap_or(1.0) as f32)))
+            .collect();
+        info!(calls = streams.len(), paused_by_us, "resume: replaying the hand-off");
+        if streams.is_empty() {
+            if paused_by_us {
+                self.resume_deetsmusic();
             }
+            return;
+        }
+        self.resume_wait = Some((streams.iter().map(|(g, ..)| *g).collect(), paused_by_us));
+        for (guild, channel, app, gain) in streams {
+            self.gains.insert(guild, gain);
+            info!(guild, channel, app = app.as_deref().unwrap_or("-"), "resume: rejoining");
+            self.play(0, guild, channel, app.map(|exe| Sound::App { exe })).await;
         }
     }
 
@@ -577,9 +739,53 @@ impl Host {
                 self.op4(g, None);
                 self.calls.remove(&g);
                 self.done(p.request_id, Some(format!("Couldn't join <#{}>: Discord did not answer.", p.channel))).await;
+                self.settled(g);
             }
         }
     }
+}
+
+/// Waits until the song DeetsMusic plays now ends or pauses (checked each second, as
+/// bot/live.py does), then pauses DeetsMusic if it plays. True when we paused it.
+async fn wait_for_boundary(bridge: &Bridge) -> bool {
+    let start = bridge.now_playing().await.ok();
+    if let Some(np) = start.as_ref().filter(|np| np.playing) {
+        if let Some(first) = np.catalog_id.clone().or_else(|| np.title.clone()) {
+            info!(title = np.title.as_deref().unwrap_or(""), "restart: waiting for the song to end");
+            loop {
+                tokio::time::sleep(Duration::from_secs(1)).await;
+                match bridge.now_playing().await {
+                    Ok(np) if np.playing && np.catalog_id.clone().or_else(|| np.title.clone()).as_ref() == Some(&first) => continue,
+                    Ok(_) => break,
+                    Err(e) => {
+                        warn!(error = %e, "restart: the bridge stopped answering; restarting now");
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    match bridge.now_playing().await {
+        Ok(np) if np.playing => match bridge.command("pause", None).await {
+            Ok(_) => true,
+            Err(e) => {
+                warn!(error = %e, "restart: could not pause DeetsMusic");
+                false
+            }
+        },
+        _ => false,
+    }
+}
+
+/// Writes beside, flushes, then renames over (CLAUDE.md › Working style; rust-port-plan rule 11).
+fn write_atomic(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    let tmp = path.with_extension("json.tmp");
+    {
+        let mut f = std::fs::File::create(&tmp)?;
+        f.write_all(bytes)?;
+        f.sync_all()?;
+    }
+    std::fs::rename(&tmp, path)
 }
 
 #[tokio::main]
@@ -587,14 +793,28 @@ async fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info,songbird=warn,lildeets_host=debug".into()))
         .init();
-    if let Err(e) = run().await {
-        error!("{e}");
-        std::process::exit(1);
+    match run().await {
+        Ok(0) => {}
+        Ok(code) => std::process::exit(code),
+        Err(e) => {
+            error!("{e}");
+            std::process::exit(1);
+        }
     }
 }
 
-async fn run() -> Result<(), String> {
+/// Runs the bot; returns the exit code ([`RESTART_CODE`] for the song-boundary restart).
+async fn run() -> Result<i32, String> {
     let token = token()?;
+    // The logic skips the command sync when this record matches its own list. Another bot on
+    // this token (the Python bot) may have synced since, so each host start syncs once.
+    match std::fs::remove_file(root().join(SYNC_FILE)) {
+        Ok(()) => info!("host: cleared the command-sync record; the logic will sync once"),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+        Err(e) => warn!(error = %e, "host: could not clear the command-sync record"),
+    }
+    let mut self_watch = SelfWatch::new();
+    let mut exit_code = 0;
     // The OS picks a free port (several Deets apps run on this PC at once).
     let listener = TcpListener::bind("127.0.0.1:0").await.map_err(|e| format!("ipc: bind: {e}"))?;
     let addr = listener.local_addr().map_err(|e| e.to_string())?.to_string();
@@ -647,6 +867,9 @@ async fn run() -> Result<(), String> {
         pending: HashMap::new(),
         logic: None,
         resumed: false,
+        bridge: Arc::new(Bridge::default()),
+        restarting: false,
+        resume_wait: None,
     };
     info!(%addr, logic = %sup.source.display(), "host: starting");
     if let Err(e) = sup.spawn().await {
@@ -695,23 +918,46 @@ async fn run() -> Result<(), String> {
                         let call = host.call(guild);
                         call.connected = true;
                         call.channel = Some(channel);
-                        host.start_sound(guild, request_id, sound).await;
+                        match sound {
+                            Some(sound) => host.start_sound(guild, request_id, sound).await,
+                            None => {
+                                host.done(request_id, None).await;
+                                host.push_snapshot(None).await;
+                                host.settled(guild);
+                            }
+                        }
                     }
                     Err(e) => {
                         error!(guild, error = %e, "voice: songbird could not connect");
                         host.op4(guild, None);
                         host.calls.remove(&guild);
                         host.done(request_id, Some(format!("Couldn't join <#{channel}>: {e}"))).await;
+                        host.settled(guild);
                     }
                 },
                 Inbox::TapOpened { guild, request_id, exe, result } => host.tap_opened(guild, request_id, exe, result).await,
+                Inbox::RestartNow { paused_by_us } => {
+                    let state = host.resume_state(paused_by_us);
+                    let calls = state["streams"].as_array().map_or(0, Vec::len);
+                    match write_atomic(&root().join(RESUME_FILE), state.to_string().as_bytes()) {
+                        Ok(()) => info!(calls, paused_by_us, "restart: hand-off written; restarting"),
+                        Err(e) => error!(error = %e, "restart: could not write the hand-off; restarting without it"),
+                    }
+                    exit_code = RESTART_CODE;
+                    break;
+                }
             },
             _ = ticker.tick() => host.tick().await,
             _ = exe_check.tick() => {
+                // While .lildeets-hold exists, a multi-file change is in progress: rebuilds wait.
+                let hold = held();
+                if !hold && self_watch.as_mut().is_some_and(SelfWatch::rebuilt) {
+                    host.request_restart();
+                }
                 let mtime = sup.mtime();
                 let stable = mtime.is_some() && mtime == sup.seen_mtime;
                 sup.seen_mtime = mtime;
-                let rebuilt = stable && mtime != sup.running_mtime;
+                let rebuilt = !hold && stable && mtime != sup.running_mtime;
                 let missing = host.logic.is_none() && Instant::now() >= sup.next_try;
                 if rebuilt || missing {
                     if rebuilt {
@@ -730,16 +976,19 @@ async fn run() -> Result<(), String> {
             }
         }
     }
+    let restarting = exit_code == RESTART_CODE;
     let guilds: Vec<u64> = host.calls.keys().copied().collect();
     for g in guilds {
-        host.leave(0, g, "the host is stopping").await;
+        host.leave(0, g, if restarting { "the host is restarting" } else { "the host is stopping" }).await;
     }
-    host.presence(None);
+    if !restarting {
+        host.presence(None); // a restart keeps "Listening to" for the few seconds of the gap
+    }
     tokio::time::sleep(Duration::from_millis(500)).await;
     sup.retire_all_but(u64::MAX).await;
     shard.close(twilight_gateway::CloseFrame::NORMAL);
-    info!("host: stopped");
-    Ok(())
+    info!(restarting, "host: stopped");
+    Ok(exit_code)
 }
 
 fn spawn_reader(gen: u64, mut reader: tokio::net::tcp::OwnedReadHalf, inbox: mpsc::UnboundedSender<Inbox>) {

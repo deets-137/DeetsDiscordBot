@@ -1833,6 +1833,7 @@ name = "lildeets-host"
 version = "0.1.0"
 dependencies = [
  "deets-tap",
+ "lildeets-bridge",
  "lildeets-ipc",
  "serde_json",
  "songbird",

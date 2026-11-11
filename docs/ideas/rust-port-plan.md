@@ -290,9 +290,21 @@ P0 → (P1, P2, P3, P4 in parallel) → P5 → P6 → P7 → P8.
   twilight's typed `InteractionCreate` serialized back to JSON (no extra crate for raw frames).
   **Smoke test, 2026-11-10, Python bot stopped:** the host connected as Lil Deets, started the
   logic, the logic got Ready and synced the commands; touching the logic exe swapped it in
-  about 35 ms with the old one stopped after the new one's `Hello`. **Not yet:** the
-  song-boundary self-restart and writing the resume file (the host restarts only by hand
-  for now); a join, `/vc` and `/dm` in a real call (needs the owner in Discord).
+  about 35 ms with the old one stopped after the new one's `Hello`.
+  **The song-boundary restart, built 2026-11-10 (night).** The launcher runs the host as a
+  copy (`lildeets-host.run.exe`, env `LILDEETS_LAUNCHED`). The host watches
+  `lildeets-host.exe`; changed and stable for one 2 s look (and no `.lildeets-hold`), it
+  waits for the DeetsMusic song to change or pause (bridge, each second; a dependency on our
+  own `lildeets-bridge`), pauses DeetsMusic, writes `.lildeets-resume.json` with live.py's
+  fields (beside, `sync_all`, rename), leaves, exits 75. The new host rejoins every call (an
+  app, or a join with nothing), and when the last has started, waits `DAVE_SETTLE` (2 s:
+  songbird gives no DAVE-ready signal) and sends `play`. The hold file now also holds the
+  logic swap. **Not yet tested in a call.**
+  **First desk test, 2026-11-10 night (Moshi's):** join 325 ms and DeetsMusic streaming; the
+  channel status and "Listening to" follow each song; two logic swaps while playing, no gap.
+  `/dm queue` failed (400 `COMPONENT_CUSTOM_ID_DUPLICATED`: on a first, last or only page ◀
+  and ▶ clamped to the same `dm:queue:<page>`); the ids are now `dm:queue:<page>:<prev|next>`.
+  The parity kit masks custom_ids, so it could not catch this.
 
 ### P6 · lildeets-logic: commands and permissions
 - **Reads:** `bot/app.py`, `bot/voice.py` (register), `bot/dm.py` (register, check),
@@ -341,8 +353,19 @@ P0 → (P1, P2, P3, P4 in parallel) → P5 → P6 → P7 → P8.
 - **Launcher built 2026-11-10** (`crates/launcher`, `lildeets.exe`): runs `lildeets-host.exe`
   beside it and starts it again on exit 75. **To run the Rust bot** (with the Python bot
   stopped): `cargo build --workspace --release` (with `CMAKE` set, §6), then
-  `target\release\lildeets.exe`. Ctrl+C stops it. Still to do: the docs rewrite and, before
-  the switch, twilight's advisories (rule 5).
+  `target\release\lildeets.exe`. Ctrl+C stops it.
+- **The switch, 2026-11-10 (night), his word:** "I'll switch to the rust bot entirely now, no
+  need to spend a week testing since no one uses this live for now". No side-by-side week.
+- **twilight checked 2026-11-10:** no advisory for any twilight crate in RustSec or GitHub's
+  database. 0.18.0 is still the newest 0.18.x, so the pin stays `=0.18.0`; it meets rule 5's
+  two weeks on 2026-11-15. The lock file also lists twilight 0.17.1 and rustls 0.22.4
+  (RUSTSEC-2026-0346 affects the 0.22 line): both come only from songbird features we do not
+  enable (`twilight`, `tungstenite`), and `cargo tree --target all` shows neither is built.
+  Our rustls is 0.23.46, patched for every rustls advisory to date.
+- **The command sync after the Python bot:** the host deletes `.lildeets-commands.sync` at
+  each start, so a host start syncs once; a logic swap still skips an unchanged list.
+- Still to do: the docs rewrite (BOT.md, LIVE-RELOAD.md, SETUP.md) and moving `bot/` to
+  `docs/archive/`.
 
 ## 6. Open (to settle in P5, on evidence)
 - **Testing P5–P7 on one token (settled, the owner, 2026-11-10: "Pause the python bot, no

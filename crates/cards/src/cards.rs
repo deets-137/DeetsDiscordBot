@@ -8,7 +8,7 @@
 //! custom_ids are fixed strings (discord.py made random ones), so a click is routed by its
 //! id alone, from any process, after any restart:
 //! - `dm:np:<back|pause|resume|skip|queue>`
-//! - `dm:queue:<page>`
+//! - `dm:queue:<page>:<prev|next>` (the page to show; the direction keeps the ids unique)
 //! - `dm:pick:<n>:<next 0|1>:<catalogId>`
 
 use twilight_model::channel::message::component::{
@@ -141,8 +141,10 @@ pub fn queue_card(q: &Queue, page: usize, accent: u32) -> Vec<Component> {
         parts.push(text("Up Next is empty. Add a song with `/dm add`."));
     }
     parts.push(row(vec![
-        button(format!("dm:queue:{}", page.saturating_sub(1).max(1)), "◀", page <= 1),
-        button(format!("dm:queue:{}", (page + 1).min(pages)), "▶", page >= pages),
+        // The direction keeps the two ids apart: on a one-page queue both targets are page 1,
+        // and Discord refuses a message with a duplicated custom_id (400, 2026-11-10).
+        button(format!("dm:queue:{}:prev", page.saturating_sub(1).max(1)), "◀", page <= 1),
+        button(format!("dm:queue:{}:next", (page + 1).min(pages)), "▶", page >= pages),
     ]));
     container(parts, accent)
 }

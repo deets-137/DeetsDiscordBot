@@ -24,7 +24,9 @@ use crate::{root, Ctx, APP};
 const COMMANDS: &str = include_str!("../../../tests/parity/expected/commands.json");
 
 /// Registers the command list when it changed since the last sync (a hash in
-/// `.lildeets-commands.sync`), so a logic rebuild does not re-sync every time.
+/// `.lildeets-commands.sync`), so a logic rebuild does not re-sync every time. The host
+/// deletes that record at each start, so a host start always syncs once (the Python bot,
+/// on the same token, may have synced its own list in between).
 pub async fn sync_commands(ctx: &Ctx, app_id: u64) {
     let hash = format!("{app_id}:{:016x}", fnv(COMMANDS.as_bytes()));
     let file = root().join(".lildeets-commands.sync");
@@ -474,7 +476,8 @@ async fn component(ctx: &Ctx, ix: &Ix, a: &Answer<'_>) {
                 Err(e) => drop(a.follow_text(e.0, true).await),
             }
         }
-        ["dm", "queue", page] => {
+        // `dm:queue:<page>:<prev|next>`; the 3-part form is from cards posted before 2026-11-11.
+        ["dm", "queue", page, ..] => {
             if let Some(reason) = check(ctx, ix, "queue").await {
                 let _ = a.text(reason, true).await;
                 return;

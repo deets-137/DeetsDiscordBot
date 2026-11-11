@@ -90,5 +90,21 @@ fn custom_ids_route_without_state() {
         .iter()
         .map(|b| b["custom_id"].as_str().unwrap())
         .collect();
-    assert_eq!(nav, ["dm:queue:1", "dm:queue:3"]);
+    assert_eq!(nav, ["dm:queue:1:prev", "dm:queue:3:next"]);
+}
+
+/// A one-page queue: both targets are page 1, and the ids must still differ (Discord
+/// refuses a duplicated custom_id with a 400; seen in Moshi's, 2026-11-10).
+#[test]
+fn queue_nav_ids_are_unique_on_one_page() {
+    let mut q = queue();
+    q.upcoming.truncate(3);
+    let card = json(&cards::queue_card(&q, 1, ACCENT));
+    let nav: Vec<&str> = card[0]["components"].as_array().unwrap().last().unwrap()["components"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|b| b["custom_id"].as_str().unwrap())
+        .collect();
+    assert_eq!(nav, ["dm:queue:1:prev", "dm:queue:1:next"]);
 }

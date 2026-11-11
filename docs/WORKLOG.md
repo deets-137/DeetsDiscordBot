@@ -9,6 +9,27 @@ updated: 2026-11-10
 One dated `##` per sitting, newest first. An old entry is never corrected. DeetsOTD's earlier
 history is in `git log` and docs/archive/.
 
+## 2026-11-10 (night) — the switch to the Rust bot; the song-boundary restart
+
+- **His words.** "commit and push everything please"; "build the song-boundary restart, then
+  go ahead with 1, 3, and 4" (the restart, twilight, the command sync; not the docs rewrite
+  or the week); "I'll switch to the rust bot entirely now, no need to spend a week testing
+  since no one uses this live for now".
+- **Committed and pushed** `rust-rewrite` (`fa3c6b8`, P1–P8).
+- **Built:** the host's song-boundary restart (the launcher runs the host as a copy; the
+  host watches its exe, waits for the song to end, pauses, writes the resume file
+  atomically, exits 75; the new host rejoins and plays after 2 s); `.lildeets-hold` for the
+  host and the logic swap; the host clears the command-sync record at start; a 400's
+  `errors` now shows in the log.
+- **twilight:** no advisories; 0.18.0 is the newest and stays pinned (rust-port-plan.md P8).
+- **Desk test, Moshi's:** `/vc play`, the status line and "Listening to" work; two logic
+  swaps while playing, no gap. `/dm queue` failed: duplicated ◀ ▶ custom_ids on a clamped
+  page. Fixed and swapped in live; not yet retried by him.
+- **Left open:** the rest of the desk test (HANDOFF item 0) with the restart; the docs
+  rewrite; `bot/` to the archive; the merge into main. The host logs a WARN when it stops an
+  old logic (os error 10054); it is expected and should be quiet (a host change: it goes
+  live through the restart, so do it with him listening).
+
 ## 2026-11-10 (evening) — the Rust port, P0–P8, on branch `rust-rewrite`
 
 - **His words.** "let's open a new branch 'rust-rewrite' and get started, no agents";

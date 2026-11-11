@@ -63,7 +63,17 @@ restart. A file that doesn't compile → refused. The launcher restarts on 75 an
 3. Change a comment in `voice.py`: the log says it waits for the song to end; at the change
    the bot leaves and rejoins within a few seconds and the next song plays from its start.
 
-## 8. If the bot were Rust
-Rust can't reload code in place safely. The same behaviour would need two processes: a
-small, rarely changed voice host (gateway + voice) and a logic process (commands, cards)
-restarted at will. The boundary in §5 is the same line, so a Rust port keeps it.
+## 8. The Rust bot (built 2026-11-10; the live bot since that night)
+Rust can't reload code in place safely, so it is two processes: a small, rarely changed
+voice host (gateway + voice) and a logic process (commands, cards) restarted at will. The
+boundary in §5 is the same line.
+- **A new `lildeets-logic.exe`** (any cargo build that changes it): the host starts it beside
+  the old one, waits for its `Hello`, stops the old one. No gap. The host runs a copy
+  (`lildeets-logic.run-<n>.exe`) so cargo can write the original.
+- **A new `lildeets-host.exe`**: the song-boundary restart of §4. The launcher
+  (`lildeets.exe`) runs the host as `lildeets-host.run.exe`; the host waits for the song to
+  end, pauses DeetsMusic, writes `.lildeets-resume.json` atomically, exits 75; the launcher
+  starts the new copy, which rejoins, starts the app, waits 2 s for DAVE (songbird gives no
+  ready signal), and plays. Desk test: HANDOFF item 0.
+- `.lildeets-hold` holds both. The launcher itself is never swapped: a change to it needs
+  a stop and a start by hand.
