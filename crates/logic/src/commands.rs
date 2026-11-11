@@ -7,7 +7,7 @@
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
-use lildeets_bridge::BridgeError;
+use deetsmusic_bridge::BridgeError;
 use lildeets_cards::cards;
 use lildeets_cards::model::Track;
 use lildeets_cards::text::{self, clip, confident, line, notices, suggestion, Placement};
@@ -27,21 +27,72 @@ const COMMANDS: &str = include_str!("../../../tests/parity/expected/commands.jso
 /// `.lildeets-commands.sync`), so a logic rebuild does not re-sync every time. The host
 /// deletes that record at each start, so a host start always syncs once (the Python bot,
 /// on the same token, may have synced its own list in between).
+///
+/// **The Activity's Launch command** (ACTIVITY.md §9). When Activities are turned on, Discord
+/// makes one Entry Point command (type 4). A sync replaces the whole list, so a sync without
+/// that command deletes it. The sync reads Discord's list first and carries the Entry Point
+/// command as Discord holds it. When there is none and the relay is set up in `.env`, the
+/// sync makes Discord's default one (`launch`); if Discord refuses that (Activities are off),
+/// the list goes without it.
 pub async fn sync_commands(ctx: &Ctx, app_id: u64) {
-    let hash = format!("{app_id}:{:016x}", fnv(COMMANDS.as_bytes()));
+    let mut list: Vec<Value> = serde_json::from_str(COMMANDS).expect("commands.json is a JSON list");
+    let ours = list.len();
     let file = root().join(".lildeets-commands.sync");
-    if std::fs::read_to_string(&file).is_ok_and(|h| h.trim() == hash) {
+    let synced = |list: &[Value]| format!("{app_id}:{:016x}", fnv(Value::from(list.to_vec()).to_string().as_bytes()));
+    // A logic swap with our own list unchanged: no call to Discord at all (the host clears
+    // the record at each start, so a host start always looks).
+    let last = std::fs::read_to_string(&file).unwrap_or_default();
+    if last.trim().split('+').next() == Some(synced(&list).as_str()) {
         info!("commands: unchanged since the last sync");
         return;
     }
-    let body: Value = serde_json::from_str(COMMANDS).expect("commands.json is JSON");
-    match ctx.rest.send(&routes::put_global_commands(app_id, body)).await {
+
+    let mut made_here = false;
+    match ctx.rest.send(&routes::get_global_commands(app_id)).await {
+        Ok(now) => match now.as_array().and_then(|a| a.iter().find(|c| c["type"] == ENTRY_POINT)) {
+            Some(held) => list.push(carried(held)),
+            None if crate::env_or_dotenv("LILDEETS_RELAY_URL").is_some() => {
+                made_here = true;
+                list.push(serde_json::json!({"name": "launch", "description": "Launch an activity", "type": ENTRY_POINT, "handler": 2}));
+            }
+            None => {}
+        },
+        Err(e) => {
+            // Without Discord's list a sync could delete the Launch command: do not sync now.
+            warn!(error = %e, "commands: could not read Discord's list; not synced (the next start tries again)");
+            return;
+        }
+    }
+    let mut result = ctx.rest.send(&routes::put_global_commands(app_id, Value::from(list.clone()))).await;
+    if result.is_err() && made_here {
+        info!("commands: Discord refused a Launch command (Activities are off for the app?); syncing without it");
+        list.truncate(ours);
+        result = ctx.rest.send(&routes::put_global_commands(app_id, Value::from(list.clone()))).await;
+    }
+    match result {
         Ok(_) => {
-            info!("commands: synced");
-            let _ = std::fs::write(&file, hash);
+            info!(launch = list.len() > ours, "commands: synced");
+            // "<hash of our list>+<with or without Launch>": the first part is what a swap compares.
+            let _ = std::fs::write(&file, format!("{}+{}", synced(&list[..ours]), list.len() - ours));
         }
         Err(e) => warn!(error = %e, "commands: sync failed"),
     }
+}
+
+/// Discord's command type for an Activity's Entry Point.
+const ENTRY_POINT: u64 = 4;
+
+/// The Entry Point command as Discord holds it, with only the fields a sync may send. Its
+/// `id` stays, so Discord keeps the same command.
+fn carried(held: &Value) -> Value {
+    const KEEP: [&str; 9] = ["id", "name", "name_localizations", "description", "description_localizations", "type", "handler", "integration_types", "contexts"];
+    let mut out = Map::new();
+    for key in KEEP {
+        if let Some(v) = held.get(key).filter(|v| !v.is_null()) {
+            out.insert(key.to_owned(), v.clone());
+        }
+    }
+    Value::Object(out)
 }
 
 fn fnv(bytes: &[u8]) -> u64 {
@@ -86,11 +137,14 @@ pub async fn handle(ctx: Arc<Ctx>, event: Value) {
 // --- permissions (docs/archive/bot/dm.py RULE, check) --------------------------------------------------
 
 /// action → the Rooms rule that lets a guest do it ("read": any guest in the call; None: host only).
+/// `play` (replace what plays) follows "Guests may skip": his call 3B, 2026-11-11
+/// (PERMISSIONS.md §6). `seek` and `search` are the Activity's.
 fn rule(action: &str) -> Option<&'static str> {
     match action {
-        "np" | "queue" => Some("read"),
+        "np" | "queue" | "search" => Some("read"),
         "pause" | "resume" => Some("roomGuests.playPause"),
-        "skip" | "back" => Some("roomGuests.skip"),
+        "skip" | "back" | "play" => Some("roomGuests.skip"),
+        "seek" => Some("roomGuests.seek"),
         "add" => Some("roomGuests.add"),
         "remove" | "move" => Some("roomGuests.changeQueue"),
         _ => None,
@@ -101,15 +155,28 @@ fn rule_label(rule: &str) -> &'static str {
     match rule {
         "roomGuests.playPause" => "Guests may start and stop",
         "roomGuests.skip" => "Guests may skip",
+        "roomGuests.seek" => "Guests may seek",
         "roomGuests.add" => "Guests may add songs",
         _ => "Guests may change Up Next",
     }
 }
 
+/// Is the Activity set up (`LILDEETS_RELAY_URL` in `.env`)? Read once per logic.
+pub fn activity_on() -> bool {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ON.get_or_init(|| crate::env_or_dotenv("LILDEETS_RELAY_URL").is_some())
+}
+
 /// `check`: `None` when allowed; otherwise the reason, for an ephemeral reply.
 async fn check(ctx: &Ctx, ix: &Ix, action: &str) -> Option<String> {
-    let Some(guild) = ix.guild else { return Some("/dm works in a server.".into()) };
-    if ctx.is_host(ix.user).await {
+    check_for(ctx, ix.guild, ix.user, action).await
+}
+
+/// The check for `user` in `guild` (`None`: not in a server). A `/dm` command, a card's
+/// button and the Activity all come here (PERMISSIONS.md §7).
+pub async fn check_for(ctx: &Ctx, guild: Option<u64>, user: u64, action: &str) -> Option<String> {
+    let Some(guild) = guild else { return Some("/dm works in a server.".into()) };
+    if ctx.is_host(user).await {
         return None;
     }
     let Some(rule) = rule(action) else { return Some("Only the host can do that.".into()) };
@@ -121,15 +188,19 @@ async fn check(ctx: &Ctx, ix: &Ix, action: &str) -> Option<String> {
         return Some("/dm opens up to everyone while the host is playing DeetsMusic in voice.".into());
     }
     let bot_channel = ctx.guild_voice(guild).and_then(|g| g.bot_channel)?;
-    if ctx.where_is(guild, ix.user).await != Some(bot_channel) {
+    if ctx.where_is(guild, user).await != Some(bot_channel) {
         return Some(format!("Join <#{bot_channel}> to control the music."));
     }
     if rule == "read" {
         return None;
     }
     let rules = ctx.bridge.rules().await;
-    if rules.get(rule).and_then(|v| v.as_deref()) != Some("everyone") {
-        return Some(format!("The host has set “{}” to host only in DeetsMusic.", rule_label(rule)));
+    // Play Now cuts the song off (skip) AND plays a song the guest chose (add): both rules.
+    let needs: &[&str] = if action == "play" { &[rule, "roomGuests.add"] } else { &[rule] };
+    for rule in needs {
+        if rules.get(*rule).and_then(|v| v.as_deref()) != Some("everyone") {
+            return Some(format!("The host has set “{}” to host only in DeetsMusic.", rule_label(rule)));
+        }
     }
     None
 }
@@ -275,7 +346,7 @@ pub async fn np_card(ctx: &Ctx, guild: Option<u64>) -> Result<Vec<twilight_model
     let (np, q, accent) = tokio::join!(ctx.bridge.now_playing(), ctx.bridge.queue(), ctx.bridge.accent());
     let (np, q) = (np?, q?);
     let where_ = guild.filter(|g| ctx.tapping_app(*g)).and_then(|g| ctx.guild_voice(g)).and_then(|g| g.bot_channel).map(|c| format!("<#{c}>"));
-    Ok(cards::np_card(&np, q.upcoming.first(), where_.as_deref(), accent, now()))
+    Ok(cards::np_card(&np, q.upcoming.first(), where_.as_deref(), accent, now(), activity_on()))
 }
 
 async fn queue_card(ctx: &Ctx, page: usize) -> Result<Vec<twilight_model::channel::message::component::Component>, BridgeError> {
@@ -422,7 +493,10 @@ async fn dm(ctx: &Arc<Ctx>, ix: &Ix, a: &Answer<'_>, sub: &str, opts: &Map<Strin
                     let _ = a.follow_text(format!("Not sure which song you mean{hint}."), true).await;
                     return Ok(());
                 };
-                let reply = ctx.bridge.play(&song_id).await?;
+                // A guest's play keeps Up Next: replacing it would need "Guests may change Up
+                // Next" (PERMISSIONS.md §6). The host's play replaces it, as before.
+                let keep_queue = !ctx.is_host(ix.user).await;
+                let reply = ctx.bridge.play(&song_id, keep_queue).await?;
                 let what = reply_tracks(&reply).first().map(line).unwrap_or_else(|| "it".into());
                 let _ = a.follow_text(format!("▶ {who} played **{what}**.{}", notices(&reply)), false).await;
                 Ok(())
@@ -451,6 +525,13 @@ async fn component(ctx: &Ctx, ix: &Ix, a: &Answer<'_>) {
     let parts: Vec<&str> = id.split(':').collect();
     info!(custom_id = %id, user = ix.user, "interaction: button");
     match parts.as_slice() {
+        // "Open in call": anyone may open the Activity. What they may do in it is checked
+        // there, per action. Discord opens it in the voice channel the person is in.
+        ["dm", "np", "open"] => {
+            if a.launch_activity().await.is_err() {
+                let _ = a.text("Discord did not open the Activity. Join the voice channel, then press the rocket button in the call.", true).await;
+            }
+        }
         ["dm", "np", action] => {
             if let Some(reason) = check(ctx, ix, action).await {
                 let _ = a.text(reason, true).await;

@@ -1,0 +1,21 @@
+{
+  "name": "lildeets-activity",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "The Discord Activity for Lil Deets: DeetsMusic's cards in the call (docs/features/ACTIVITY.md).",
+  "scripts": {
+    "mock": "vite --config mock/vite.config.ts",
+    "mock:build": "tsc --noEmit && vite build --config mock/vite.config.ts",
+    "check": "tsc --noEmit && node scripts/look-sync.mjs --check",
+    "look:sync": "node scripts/look-sync.mjs",
+    "look:check": "node scripts/look-sync.mjs --check"
+  },
+  "devDependencies": {
+    "typescript": "~5.6.2",
+    "vite": "^6.0.3"
+  },
+  "dependencies": {
+    "@discord/embedded-app-sdk": "2.5.0"
+  }
+}

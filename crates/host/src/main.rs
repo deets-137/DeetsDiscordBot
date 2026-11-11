@@ -22,6 +22,10 @@
 //!   through the bridge, writes `.lildeets-resume.json` (beside, flushed, renamed over),
 //!   leaves voice and exits with 75. The launcher starts the new host, which rejoins, starts
 //!   the same app, waits [`DAVE_SETTLE`], and presses play. Not playing DeetsMusic: at once.
+//! - **The Activity's relay** (ACTIVITY.md §5): one WebSocket out to the relay Worker, held
+//!   only while the bot is in a call (`lildeets-relay-client`). The relay's question "is this
+//!   person in this Activity?" goes to the logic, which asks Discord. Off unless `.env` has
+//!   `LILDEETS_RELAY_URL` and `LILDEETS_RELAY_SECRET`.
 //! - **`.lildeets-hold`**: while it exists, neither a logic swap nor a host restart happens;
 //!   changes wait (CLAUDE.md › Never).
 //!
@@ -42,8 +46,9 @@ use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
 
 use deets_tap::TapStream;
-use lildeets_bridge::Bridge;
+use deetsmusic_bridge::Bridge;
 use lildeets_ipc::{GuildVoice, Sound, ToHost, ToLogic, ENV_ADDR, ENV_TOKEN, PROTOCOL};
+use lildeets_relay_client::{Checked, FromRelay, Relay};
 use serde_json::Value;
 use songbird::input::{Input, RawAdapter};
 use songbird::tracks::TrackHandle;
@@ -93,18 +98,28 @@ fn root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
 
-/// `DISCORD_TOKEN` from the environment, else from the repo's `.env`. Never logged.
-fn token() -> Result<String, String> {
-    if let Ok(t) = std::env::var("DISCORD_TOKEN") {
-        return Ok(t);
+/// A setting from the environment, else from the repo's `.env`. Never logged.
+fn setting(key: &str) -> Option<String> {
+    if let Ok(v) = std::env::var(key) {
+        return Some(v).filter(|v| !v.is_empty());
     }
-    let text = std::fs::read_to_string(root().join(".env")).map_err(|e| format!("cannot read .env: {e}"))?;
+    let text = std::fs::read_to_string(root().join(".env")).ok()?;
+    let prefix = format!("{key}=");
     text.lines()
-        .filter_map(|l| l.trim().strip_prefix("DISCORD_TOKEN="))
+        .filter_map(|l| l.trim().strip_prefix(prefix.as_str()))
         .map(|v| v.trim().trim_matches('"').trim_matches('\'').to_owned())
         .find(|v| !v.is_empty())
-        .ok_or_else(|| "DISCORD_TOKEN is not set (env or .env)".into())
 }
+
+/// `DISCORD_TOKEN` from the environment, else from the repo's `.env`.
+fn token() -> Result<String, String> {
+    setting("DISCORD_TOKEN").ok_or_else(|| "DISCORD_TOKEN is not set (env or .env)".into())
+}
+
+/// The Activity's relay (ACTIVITY.md §5): its host socket's address and the host secret.
+/// Both from `.env`; with either missing, the bot runs with no relay.
+const ENV_RELAY_URL: &str = "LILDEETS_RELAY_URL";
+const ENV_RELAY_SECRET: &str = "LILDEETS_RELAY_SECRET";
 
 fn nz(id: u64) -> NonZeroU64 {
     NonZeroU64::new(id).expect("Discord ids are never 0")
@@ -132,6 +147,8 @@ enum Inbox {
     Moved { guild: u64, gen: u64, result: Result<(), String> },
     /// The gateway is down and Discord answered a TCP probe: the network is back.
     ProbeOk,
+    /// The Activity's relay asks something of the bot.
+    Relay(FromRelay),
 }
 
 /// songbird's driver events for one call, into the main loop (rule 12: log what acts alone).
@@ -357,6 +374,13 @@ struct Host {
     /// When the last TCP probe was sent, and when the shard was last replaced.
     last_probe: Instant,
     last_replace: Instant,
+    /// The connection to the Activity's relay, when `.env` sets one up.
+    relay: Option<Relay>,
+    /// The voice channels the relay was last told the bot is in.
+    relay_channels: Vec<u64>,
+    /// Everyone with the Activity open, as the relay named them. Kept here, not in the logic:
+    /// a new logic gets the list at once (LIVE-RELOAD.md §5).
+    relay_viewers: Vec<lildeets_ipc::RelayViewer>,
 }
 
 impl Host {
@@ -862,6 +886,25 @@ impl Host {
                 self.presence(listening);
             }
             ToHost::Snapshot { request_id } => self.push_snapshot(Some(request_id)).await,
+            ToHost::RelayChecked { rid, channel, reason } => {
+                if let Some(relay) = &self.relay {
+                    let answer = match channel {
+                        Some(channel) => Checked::In { channel },
+                        None => Checked::No { reason: reason.unwrap_or_else(|| "Discord did not confirm that you are in this Activity.".into()) },
+                    };
+                    relay.checked(rid, answer);
+                }
+            }
+            ToHost::RelayState { data } => {
+                if let Some(relay) = &self.relay {
+                    relay.state(&data);
+                }
+            }
+            ToHost::RelayTo { rid, data } => {
+                if let Some(relay) = &self.relay {
+                    relay.to(&rid, &data);
+                }
+            }
         }
     }
 
@@ -1007,6 +1050,8 @@ impl Host {
             let guilds = self.guilds.clone();
             self.send_logic(ToLogic::Ready { app_id, bot_user_id, guilds }).await;
             self.push_snapshot(None).await;
+            let viewers = self.relay_viewers.clone();
+            self.send_logic(ToLogic::RelayViewers { viewers }).await;
         }
     }
 
@@ -1054,6 +1099,60 @@ impl Host {
         if std::mem::take(&mut self.snapshot_stale) {
             self.push_snapshot(None).await;
         }
+        self.tell_relay();
+    }
+
+    /// The relay hears which voice channels the bot is in, on a change only. The first
+    /// channel opens the connection; the last one leaving closes it (lildeets-relay-client).
+    fn tell_relay(&mut self) {
+        let Some(relay) = &self.relay else { return };
+        let mut channels: Vec<u64> = self.calls.iter().filter(|(g, c)| c.connected && !self.lost.contains_key(*g)).filter_map(|(_, c)| c.channel).collect();
+        channels.sort_unstable();
+        if channels != self.relay_channels {
+            relay.set_channels(channels.clone());
+            self.relay_channels = channels;
+        }
+    }
+
+    /// The relay asks whether a person is in an Activity instance: the logic asks Discord.
+    async fn on_relay(&mut self, ev: FromRelay) {
+        match ev {
+            FromRelay::Check { rid, user, instance } => {
+                if self.logic.is_some() {
+                    self.send_logic(ToLogic::RelayCheck { rid, user, instance }).await;
+                } else if let Some(relay) = &self.relay {
+                    relay.checked(rid, Checked::No { reason: "Lil Deets is starting. Close the Activity and open it again.".into() });
+                }
+            }
+            FromRelay::Joined { rid, user, name, channel } => {
+                self.relay_viewers.retain(|v| v.rid != rid);
+                self.relay_viewers.push(lildeets_ipc::RelayViewer { rid, user, name, channel });
+                self.tell_viewers().await;
+            }
+            FromRelay::Left { rid } => {
+                let before = self.relay_viewers.len();
+                self.relay_viewers.retain(|v| v.rid != rid);
+                if self.relay_viewers.len() != before {
+                    self.tell_viewers().await;
+                }
+            }
+            FromRelay::Reset => {
+                if !self.relay_viewers.is_empty() {
+                    self.relay_viewers.clear();
+                    self.tell_viewers().await;
+                }
+            }
+            // With no logic (a swap in progress) the request is dropped; the page times out
+            // and says so. A guest presses again a moment later.
+            FromRelay::Data { rid, data } => self.send_logic(ToLogic::RelayData { rid, data }).await,
+        }
+    }
+
+    /// The logic hears who has the Activity open, on every change.
+    async fn tell_viewers(&mut self) {
+        info!(viewers = self.relay_viewers.len(), "relay: the Activity's viewers changed");
+        let viewers = self.relay_viewers.clone();
+        self.send_logic(ToLogic::RelayViewers { viewers }).await;
     }
 
     /// Leave-when-alone, as a safety net: `VoiceStateUpdate` catches the last person
@@ -1228,7 +1327,27 @@ async fn run() -> Result<i32, String> {
         gateway_down: None,
         last_probe: Instant::now(),
         last_replace: Instant::now() - REPLACE_EVERY,
+        relay: None,
+        relay_channels: Vec::new(),
+        relay_viewers: Vec::new(),
     };
+    // The Activity's relay: the client connects only while the bot is in a call (`tell_relay`).
+    match (setting(ENV_RELAY_URL), setting(ENV_RELAY_SECRET)) {
+        (Some(url), Some(secret)) => {
+            let (tx, mut rx) = mpsc::unbounded_channel::<FromRelay>();
+            let inbox = inbox_tx.clone();
+            tokio::spawn(async move {
+                while let Some(ev) = rx.recv().await {
+                    if inbox.send(Inbox::Relay(ev)).is_err() {
+                        break;
+                    }
+                }
+            });
+            host.relay = Some(Relay::spawn(url, secret, tx));
+        }
+        (None, None) => info!("relay: not set up ({ENV_RELAY_URL} and {ENV_RELAY_SECRET} are not in .env); the Activity is off"),
+        _ => warn!("relay: only one of {ENV_RELAY_URL} and {ENV_RELAY_SECRET} is set; the Activity is off"),
+    }
     info!(%addr, logic = %sup.source.display(), "host: starting");
     if let Err(e) = sup.spawn().await {
         error!("logic: {e}");
@@ -1331,6 +1450,7 @@ async fn run() -> Result<i32, String> {
                         }
                     }
                 }
+                Inbox::Relay(ev) => host.on_relay(ev).await,
                 Inbox::ProbeOk => {
                     // The network answers but twilight may sit in a long retry wait: a new
                     // shard that resumes the same session connects now.

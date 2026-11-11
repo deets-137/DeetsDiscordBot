@@ -1,0 +1,165 @@
+/* ── The Compass (docs/features/COMPASS.md, src/compass.ts) ────────────────────────────
+   Ctrl+Space's bar: it hangs from the title bar over the cards, in every surface. The
+   field on top, then groups of rows. It wears the menu material (the title bar panels'
+   idiom); color through theme roles, geometry through the --compass-* skin tokens. The
+   inline Settings controls reuse the Settings card's split pill (styles/settings.css). */
+
+.compass {
+  position: absolute;
+  top: 100%;
+  left: var(--panel-edge-gap);
+  right: var(--panel-edge-gap);
+  /* Clear of the Now Playing card in every surface (COMPASS.md §11). compass.ts measures
+     the card and publishes --np-drop / --np-right on this element; the two vars below pick
+     which one this surface uses, and --compass-max-h (skin.css) subtracts the same drop so
+     the box always ends inside the window instead of being clipped by it. */
+  --compass-drop: var(--np-drop, 0px);
+  margin-top: calc(var(--space-1) + var(--compass-drop));
+  max-height: var(--compass-max-h);
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-1);
+  background: var(--menu-surface);
+  -webkit-backdrop-filter: var(--menu-backdrop);
+  backdrop-filter: var(--menu-backdrop);
+  border: 1px solid var(--border);
+  border-radius: var(--panel-radius); /* the CARD radius, not the dropdown's: the bar is card-wide (Glass: 12, not 10) */
+  box-shadow: var(--shadow-panel);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--fs-text);
+  z-index: 20;
+}
+.compass[hidden] { display: none; }
+
+/* max: NP is the tall left stage column, so the bar keeps its top and dodges sideways —
+   its left edge starts where the card's right edge is, one panel gap clear. */
+[data-surface="max"] .compass {
+  --compass-drop: 0px;
+  left: calc(var(--np-right, 0px) + var(--panel-gap));
+}
+/* max with NP on the right (Now Playing and Queue in Max): the same dodge, mirrored. Without
+   this the bar's left edge sat past the window's right edge, and only its padding showed. */
+[data-surface="max"][data-stage-side="right"] .compass {
+  left: var(--panel-edge-gap);
+  right: calc(var(--np-left-in, 0px) + var(--panel-gap));
+}
+/* mini's player view is the NP card alone: there is nothing to dodge, so the bar hangs from
+   the title bar as before (the owner's pick, 2026-09-17). */
+[data-surface="mini"][data-mini="player"] .compass { --compass-drop: 0px; }
+/* The full player (2026-10-11, his ask): Now Playing is the view, so there is nothing to dodge.
+   The bar hangs from the title bar with the card's own left and right edges, centered over the
+   cover; the Queue and the History column stay clear. Without this, Max pushed the bar into
+   the strip right of the card (over History, or into a gutter) and Midi dropped it under the
+   card, off the window. The state is on the bento (2026-10-19), and the bar is outside it. */
+:root:has(> body .bento[data-player="full"]) .compass {
+  --compass-drop: 0px;
+  left: var(--np-left, var(--panel-edge-gap));
+  right: var(--np-right-in, var(--panel-edge-gap));
+}
+
+/* The filter row under the field: one split pill of the library kinds with a match, the
+   shown kind pressed, each with its count. Tab cycles it. */
+.compass__chips { display: flex; padding: var(--space-3) var(--space-2) 0; }
+.compass__chips .set__split { margin-left: 0; }
+.compass__n { color: var(--subtext); font-size: var(--fs-subtext); }
+.set__half[aria-pressed="true"] .compass__n { color: inherit; }
+
+/* The field: the compass mark, the text, Esc on the right. It sticks while the rows scroll. */
+.compass__field {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--compass-field-h);
+  padding: 0 var(--space-2);
+  background: var(--menu-surface);
+  border-bottom: 1px solid var(--border);
+  z-index: 1;
+}
+.compass__mark { display: inline-flex; width: var(--compass-icon); height: var(--compass-icon); color: var(--title); flex: none; }
+.compass__mark svg, .compass__glyph svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.compass__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: var(--compass-field-h);
+  padding: 0;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-text);
+}
+.compass__input::placeholder { color: var(--subtext); }
+.compass__side {
+  flex: none;
+  font-size: var(--fs-subtext);
+  color: var(--subtext);
+  white-space: nowrap;
+}
+
+/* A group's name: the context menu's label idiom. */
+.compass__group {
+  font-family: var(--font-caps, var(--font-title));
+  font-weight: var(--fw-caps, var(--fw-title));
+  font-size: calc(var(--fs-subtext) + var(--caps-grow, 0px));
+  font-stretch: var(--caps-stretch, normal);
+  color: var(--subtext);
+  text-transform: uppercase;
+  letter-spacing: var(--caps-tracking, 0.06em);
+  padding: var(--space-2) var(--space-2) var(--space-1);
+}
+.compass__list { display: flex; flex-direction: column; }
+.compass__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--compass-row-h);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-control);
+  cursor: pointer;
+}
+/* The highlight is the keyboard's focus, drawn on the row (the field keeps the real focus):
+   the hover fill and the focus ring together, so it reads as focus and not only as hover. */
+.compass__row.is-active { background: var(--surface-hover); outline: var(--focus-ring-w) solid var(--title); outline-offset: calc(-1 * var(--focus-ring-w)); }
+.compass__glyph { display: inline-flex; width: var(--compass-icon); height: var(--compass-icon); color: var(--subtext); flex: none; }
+.compass__row.is-active .compass__glyph { color: var(--title); }
+.compass__text { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; line-height: 1.2; }
+.compass__title, .compass__sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.compass__sub { font-size: var(--fs-subtext); color: var(--subtext); }
+.compass__ctl { flex: none; margin-left: auto; }
+/* The card rows' shape pill: on the highlighted row only, so the other rows keep their key
+   hint (COMPASS.md §2c). Both are drawn; this picks, so moving the highlight costs no
+   re-render. */
+.compass__ctl--active { display: none; }
+.compass__row.is-active .compass__ctl--active { display: flex; }
+.compass__row.is-active .compass__side--rest { display: none; }
+.compass__row.is-disabled { opacity: 0.55; cursor: default; }
+.compass__empty { padding: var(--space-3) var(--space-2); color: var(--subtext); font-size: var(--fs-subtext); }
+
+/* The title bar's button, right of the title: the compass glyph alone (the Sound button's idiom). */
+.compass__btn {
+  width: var(--compass-btn-size); height: var(--compass-btn-size);
+  margin-left: var(--space-2);
+  padding: 0; border: none; background: none;
+  color: var(--subtext); cursor: pointer;
+  display: grid; place-items: center;
+  transition: color var(--dur-fast) var(--ease-ui);
+}
+.compass__btn:hover, .compass__btn[aria-expanded="true"] { color: var(--title); }
+/* Max only (his call, 2026-10-11): in Mini and Midi the title bar had no room left to drag the
+   window. Ctrl+Space still opens the bar there. */
+[data-surface="mini"] .compass__btn, [data-surface="midi"] .compass__btn { display: none; }
+.compass__btn svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.compass__btn:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+
+/* The needle turns with the bar (COMPASS.md §12). compass.ts counts the half turns on
+   --compass-angle: forward as the bar opens, back the way it came when the bar closed and
+   took you nowhere, on through the full circle when it did take you somewhere. */
+.compass__btn svg { transform: rotate(var(--compass-angle, 0deg)); transition: transform var(--compass-spin); }
+:root[data-motion="reduced"] .compass__btn svg { transition: none; }

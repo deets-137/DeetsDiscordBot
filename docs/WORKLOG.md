@@ -2,12 +2,140 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-11-10
+updated: 2026-11-11
 ---
 # DeetsDiscordBot — Work log
 
 One dated `##` per sitting, newest first. An old entry is never corrected. DeetsOTD's earlier
 history is in `git log` and docs/archive/.
+
+## 2026-11-11 (night) — the Activity, steps 4 and 5: the real cards in the call
+
+- **His words.** "Yup, showed as expected" (§12.2 steps 1–3, 5 after the §13.9 fix); "Let's
+  build out the UI"; "1A, 2A, 3B" (1 s reads while someone has the Activity open; "Open in
+  call" on the np card; Play Now and `/dm play` for guests under "Guests may skip").
+- **Built** (ACTIVITY.md §13.10): relay WIRE 2, IPC `PROTOCOL` 3, `deetsmusic_remote`,
+  `check_for`, the bridge's `appearance`, the np card's fifth button, the page on the relay's
+  transport with layout modes and Rich Presence. PERMISSIONS.md §3, §6, §7 and BRIDGE.md §2,
+  §3 written first.
+- **Checked:** clippy, `cargo test`, `npm run check`, the relay test (17 steps), a dry-run
+  deploy. NOT checked: inside Discord. Not deployed, no release build.
+- **Fixed in passing:** the relay test's socket helper let a timed-out wait swallow the next
+  frame.
+- **The Sonnet pass** found 3 serious problems, fixed (ACTIVITY.md §13.10): removes and moves
+  by row number only; DeetsMusic's plain `/play` replaces Up Next (Play Now now keeps it and
+  needs "Guests may add songs" too); guests never saw Play Now.
+- **Live** at his word ("A, no line … go ahead and deploy + release"): the five cover URL
+  mappings added in the Portal by Claude in Chrome; the relay deployed; the release build went
+  live at 13:53 (the old host refused the IPC 3 logic, then restarted with no call; `LD`:
+  `remote: armed`, `commands: synced launch=true`).
+
+## 2026-11-11 (evening) — the "Lil Deets" shortcut, the log file
+
+- **His words.** "Shortcut only for now. Ensure you're able to debug as necessary with the
+  console logs." Velopack and start at sign-in were talked through and set aside (SETUP.md
+  §10.1 has why). The tray app stays for later (TRAY.md).
+- **Built:** `scripts/start-bot.ps1` (runs `target\release\lildeets.exe`, copies each line to
+  `logs\lildeets-<date>.log`, `NO_COLOR`, 30 days kept); `logs/` in `.gitignore`; the
+  shortcut on the Desktop and in the Start menu (not in the repo).
+- **Checked:** the script parses; the shortcuts exist. NOT checked: a start from the shortcut
+  (the bot was not started from this session; he starts it).
+- **The shortcut works:** he started the bot from it, and `logs\lildeets-2026-11-11.log` has
+  the lines (`relay: armed`, `commands: synced launch=true`).
+- **The Activity's first launch** showed "Sign-in did not work / Not from the Activity". Cause
+  and fix: ACTIVITY.md §13.9 (a same-origin GET carries no Origin; the page now reads the app
+  id from its address, and `/api/config` is gone). Tests pass. Deployed by his word ("prior
+  auth to deploy for this session"); checked live from outside Discord.
+
+## 2026-11-11 (later) — the Activity, step 3: the relay and the sign-in page
+
+- **His words.** "ran through 17 steps, looks good. commit changes" (step 2b: `f63ea4d`);
+  "What's step 3? Push please" (pushed); "Step 3, the relay" (before the rest of the
+  scenery); "A: secret on Cloudflare"; "Yes, all three"; "Yes, in activity/relay".
+- **Changed from the 2026-11-10 design:** the bot token is not on Cloudflare. The relay signs
+  a person in with the client secret, then asks the bot, over the bot's own socket, whether
+  the person is in the Activity instance. The logic asks Discord.
+- **Built** (ACTIVITY.md §13.8): `activity/relay` (the Worker: routes, one Durable Object
+  room with hibernation, tickets), `activity/discord-shell` (a page that only signs in),
+  `crates/relay-client`, the host's wiring, IPC `RelayCheck` / `RelayChecked` (`PROTOCOL` 2),
+  the logic's check, `Rest::activity_instance`, the command sync that carries Discord's Launch
+  command, and the §8 fix (an invited team member is not a host).
+- **New dependencies** (his yes): `@discord/embedded-app-sdk` 2.5.0; in `activity/relay`
+  only, `cf`, `@cloudflare/vite-plugin` (beta), Vite 8, TypeScript 7; Rust:
+  `tokio-websockets` 0.13.3. Also direct now: `futures-util`, `http` ("Those crates are ok by me"; both
+  already in `Cargo.lock`).
+- **Found:** Cloudflare's `cf` CLI uses `cloudflare.config.ts` and its own Vite plugin, not
+  `@cloudflare/workers-types`. A text binding cannot be overridden from `.dev.vars`; the
+  config's `mode` picks the fake Discord for `cf dev`. Discord's tutorial says an Activity
+  that is not distributed launches only for the app's owner and team (§11 item 1 tests it).
+- **A defect the test found, fixed:** after a bot reconnect the room asked the old, closing
+  socket.
+- **Checked:** the relay's 13-step local test; `cf deploy --dry-run`; clippy and the
+  workspace tests (debug). No release build. Nothing deployed. No secret was entered.
+- **Left open:** his setup and desk test (§12.2); steps 4 to 6; the rest of the scenery; the
+  Play Now question (§13.5). Not committed.
+- **The same sitting, on his words** ("Those crates are ok by me. Commit changes"; "can you
+  pull the secrets … without reading them and add them in"; "Yes, deploy"): committed
+  `294e0d1`. A script placed the secrets and printed names and lengths only: the application
+  id (from the bot token's first part) and a new host secret. The client secret was on no
+  disk; he reset it in the portal and pasted it into `.env.deploy`, and a script copied it to
+  `Documents/Deets' Secrets/`. Deployed `lildeets-relay` with `cf deploy --secrets-file`.
+  Checked live: the page (200), the origin check (403 twice, 200 for the Activity's origin),
+  a made-up code refused through the real Discord (401), the host socket (a wrong secret
+  refused, `.env`'s accepted). `LILDEETS_RELAY_URL` written to `.env`. Still open: the
+  release build, the Developer Portal steps, his desk test.
+
+## 2026-11-11 — the Activity, step 2b: his three calls and most of the gaps
+
+- **His words.** "Let's pick up where we left off last night"; "Go to step 2b" (before his
+  desk test of the mock, which is still open).
+- **Built** in `activity/deetsmusic-ui` (ACTIVITY.md §13.7): the landscape layout ("Wide":
+  the player on the left, one card on the right, under 500 px high); the Play Now button on
+  the "is in the queue" toast (desktop and web, the host); the tile card (cover, title,
+  artist, album; no controls) in place of the cover alone; album colour; hover hints; drag to
+  reorder in the Queue (mouse and pen); Glass's aurora and Cyber's storm, held still while the
+  frame is hidden.
+- **Found:** §13.6 said the app reads the cover on a canvas for album colour. It does not: it
+  asks Apple's palette through its Rust side. The page reads the cover's pixels with the
+  app's rule for a picture with no palette. Apple's image server allows the read (CORS `*`).
+- **Checked** in Chrome on the mock; `npm run check` and `npm run mock:build` pass. No Rust
+  file changed. No release build. No new dependency.
+- **His call, the same sitting:** "A: hold, then move" for a finger's drag in the Queue.
+  Built: a row held 450 ms lifts; a move drags it; a still release opens its menu. Checked
+  with simulated finger events; not on a real touchscreen.
+- **His desk test of the mock passed** ("ran through 17 steps, looks good"). Committed to
+  `disc-activities` on his word ("commit changes").
+- **Left open:** the Press record's turn, the wallpaper, Ocean's sea and
+  Happy's scene; whether a guest may use Play Now (§13.5); steps 3 to 6.
+
+## 2026-11-10 (late night) — the Activity: design, the bridge's new name, the mock UI
+
+- **His words.** "Let's build out the discord live activity to allow users to control my
+  music"; "replicate DeetsMusic's UI as one to one as it makes sense for each aspect ratio";
+  the host piece "named appropriately to note its specific for DeetsMusic"; "new worker in
+  this repo works, typescript and vite works … we can show the song"; "F1-A F2-A F3-A";
+  "I would like it to be a private activity regardless"; team seats ("A works, I don't mind
+  everyone being a host"); "Yes start".
+- **Designed:** docs/features/ACTIVITY.md. Read from Discord's docs the same day: three
+  layout modes and no documented frame sizes; an unverified Activity launches only in a
+  server under 25 members, except for the app's developer team.
+- **Read from Discord (the bot's token, `GET /applications/@me`):** the app is owned by the
+  team "DeetsTeam", one member (him, admin); Public Bot on; server and user install on.
+- **Built, step 1:** the package `lildeets-bridge` is `deetsmusic-bridge`. clippy and the
+  tests pass on debug builds. No release build was made, so the running bot did not change.
+- **Built, step 2:** `activity/` (TypeScript, Vite): `deetsmusic-protocol`, `deetsmusic-ui`
+  (the four cards on Mini, Midi and Max, in DeetsMusic's look, copied by
+  `scripts/look-sync.mjs`), and `mock` (a fake host and a desk). The real markup of each card
+  was read from DeetsMusic's published web demo, served locally.
+- **New dependencies** (his yes): `vite`, `typescript`. Node is in this repo now.
+- **His calls on the build's forks:** "1A works, 2A with a toast on the desktop/web version
+  to play now, 3 a unique player card with cover, title, album, and artist can scale the
+  cover down to fit it all in and make it neat." His question: "Can those gaps be fixed in
+  any way?" Yes: ACTIVITY.md §13.6 has the way and the size of each. None is built.
+- **Committed** to the new branch `disc-activities` (his word: "Update all our docs and
+  commit to a branch"). Not pushed, not merged.
+- **Left open:** his desk test of the mock (ACTIVITY.md §12.1); step 2b (§13.6); whether a
+  guest may use Play Now (§13.5); steps 3 to 6.
 
 ## 2026-11-10 (night) — the switch to the Rust bot; the song-boundary restart
 

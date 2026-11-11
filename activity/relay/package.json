@@ -1,0 +1,19 @@
+{
+  "name": "lildeets-relay",
+  "private": true,
+  "type": "module",
+  "description": "The relay Worker for Lil Deets' Activity: Discord sign-in, then messages between the bot and the people in its call (docs/features/ACTIVITY.md §5, §6).",
+  "scripts": {
+    "dev": "cf dev",
+    "build": "cf build",
+    "deploy": "cf deploy",
+    "check": "cf workers types && tsc",
+    "test": "node test/relay.test.mjs"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "2.0.0-beta.v.15",
+    "cf": "1.0.0-beta.19",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.0"
+  }
+}

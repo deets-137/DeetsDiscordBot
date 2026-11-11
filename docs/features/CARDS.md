@@ -13,7 +13,9 @@ DISCORD-LIMITS.md has the limits.
 ## 1. The three cards
 - **Now playing** (`np_view`): "Now playing in #channel" (or "Paused"), the title, artist ·
   album, a scrubber drawn once, then "3:06 · ends in 2 minutes · up next: …", the artwork at
-  300 px, and ⏮ ⏯ ⏭ Queue. ⏯ shows ⏸ or ▶ by state.
+  300 px, and ⏮ ⏯ ⏭ Queue. ⏯ shows ⏸ or ▶ by state. When `.env` has the relay, a fifth
+  button, **Open in call**, opens the Activity for the person who presses it (his call 2A,
+  2026-11-11; ACTIVITY.md §13.10). The parity kit's card has no fifth button.
 - **Queue** (`queue_view`): the current song with its artwork; "Up Next · 27 songs · 1 h 38 m ·
   page 1 of 3"; then 10 rows, each `` ` 1` ` 2:40 | Explicit` **Title** · Artist `` over the
   album, with a 120 px thumbnail; then ◀ ▶. **38 components** with 10 rows: Discord's limit is

@@ -1,0 +1,3 @@
+# The look is a byte-for-byte copy of DeetsMusic's files, checked by hash
+# (scripts/look-sync.mjs --check). Git must never change its line endings.
+deetsmusic-ui/look/** -text

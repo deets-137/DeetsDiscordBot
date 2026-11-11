@@ -16,8 +16,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
-/// Bumped whenever a message changes shape.
-pub const PROTOCOL: u32 = 1;
+/// Bumped whenever a message changes shape. 3: the Activity's viewers, data and state.
+pub const PROTOCOL: u32 = 3;
 /// The largest frame either side accepts.
 pub const MAX_FRAME: usize = 4 << 20;
 /// The environment variables the host passes to the logic.
@@ -43,6 +43,17 @@ pub struct GuildVoice {
     pub rejoining: bool,
 }
 
+/// A person with the Activity open, checked by the bot (ACTIVITY.md §6).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct RelayViewer {
+    /// The relay's id for that person's page.
+    pub rid: String,
+    pub user: u64,
+    pub name: String,
+    /// The voice channel of their Activity.
+    pub channel: u64,
+}
+
 /// Host → logic.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "t")]
@@ -57,6 +68,15 @@ pub enum ToLogic {
     MemberVoice { request_id: u64, user: u64, guild: u64, channel: Option<u64> },
     /// The result of a voice op; `error` is a line to show the user.
     Done { request_id: u64, error: Option<String> },
+    /// The Activity's relay asks: is `user` in the Activity instance `instance`, and in which
+    /// channel? The logic asks Discord (it has the REST client) and answers with
+    /// [`ToHost::RelayChecked`] and the same `rid` (ACTIVITY.md §6).
+    RelayCheck { rid: String, user: u64, instance: String },
+    /// Everyone with the Activity open now: on every change, and to every new logic at once
+    /// (the host keeps the list; the logic is swapped while music plays).
+    RelayViewers { viewers: Vec<RelayViewer> },
+    /// A request from a person's page (deetsmusic-protocol `Request`), as it came.
+    RelayData { rid: String, data: Value },
 }
 
 /// What a voice op plays.
@@ -88,6 +108,13 @@ pub enum ToHost {
     Presence { listening: Option<String> },
     /// Ask for a [`ToLogic::VoiceSnapshot`] now.
     Snapshot { request_id: u64 },
+    /// The answer to a [`ToLogic::RelayCheck`]: the instance's voice channel when Discord
+    /// confirms the person is in it; else `None`, with a line for that person.
+    RelayChecked { rid: String, channel: Option<u64>, reason: Option<String> },
+    /// The state for every person whose call the bot is in (deetsmusic-protocol `Reply`).
+    RelayState { data: Value },
+    /// Something for one person's page only.
+    RelayTo { rid: String, data: Value },
 }
 
 #[derive(Debug)]

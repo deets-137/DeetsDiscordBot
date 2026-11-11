@@ -1,0 +1,6 @@
+# Values for `cf dev` only. Copy to `.dev.vars` (gitignored). These are test values: the local
+# test (test/relay.test.mjs) uses the same ones against its fake Discord. Never put a real
+# secret here.
+DISCORD_CLIENT_ID=100000000000000001
+DISCORD_CLIENT_SECRET=test-client-secret
+HOST_SECRET=test-host-secret

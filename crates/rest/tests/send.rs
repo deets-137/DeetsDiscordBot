@@ -138,7 +138,8 @@ async fn owners_are_the_team_or_the_owner() {
         "verify_key": "k", "flags": 0, "owner": user("1"),
         "team": {"id": "8", "name": "t", "icon": null, "owner_user_id": "2", "members": [
             {"membership_state": 2, "permissions": ["*"], "team_id": "8", "user": user("2"), "role": "admin"},
-            {"membership_state": 2, "permissions": ["*"], "team_id": "8", "user": user("3"), "role": "developer"}
+            {"membership_state": 2, "permissions": ["*"], "team_id": "8", "user": user("3"), "role": "developer"},
+            {"membership_state": 1, "permissions": ["*"], "team_id": "8", "user": user("4"), "role": "read_only"}
         ]}
     });
     let mut solo = team.clone();
@@ -147,7 +148,7 @@ async fn owners_are_the_team_or_the_owner() {
     let r = replies.clone();
     let (base, _) = stub(move |_, _| (200, vec![], r.lock().unwrap().pop().unwrap())).await;
     let rest = Rest::with_base("t", &base);
-    assert_eq!(rest.owners().await.unwrap(), [2, 3], "a team: its members");
+    assert_eq!(rest.owners().await.unwrap(), [2, 3], "a team: its members who accepted (4 is only invited)");
     assert_eq!(rest.owners().await.unwrap(), [1], "no team: the owner");
 }
 
@@ -226,4 +227,29 @@ async fn history_with_a_limit_is_the_newest_listed_oldest_first() {
     log.lock().unwrap().clear();
     assert_eq!(ids(rest.history(5, Some(3)).await.unwrap()), [248, 249, 250]);
     assert_eq!(ids(rest.history(5, Some(1000)).await.unwrap()), (1..=250).collect::<Vec<_>>(), "a limit past the start is everything");
+}
+
+#[tokio::test]
+async fn an_activity_instance_is_read_and_a_404_is_none() {
+    // Discord's documented GET /applications/{app}/activity-instances/{instance} reply.
+    let found = json!({
+        "application_id": "9", "instance_id": "i-1234567890-gc-912952092627435520-912954213460484116", "launch_id": "1234567890",
+        "location": {"id": "gc-912952092627435520-912954213460484116", "kind": "gc", "channel_id": "912954213460484116", "guild_id": "912952092627435520"},
+        "users": ["205519959982473217"]
+    });
+    let (base, log) = stub(move |req, _| {
+        if req.path.ends_with("/i-1234567890-gc-912952092627435520-912954213460484116") {
+            (200, vec![], found.to_string())
+        } else {
+            (404, vec![], json!({"message": "404: Not Found", "code": 0}).to_string())
+        }
+    })
+    .await;
+    let rest = Rest::with_base("t", &base);
+    let got = rest.activity_instance(9, "i-1234567890-gc-912952092627435520-912954213460484116").await.unwrap().unwrap();
+    assert_eq!((got.channel, got.guild, got.users.as_slice()), (Some(912954213460484116), Some(912952092627435520), &[205519959982473217u64][..]));
+    assert!(rest.activity_instance(9, "i-gone").await.unwrap().is_none(), "a 404: no such instance");
+    // An id that is not an id never reaches Discord (it would go into the URL path).
+    assert!(rest.activity_instance(9, "../users/@me").await.unwrap().is_none());
+    assert_eq!(log.lock().unwrap().len(), 2);
 }

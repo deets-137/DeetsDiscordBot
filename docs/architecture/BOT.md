@@ -1,8 +1,8 @@
 ---
 status: shipped
 desk_test: open
-sources: [crates/launcher/src/main.rs, crates/host/src/main.rs, crates/logic/src/main.rs, crates/logic/src/commands.rs, crates/ipc/src/lib.rs, crates/rest/src/lib.rs, Cargo.toml]
-updated: 2026-11-10
+sources: [crates/launcher/src/main.rs, crates/host/src/main.rs, crates/logic/src/main.rs, crates/logic/src/commands.rs, crates/logic/src/relay.rs, crates/ipc/src/lib.rs, crates/rest/src/lib.rs, crates/relay-client/src/lib.rs, Cargo.toml]
+updated: 2026-11-11
 ---
 # The bot: three processes
 
@@ -50,7 +50,7 @@ so the host knows someone will start it again.
   (features/VC.md, DM.md, LINKS.md). Interactions are read from JSON by hand, so a field
   Discord adds can never make one unreadable.
 - Discord's REST API through `lildeets-rest` (hand-rolled, with Discord's rate limits);
-  DeetsMusic through `lildeets-bridge` (architecture/BRIDGE.md); the cards from
+  DeetsMusic through `deetsmusic-bridge` (architecture/BRIDGE.md); the cards from
   `lildeets-cards` (features/CARDS.md).
 - **The watchers:** the status watcher (features/STATUS.md) and the np card watcher
   (CARDS.md §4).
@@ -69,11 +69,23 @@ from the OS random source, passed in `LILDEETS_IPC_TOKEN`, compared in constant 
   app, gain, DAVE, people, `rejoining`), `MemberVoice`, `Done` (a voice op's result);
 - logic → host: `WhereIs`, `Play` (an app or the tone), `Stop`, `Leave`, `SetGain`,
   `Presence`, `Snapshot`.
+- The Activity's relay (2026-11-11, `PROTOCOL` 2; built, not live until a release build):
+  host → logic `RelayCheck` (is this person in this Activity instance?), logic → host
+  `RelayChecked` (the instance's voice channel, or a line for the person).
+
+### 5.1 The host's connection to the relay (`crates/relay-client`)
+One WebSocket out to the Activity's relay Worker (features/ACTIVITY.md §5, §13.8), held only
+while the bot is in a call. The host names its voice channels on every change (`tell_relay`,
+once a second at most). It is off unless `.env` has both relay keys (§7). It reconnects by
+itself and logs `relay: armed`, `connected`, `the connection dropped`, `disconnected`.
 
 ## 6. One command list per application
 Discord keeps **one global command list per application**; a sync replaces it. So:
 - **Only the logic syncs.** The journal's `scan` logs in with the same token to read the
   channel, then logs out; it never syncs. Keep it so.
+- **The sync keeps the Activity's Launch command** (2026-11-11). Discord makes that command
+  when Activities are turned on. The sync reads Discord's list first and carries it
+  (`sync_commands`; features/ACTIVITY.md §13.8).
 - **Never run two bots on this token.** The archived Python bot syncs its own list.
 - The harness bot (`Vibe Coding Era/harness/discord_bot.py`) shared the token and was retired
   on 2026-11-10 (HANDOFF.md › Retired).
@@ -83,6 +95,8 @@ Discord keeps **one global command list per application**; a sync replaces it. S
 - `.env` at the repo root (or the environment): `DISCORD_TOKEN` (the application "Lil
   Deets"; the journal's `scan` uses it too), `VOICE_USER_IDS` (who besides the application's
   owner may start `/vc`). Reset the token in the developer portal → update `.env`.
+  `LILDEETS_RELAY_URL` and `LILDEETS_RELAY_SECRET`: the Activity's relay (ACTIVITY.md §12.2);
+  with either missing, the bot runs with no Activity.
 - `config.py`: `ALLOWED_CHANNEL_IDS` limits `/links` (empty: any channel).
 - Files the bot writes at the root, all gitignored: `.lildeets-resume.json`,
   `.lildeets-commands.sync`, `exports/` (`/links`).
@@ -90,7 +104,8 @@ Discord keeps **one global command list per application**; a sync replaces it. S
 ## 8. Logging
 `tracing` to the console. The default filter is `info` plus debug for `lildeets_host` and
 `lildeets_logic`, `warn` for songbird; `RUST_LOG` overrides it. Anything that acts on its own
-logs when it arms, fires and stops (CLAUDE.md › Working style).
+logs when it arms, fires and stops (CLAUDE.md › Working style). Started from the "Lil Deets"
+shortcut, the same lines also go to `logs\lildeets-<date>.log` (ops/SETUP.md §10.1).
 
 ## 9. The Python bot (archived 2026-11-10)
 `docs/archive/bot/` (discord.py; `requirements-voice.txt` beside it). It is the

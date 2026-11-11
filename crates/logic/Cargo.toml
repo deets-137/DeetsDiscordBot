@@ -18,7 +18,7 @@ path = "src/main.rs"
 serde_json.workspace = true
 lildeets-ipc = { path = "../ipc" }
 lildeets-rest = { path = "../rest" }
-lildeets-bridge = { path = "../bridge" }
+deetsmusic-bridge = { path = "../bridge" }
 lildeets-cards.workspace = true
 # /vc play's autocomplete lists the apps making sound (deets_tap::list_apps).
 deets-tap = { path = "../tap" }

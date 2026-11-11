@@ -129,6 +129,25 @@ pub fn get_current_application() -> Request {
     req(Method::Get, "/applications/@me".into(), "/applications/@me", String::new(), true, Body::None)
 }
 
+/// `GET /applications/{app}/activity-instances/{instance}`: where an Activity runs and who is
+/// in it. The caller checks `instance` first: it goes into the path as it is.
+pub fn get_activity_instance(app: u64, instance: &str) -> Request {
+    req(
+        Method::Get,
+        format!("/applications/{app}/activity-instances/{instance}"),
+        "/applications/{app}/activity-instances/{instance}",
+        String::new(),
+        true,
+        Body::None,
+    )
+}
+
+/// `GET /applications/{app}/commands`: the global command list as Discord holds it. The sync
+/// reads it to keep the Activity's Launch command, which Discord made (commands.rs).
+pub fn get_global_commands(app: u64) -> Request {
+    req(Method::Get, format!("/applications/{app}/commands"), "/applications/{app}/commands", String::new(), true, Body::None)
+}
+
 /// `PUT /applications/{app}/commands`: the whole global command list (the last sync wins).
 /// Raw JSON on purpose: the bot registers `tests/parity/expected/commands.json` exactly as
 /// the Python bot does; twilight's `Command` would write its own defaults into it.

@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [Cargo.toml, crates/host/Cargo.toml, requirements.txt, .env.example, config.example.py, crates/tap/Cargo.toml]
-updated: 2026-11-10
+updated: 2026-11-11
 ---
 # Setup on a fresh machine
 
@@ -63,7 +63,61 @@ bridge). For `/vc` to be heard: DeetsMusic plays to a Windows output (not AirPla
 audio session, so the capture hears silence), its volume high in the Windows mixer, and its
 output routed to a device you don't listen to if you want the PC quiet (VOICE-PIPELINE.md §1).
 
-## 9. Run
+## 9. Node (the Activity only)
+`activity/` is TypeScript and Vite (features/ACTIVITY.md). It needs Node 22 or newer (built
+on 24.18).
+```
+cd activity
+npm install
+npm run mock        # the UI on fake data; Vite prints the address (5273, or the next free port)
+npm run check       # types, then the copied look against ../DeetsMusic
+```
+- `npm run look:sync` copies DeetsMusic's look into `activity/deetsmusic-ui/look/`. It needs
+  the DeetsMusic repo beside this one. The copy is committed, so a machine without DeetsMusic
+  still builds; there `look:check` prints that it cannot check and passes.
+- `npm install` may print that esbuild's install script was blocked. Vite still runs.
+
+**The relay Worker** (`activity/relay`, features/ACTIVITY.md §13.8) is its own package with
+Cloudflare's tools (`cf`, its Vite plugin, Vite 8, TypeScript 7). `cf` is Cloudflare's CLI;
+this repo does not use Wrangler.
+```
+cd activity/relay
+npm install
+copy .dev.vars.example .dev.vars    # test values only
+npm run dev         # the relay and the sign-in page, locally (5373, or the next free port)
+npm test            # in a second terminal: RELAY=http://127.0.0.1:<port>; 13 steps, a fake Discord
+npm run check       # types
+cf deploy --dry-run # the build and the bindings; nothing is uploaded
+```
+`npm run dev` talks to the test's fake Discord on port 5399, never to the real one. The real
+deploy, its secrets and the Discord portal steps are ACTIVITY.md §12.2.
+
+### 9.1 On a Mac
+- **Works:** everything in `activity/` (the UI, the mock, later the relay Worker), and the
+  docs. Clone, `npm install`, `npm run mock`.
+- **Does not work:** the bot. The capture is Windows audio (`crates/tap`), DeetsMusic is a
+  Windows app, and its bridge is on this PC's loopback. A `cargo build` of the workspace on
+  macOS was not tried; expect `crates/tap` and `crates/host` to fail. So steps 3 to 5 of
+  ACTIVITY.md §10 can be written on a Mac, and are tested on the PC.
+- `.env`, `config.py` and `storage.db` are not in the repo and stay on the PC.
+
+## 10. Run
 `target\release\lildeets.exe`. The log shows `gateway: ready`, `logic: ready` and `commands:
 synced` (or `unchanged since the last sync`). New commands may need Ctrl+R in the Discord
 client. Ctrl+C stops it.
+
+### 10.1 The shortcut (2026-11-11)
+His call: a shortcut only, for now; no start at sign-in; the tray app (features/TRAY.md) later.
+Velopack was ruled out: an installed copy does not watch `target\release` (LIVE-RELOAD.md), and
+its update restarts the app and drops the call.
+- **"Lil Deets"** on the Desktop and in the Start menu runs `scripts\start-bot.ps1` in a
+  console window titled "Lil Deets". The script starts `target\release\lildeets.exe`, so a
+  release build still goes live by itself.
+- **The log file.** Every console line is also written to `logs\lildeets-<date>.log`
+  (gitignored, UTF-8, plain text: the script sets `NO_COLOR`). A Claude session reads the log
+  there. Each start adds a `==== start … ====` line. Logs older than 30 days are deleted at a
+  start. The last lines after Ctrl+C can be missing from the file (the copy stops with the bot).
+- A second start fails at once: the launcher cannot copy the host while one runs.
+- The shortcut is not in the repo. To make it again on a new machine: a shortcut to
+  `powershell.exe -NoProfile -ExecutionPolicy Bypass -File "<repo>\scripts\start-bot.ps1"`,
+  starting in `<repo>`, with the icon of `target\release\lildeets.exe`.

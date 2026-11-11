@@ -55,6 +55,11 @@ and one line below.
 - `JOURNAL.md` — the Song-of-the-Day pipeline: scan → archive → enrich → review → songs.json.
 - `FILMS.md` — the Letterboxd film journal: import, RSS, TMDB posters → movies.json.
 - `TRAY.md` — a tray app that starts the bot with one click. Project: not built.
+- `ACTIVITY.md` — the Discord Activity (`activity/`, TypeScript + Vite): DeetsMusic's
+  surfaces inside the call, the relay Worker, the part names (`deetsmusic-*` only where a part
+  knows DeetsMusic). Never request Discord verification; never put an action in the Activity
+  only; never edit `activity/deetsmusic-ui/look/` (a copy of DeetsMusic's look:
+  `npm run look:sync`).
 
 **`docs/ops/`** — build, run, diagnose
 - `SETUP.md` — a fresh machine: Rust and CMake, the build, `.env`, `config.py`, Python for
@@ -71,7 +76,7 @@ and one line below.
 
 **`docs/ideas/`** — not built; never tell a user the bot does these. §1 is what he said.
 - `in-call-extras.md` — the card in the call's own chat, vote-to-skip.
-- `activity.md` — a Discord Activity: DeetsMusic's Rooms look inside the call.
+- `activity.md` — the Activity's first notes and his words; the design is features/ACTIVITY.md.
 - `image-cards.md` — rendered PNG cards in DeetsMusic's theme, next to the native ones.
 - `auto-route.md` — `/vc play` moves the app to a silent output by itself.
 - `friends-tapping.md` — why friends do not tap their own apps through this bot.
@@ -118,7 +123,8 @@ and one line below.
     cards, text, `/links` byte for byte; the bridge, REST and IPC against local fakes)
   - `python -c "import journal.scan, journal.review, journal.letterboxd_web"`
   - `crates/tap/target/release/deets-tap.exe --meters` for a quiet app
-  - the bot's log in its terminal (BOT.md §8)
+  - the bot's log: `logs\lildeets-<date>.log` when he starts it from the "Lil Deets" shortcut
+    (ops/SETUP.md §10.1), else its terminal (BOT.md §8)
 - A journal change: export from a test copy of `storage.db` and compare with the published
   JSON, minus `generated_at` (NIGHTLY.md §3 has the script).
 - Hand over with the desk test written into the feature's doc.
@@ -181,4 +187,6 @@ python -m journal.scan <channel> --enrich --web --web-out ../DeetsSolutions/sotd
 python -m journal.letterboxd_web rss --web -o ../DeetsSolutions/movies/movies.json
 python -m journal.review list                   # songs flagged for hand-checking
 crates/tap/target/release/deets-tap.exe --meters   # every app's level and mixer volume
+cd activity && npm run mock                     # the Activity's UI on fake data, in a browser
+cd activity && npm run check                    # types, and the look against ../DeetsMusic
 ```

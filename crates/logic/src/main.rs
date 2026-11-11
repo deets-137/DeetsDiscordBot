@@ -1,6 +1,6 @@
 //! `lildeets-logic`: every interaction (rust-port-plan.md §3.1, P6–P7). The host starts it
 //! with `LILDEETS_IPC` and `LILDEETS_IPC_TOKEN`, and replaces it when it is rebuilt. It calls
-//! Discord's REST API itself (`lildeets-rest`) and DeetsMusic's bridge (`lildeets-bridge`),
+//! Discord's REST API itself (`lildeets-rest`) and DeetsMusic's bridge (`deetsmusic-bridge`),
 //! and asks the host for anything voice or gateway.
 //!
 //! The Python bot is the specification: every reply, its wording and who sees it follow
@@ -15,7 +15,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
-use lildeets_bridge::Bridge;
+use deetsmusic_bridge::Bridge;
 use lildeets_ipc::{GuildVoice, ToHost, ToLogic, ENV_ADDR, ENV_TOKEN, PROTOCOL};
 use lildeets_rest::Rest;
 use tokio::net::tcp::OwnedWriteHalf;
@@ -23,7 +23,9 @@ use tokio::sync::oneshot;
 use tracing::{error, info, warn};
 
 mod commands;
+mod deetsmusic_remote;
 mod ix;
+mod relay;
 mod watch;
 
 /// The repo root: `.env`, `config.py`, `exports/`.
@@ -32,7 +34,7 @@ pub fn root() -> PathBuf {
 }
 
 /// A key from the environment, else from the repo's `.env`.
-fn env_or_dotenv(key: &str) -> Option<String> {
+pub(crate) fn env_or_dotenv(key: &str) -> Option<String> {
     if let Ok(v) = std::env::var(key) {
         return Some(v);
     }
@@ -103,6 +105,8 @@ pub struct Ctx {
     pub voice: Mutex<Vec<GuildVoice>>,
     pub allowed_links: HashSet<u64>,
     pub np_watchers: Mutex<HashMap<u64, tokio::task::JoinHandle<()>>>,
+    /// The Activity's side of DeetsMusic (`deetsmusic_remote`).
+    pub remote: deetsmusic_remote::Remote,
 }
 
 /// The app `/dm` opens up for (docs/archive/bot/dm.py `APP`).
@@ -187,6 +191,7 @@ async fn run() -> Result<(), String> {
         voice: Mutex::new(Vec::new()),
         allowed_links: allowed_links_channels(),
         np_watchers: Mutex::new(HashMap::new()),
+        remote: deetsmusic_remote::Remote::default(),
     });
 
     let mut watcher_started = false;
@@ -208,6 +213,7 @@ async fn run() -> Result<(), String> {
                 if !watcher_started {
                     watcher_started = true;
                     tokio::spawn(watch::status_watcher(ctx.clone()));
+                    tokio::spawn(deetsmusic_remote::watcher(ctx.clone()));
                 }
             }
             ToLogic::Dispatch { event } => {
@@ -222,6 +228,18 @@ async fn run() -> Result<(), String> {
             }
             m @ ToLogic::MemberVoice { request_id, .. } => ctx.host.answer(request_id, m),
             m @ ToLogic::Done { request_id, .. } => ctx.host.answer(request_id, m),
+            ToLogic::RelayCheck { rid, user, instance } => {
+                let c = ctx.clone();
+                tokio::spawn(async move { relay::check(&c, rid, user, instance).await });
+            }
+            ToLogic::RelayViewers { viewers } => {
+                let c = ctx.clone();
+                tokio::spawn(async move { deetsmusic_remote::viewers(&c, viewers).await });
+            }
+            ToLogic::RelayData { rid, data } => {
+                let c = ctx.clone();
+                tokio::spawn(async move { deetsmusic_remote::request(&c, rid, data).await });
+            }
         }
         if ctx.app_id.get().is_none() {
             warn!("logic: a message before Ready");

@@ -1,0 +1,24 @@
+[package]
+name = "lildeets-relay-client"
+description = "The host's connection to the Activity's relay Worker: one WebSocket, kept only while the bot is in a call (docs/features/ACTIVITY.md §5)."
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+# The same crate, version and TLS setup twilight-gateway already builds (the owner's yes,
+# 2026-11-11). futures-util and http are the traits and types its API is written in; both
+# were in Cargo.lock already.
+tokio-websockets = { version = "=0.13.3", features = ["client", "fastrand", "rustls-platform-verifier", "sha1_smol"] }
+futures-util = { version = "0.3", default-features = false, features = ["sink"] }
+http = "1"
+serde.workspace = true
+serde_json.workspace = true
+tokio = { workspace = true, features = ["macros", "net", "rt", "sync", "time"] }
+tracing.workspace = true
+
+[dev-dependencies]
+tokio-websockets = { version = "=0.13.3", features = ["server"] }
+tokio = { workspace = true, features = ["macros", "net", "rt", "sync", "time", "test-util"] }

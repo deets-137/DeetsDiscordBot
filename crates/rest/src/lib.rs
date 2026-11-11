@@ -32,6 +32,16 @@ pub const UA: &str = concat!("DiscordBot (https://github.com/deets-137/DeetsDisc
 /// Tries per request: the first, and up to two after a 429.
 const TRIES: usize = 3;
 
+/// What the bot reads of an Activity instance ([`Rest::activity_instance`]).
+#[derive(Clone, Debug, PartialEq)]
+pub struct ActivityInstance {
+    /// The channel the Activity runs in. `None` outside a server channel.
+    pub channel: Option<u64>,
+    pub guild: Option<u64>,
+    /// The people connected to the instance now.
+    pub users: Vec<u64>,
+}
+
 #[derive(Debug)]
 pub enum RestError {
     /// Discord answered with an error status. `body` is its JSON (`{code, message, errors}`).
@@ -142,10 +152,38 @@ impl Rest {
     pub async fn owners(&self) -> Result<Vec<u64>, RestError> {
         let app: twilight_model::oauth::Application = self.send_as(&routes::get_current_application()).await?;
         Ok(match (app.team, app.owner) {
-            (Some(team), _) => team.members.iter().map(|m| m.user.id.get()).collect(),
+            // Accepted members only: a person who was invited and has not accepted yet is not
+            // on the team (ACTIVITY.md §8).
+            (Some(team), _) => team
+                .members
+                .iter()
+                .filter(|m| m.membership_state == twilight_model::oauth::team::TeamMembershipState::Accepted)
+                .map(|m| m.user.id.get())
+                .collect(),
             (None, Some(owner)) => vec![owner.id.get()],
             (None, None) => Vec::new(),
         })
+    }
+
+    /// An Activity instance, as Discord knows it: the voice channel it runs in and the people
+    /// connected to it. `Ok(None)` when Discord has no such instance (a 404). The relay asks
+    /// through the host, so the bot token never leaves the PC (ACTIVITY.md §6).
+    pub async fn activity_instance(&self, app: u64, instance: &str) -> Result<Option<ActivityInstance>, RestError> {
+        // The id goes into a URL path: only the characters Discord's ids use.
+        if instance.is_empty() || instance.len() > 128 || !instance.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_') {
+            return Ok(None);
+        }
+        let v = match self.send(&routes::get_activity_instance(app, instance)).await {
+            Ok(v) => v,
+            Err(RestError::Status { status: 404, .. }) => return Ok(None),
+            Err(e) => return Err(e),
+        };
+        let id = |v: &Value| v.as_str().and_then(|s| s.parse::<u64>().ok());
+        Ok(Some(ActivityInstance {
+            channel: v.pointer("/location/channel_id").and_then(id),
+            guild: v.pointer("/location/guild_id").and_then(id),
+            users: v.get("users").and_then(Value::as_array).map(|a| a.iter().filter_map(id).collect()).unwrap_or_default(),
+        }))
     }
 
     /// Open (or find) the DM channel with `user`: its id (`/links`).

@@ -1,0 +1,177 @@
+/* Diary card (docs/features/DIARY.md) — only what the shared families do not cover. The
+   families it joins: shelf tiles and song rows (.search__tile, .search__row), the hero and
+   the Play / Shuffle row (.lib-hero, .lib-actions), pills (.lib-pill), the search well
+   (.search__field) for every field, the icon square (.panel__action). Colors are theme
+   roles, geometry is skin tokens. */
+
+.panel__body.diary { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+
+/* ── the root: the + cover (or the picker), then the shelf ── */
+.diary__root {
+  flex: 1 1 auto; min-height: 0;
+  display: flex; flex-direction: column; gap: var(--space-3);
+  overflow-y: auto; scrollbar-gutter: stable;
+  padding: var(--space-2);
+  /* The top row sizes its boxes from this width (--diary-top-fit, §4d). */
+  container-type: inline-size;
+}
+/* The + cover is a shelf tile with no art yet: the tile's empty-art fill, its radius, its lift. */
+.diary__new {
+  align-self: center;
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-1);
+  padding: 0; background: none; border: none; cursor: pointer;
+  font-family: var(--font-body); color: var(--title);
+  transition: transform var(--dur-fast) var(--ease-ui);
+}
+.diary__new:hover { transform: var(--hover-lift); }
+.diary__new:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); border-radius: var(--lib-tile-radius); }
+.diary__new-art {
+  width: var(--diary-box, var(--diary-new-size)); height: var(--diary-box, var(--diary-new-size));
+  display: grid; place-items: center;
+  background: var(--surface-hover); color: var(--subtext);
+  border: 1px solid var(--border); border-radius: var(--lib-tile-radius);
+}
+.diary__new-art svg { width: var(--icon-lg); height: var(--icon-lg); fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.diary__new-label { font-size: var(--fs-subtext); }
+/* The top row (DIARY.md §4c): the playing album's box, then the + box, centered. With
+   nothing playing the + box sits alone in the same place. Tops line up; the album box has
+   one more text line. */
+.diary__top {
+  align-self: center; display: flex; align-items: flex-start; justify-content: safe center; gap: var(--diary-top-gap);
+  /* A narrow card (§4d): the boxes shrink to one tile, then the row scrolls sideways as a
+     shelf does (never the page). `safe` keeps the first box's left edge in reach. The block
+     padding, paid back by the margin, keeps the hover lift and focus ring out of the clip. */
+  max-width: 100%; overflow-x: auto; overflow-y: hidden;
+  /* A clipping flex item may shrink in the column and cut its own labels (the shelves' rule). */
+  flex: 0 0 auto;
+  padding-block: var(--space-1); margin-block: calc(-1 * var(--space-1));
+}
+.diary__top:has(.diary__now) { --diary-box: var(--diary-top-fit); }
+.diary__top .diary__new { align-self: auto; flex: 0 0 auto; }
+/* The album box is the + box with the cover in the square. */
+.diary__now { width: var(--diary-box, var(--diary-new-size)); }
+img.diary__now-art { object-fit: cover; }
+.diary__now.is-context .diary__now-art { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+.diary__now-name {
+  max-width: 100%; margin-top: calc(-1 * var(--space-1));
+  font-size: var(--fs-subtext); color: var(--subtext);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* The album box's copy that fades out as the row turns into the bar (diary-card.ts `fadeOut`). */
+.diary__ghost { position: fixed; z-index: 80; pointer-events: none; margin: 0; }
+.diary__pick { display: flex; flex-direction: column; gap: var(--space-2); }
+/* The morph's stand-in box (diary-card.ts `morph`): the cover's square travelling into the
+   search bar. Its place, size, corner and fill are keyframed in JS from the two real
+   controls, so it carries only what they share. Above the cards, under menus and toasts. */
+.diary__morph {
+  position: fixed; z-index: 80; pointer-events: none; box-sizing: border-box;
+  border: 1px solid var(--border);
+}
+.diary__pick .search__input { padding-right: 0; }
+.diary__pick .search__clear { position: static; transform: none; flex: 0 0 auto; }
+.diary__results { display: flex; flex-direction: column; }
+.diary__shelf { flex: 0 0 auto; }
+
+/* ── the rows (DIARY.md §9): In progress, Completed, your folders ── */
+.diary__secs { display: flex; flex-direction: column; gap: var(--space-2); }
+.diary__sec { display: flex; flex-direction: column; border-radius: var(--radius-control); }
+/* An empty row still takes a drop: its hint holds the height of a line. */
+.diary__shelf--empty .qcard__empty { text-align: left; padding: var(--space-1) 0; }
+/* A row is as tall as its tiles: the hold swell belongs to its header (the Settings rule). */
+.diary__sec.is-holding { transform: none; }
+.diary__sec.is-holding .lib-shelf {
+  transform: scale(var(--hold-swell));
+  transform-origin: center left;
+  transition: transform var(--hold-ms) var(--ease-ui);
+}
+:root[data-motion="reduced"] .diary__sec.is-holding .lib-shelf { transform: none; }
+/* A finished entry in a folder row: the tile badge's place and shape, not a button. */
+.diary__tile-done { cursor: default; pointer-events: none; }
+.diary__tile-done svg { width: var(--icon-sm); height: var(--icon-sm); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.diary__tile-done svg path:first-child { fill: none; }
+
+/* ── the entry: a scrolling list over a fixed foot (fork 6B) ── */
+/* A size container: the foot's note reads the entry's height as 100cqh (§4d). The flex
+   parent sets the size, so containing it changes nothing else. */
+.diary__entry { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; container-type: size; }
+.diary__scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; scrollbar-gutter: stable; }
+.diary__album { display: flex; flex-direction: column; gap: var(--space-2); padding: 0 var(--space-2) var(--space-2); }
+.diary__line { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+/* The date pill sizes to its words (a .lib-pill fills its cell by default) and sits at the
+   right end of its line, beside the score (his call, 2026-09-24). */
+.diary__date { width: auto; flex: 0 0 auto; white-space: nowrap; position: relative; }
+.diary__line .diary__date { margin-left: auto; }
+
+/* A score: a split pill (the Settings split idiom — one border, halves cut by a hairline) in
+   the .lib-pill shape beside it. Left: the number you type. Right: the scale — on the album,
+   the scale's menu (5 · 10 · 100 · a field); on a song, the same scale as text. */
+.diary__score {
+  display: inline-flex; align-items: stretch; flex: 0 0 auto;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--lib-pill-radius);
+  overflow: hidden;
+}
+.diary__score-input {
+  width: var(--diary-score-w); min-width: 0;
+  padding: var(--space-1) var(--space-2);
+  background: transparent; border: none; outline: none; text-align: right;
+  font-family: var(--font-body); font-size: var(--fs-subtext); color: var(--text);
+}
+.diary__score-input::placeholder { color: var(--subtext); }
+.diary__score-max {
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border-left: 1px solid var(--border);
+  font-family: var(--font-body); font-size: var(--fs-subtext); color: var(--subtext); white-space: nowrap;
+}
+button.diary__score-max { background: none; border-top: none; border-right: none; border-bottom: none; color: var(--text); cursor: pointer; }
+button.diary__score-max:hover { background: var(--surface-hover); }
+button.diary__score-max:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: calc(-1 * var(--focus-ring-off)); }
+.diary__scale[aria-expanded="true"] .lib-pill__caret { transform: rotate(180deg); }
+/* Not a number, or past the top: MARKED in the accent, as the room's empty name field is
+   (it reads "this one first", not an alarm). The hint says what to type. */
+.diary__score[data-bad], .diary__score.is-over { border-color: var(--title); }
+.diary__score:focus-within { border-color: var(--title); }
+
+/* A note: the search well, grown to a text area. */
+.diary__note {
+  box-sizing: border-box; width: 100%;
+  min-height: var(--diary-note-min-h); resize: vertical;
+  padding: var(--space-1) var(--space-2);
+  background: var(--canvas); border: 1px solid var(--border); border-radius: var(--radius-control);
+  font-family: var(--font-body); font-size: var(--fs-text); color: var(--text); line-height: var(--lh-text);
+  scrollbar-gutter: stable;
+}
+.diary__note::placeholder { color: var(--subtext); }
+.diary__note:focus { outline: none; border-color: var(--title); }
+
+/* The songs: the Search pane's rows, with a number in front and the score at the end. */
+.diary__songs { list-style: none; margin: 0; padding: 0 var(--space-1) var(--space-2); }
+.diary__num { flex: 0 0 auto; width: var(--diary-num-w); text-align: right; font-size: var(--fs-subtext); color: var(--subtext); }
+.diary__row-score { flex: 0 0 auto; font-size: var(--fs-subtext); color: var(--title); }
+.diary__row-score.is-over { text-decoration: underline; }
+.diary__mark { flex: 0 0 auto; display: inline-flex; color: var(--subtext); }
+.diary__mark svg { width: var(--icon-sm); height: var(--icon-sm); fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+/* The row the foot shows wears the selected outline (the Library's drilled-in song). */
+.diary__song.is-sel { outline: var(--focus-ring-w) solid var(--title); outline-offset: calc(-1 * var(--focus-ring-off)); }
+.diary__song.is-playing .diary__num { color: var(--title); }
+
+/* ── the foot (6B): one song's score, note and day, fixed under the list ── */
+.diary__foot {
+  flex: 0 0 auto;
+  display: flex; flex-direction: column; gap: var(--space-2);
+  padding: var(--space-2);
+  border-top: 1px solid var(--border);
+}
+.diary__foot-head { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.diary__foot-title { flex: 1 1 auto; min-width: 0; font-size: var(--fs-text); color: var(--title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.diary__foot-play { flex: 0 0 auto; }
+/* A height, not only a min-height: rows="3" alone would hold it at three lines. A drag sets an
+   inline height, which the max still stops. */
+.diary__foot .diary__note {
+  height: clamp(var(--diary-foot-note-floor), var(--diary-foot-note-share), var(--diary-foot-note-min-h));
+  min-height: var(--diary-foot-note-floor);
+  max-height: var(--diary-foot-note-max-h);
+}
+
+/* The system date picker opens from a field nobody sees. */
+.diary__date-input { position: absolute; left: 0; bottom: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; border: 0; padding: 0; }

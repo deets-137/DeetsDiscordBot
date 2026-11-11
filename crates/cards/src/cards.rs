@@ -7,7 +7,7 @@
 //!
 //! custom_ids are fixed strings (discord.py made random ones), so a click is routed by its
 //! id alone, from any process, after any restart:
-//! - `dm:np:<back|pause|resume|skip|queue>`
+//! - `dm:np:<back|pause|resume|skip|queue|open>` (`open`: the Activity, 2026-11-11)
 //! - `dm:queue:<page>:<prev|next>` (the page to show; the direction keeps the ids unique)
 //! - `dm:pick:<n>:<next 0|1>:<catalogId>`
 
@@ -71,7 +71,9 @@ fn container(parts: Vec<Component>, accent: u32) -> Vec<Component> {
 ///   streaming DeetsMusic in this server.
 /// - `up_next`: the first song of Up Next.
 /// - `now`: Unix time in seconds (the "ends in" stamp).
-pub fn np_card(np: &NowPlaying, up_next: Option<&Track>, where_: Option<&str>, accent: u32, now: f64) -> Vec<Component> {
+/// - `open`: add the "Open in call" button, which opens the Activity (his call 2A,
+///   2026-11-11). Only when the relay is set up; the parity kit (the Python card) has none.
+pub fn np_card(np: &NowPlaying, up_next: Option<&Track>, where_: Option<&str>, accent: u32, now: f64, open: bool) -> Vec<Component> {
     let Some(title) = np.title.as_deref().filter(|t| np.active && !t.is_empty()) else {
         return container(vec![text("Nothing is playing in DeetsMusic.")], accent);
     };
@@ -97,12 +99,16 @@ pub fn np_card(np: &NowPlaying, up_next: Option<&Track>, where_: Option<&str>, a
         mmss(Some(dur)),
     );
     let (play_id, play_label) = if np.playing { ("pause", "⏸") } else { ("resume", "▶") };
-    let buttons = row(vec![
+    let mut buttons = vec![
         button("dm:np:back".into(), "⏮", false),
         button(format!("dm:np:{play_id}"), play_label, false),
         button("dm:np:skip".into(), "⏭", false),
         button("dm:np:queue".into(), "Queue", false),
-    ]);
+    ];
+    if open {
+        buttons.push(button("dm:np:open".into(), "Open in call", false));
+    }
+    let buttons = row(buttons);
     container(vec![section(body, np.artwork_url(300)), buttons], accent)
 }
 
