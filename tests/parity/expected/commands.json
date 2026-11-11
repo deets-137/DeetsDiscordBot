@@ -132,12 +132,6 @@
     "type": 1
    },
    {
-    "description": "Host: compare queue-row layouts (only you see it).",
-    "name": "preview",
-    "options": [],
-    "type": 1
-   },
-   {
     "description": "The bot's volume in the call (host).",
     "name": "volume",
     "options": [

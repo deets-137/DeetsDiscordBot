@@ -9,6 +9,35 @@ updated: 2026-11-10
 One dated `##` per sitting, newest first. An old entry is never corrected. DeetsOTD's earlier
 history is in `git log` and docs/archive/.
 
+## 2026-11-10 (evening) — the Rust port, P0–P8, on branch `rust-rewrite`
+
+- **His words.** "let's open a new branch 'rust-rewrite' and get started, no agents";
+  "continue with the build as far as you can"; "Build as far as you can".
+- **Built** (all on `rust-rewrite`; the plan is ideas/rust-port-plan.md, each package
+  marked there): the workspace and parity loader (P0); the text formats and the cards
+  (P1); `TapStream` in `crates/tap` (P2); hand-rolled typed REST (P3); the bridge client
+  (P4); `lildeets-ipc` and `lildeets-host` (P5); `lildeets-logic` with every command,
+  button and autocomplete (P6) and the two watchers (P7); the `lildeets.exe` launcher (P8).
+  82 workspace tests + 3 in `crates/tap`; clippy clean.
+- **The voice spike passed by ear** (General in Moshi's Minecraft Monsters): twilight 0.18
+  with our glue + songbird + DAVE, "clean". Two silent runs first: songbird ships no PCM
+  decoder (fixed with symphonia's `pcm`), then DeetsMusic was on AirPlay (no Windows audio
+  session to capture; now in DEBUGGING.md §1.3).
+- **Smoke test of the whole bot** (Python bot stopped): connect as Lil Deets, logic Ready,
+  command sync, a rebuilt logic swapped in ~35 ms. Two supervisor bugs found and fixed.
+  **No command was tried in Discord**; the bot was stopped again.
+- **His decisions:** layout C for the queue (built in the Python bot too; `/dm preview`
+  deleted); `/links limit:N` reads the newest N in both bots (the journal's scan keeps the
+  first N); Lil Deets' own token for the Rust side (a copy in `Documents/Deets' Secrets/`);
+  twilight 0.18 allowed before it is two weeks old; test the Rust logic with the Python bot
+  stopped.
+- **Also:** the `deetsmusic-dev` MCP server is the CLI's debug build and never pairs with
+  the installed app; a `deetsmusic` server on the release CLI was added (user config). The
+  CLI's misleading "isn't running" message is for a DeetsMusic session to evaluate.
+- **Left open:** the Discord desk tests of the Rust bot; the host's song-boundary restart
+  and resume-file writing; the docs rewrite; twilight's advisories before the switch.
+  Nothing on the branch since P0 is committed.
+
 ## 2026-11-10 — Lil Deets joins voice; /dm; the repo is made
 
 - **His words.** "Can we wire Lil Deets (the disc bot) to be able to join vc and output audio?

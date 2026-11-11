@@ -16,6 +16,9 @@ Work from Discord's end back to the app:
    Also check the listener's own Discord: right-click Lil Deets → not muted, user volume > 0.
 3. **The capture.** `deets-tap --meters`: is the app's session on a device, with a peak, and
    its mixer volume near 1.00? A low mixer volume makes a near-silent stream.
+   **No session for the app at all** while it says it plays: check where it sends its
+   sound. DeetsMusic on **AirPlay** plays to the HomePod, not to Windows, so there is nothing
+   to capture (found 2026-11-10 with the Rust voice spike). Switch it to this PC.
 4. **The right process.** Several processes may share a name (DeetsMusic's CLI and MCP run as
    `deetsmusic.exe` too). `--list` shows which apps have sound; the helper picks the top-most
    process of that name and its WebView2 child.

@@ -1,0 +1,25 @@
+[package]
+name = "lildeets-host"
+description = "Lil Deets' host process: the gateway, voice, and the logic process it supervises (rust-port-plan.md §3.1, P5)."
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "lildeets-host"
+path = "src/main.rs"
+
+[dependencies]
+lildeets-ipc = { path = "../ipc" }
+deets-tap = { path = "../tap" }
+twilight-gateway.workspace = true
+twilight-model.workspace = true
+songbird = { version = "=0.6.1", default-features = false, features = ["driver", "rustls", "tws"] }
+# songbird ships no PCM decoder; TapStream's f32 PCM needs symphonia's (rust-port-plan.md §6).
+symphonia = { version = "0.5.5", default-features = false, features = ["pcm"] }
+serde_json.workspace = true
+tokio = { workspace = true, features = ["fs", "io-util", "macros", "net", "process", "rt-multi-thread", "signal", "sync", "time"] }
+tracing.workspace = true
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }

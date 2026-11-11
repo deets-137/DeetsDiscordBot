@@ -1,0 +1,12 @@
+[package]
+name = "lildeets"
+description = "Lil Deets' launcher: runs lildeets-host and starts it again when it asks (exit 75), as `python -m bot` does (P8)."
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "lildeets"
+path = "src/main.rs"

@@ -18,6 +18,14 @@ DISCORD-LIMITS.md has the limits.
   page 1 of 3"; then 10 rows, each `` ` 1` ` 2:40 | Explicit` **Title** · Artist `` over the
   album, with a 120 px thumbnail; then ◀ ▶. **38 components** with 10 rows: Discord's limit is
   40. Don't add a component per row.
+  > **Layout C, "number in a heading"** (the owner, 2026-11-10, from `/dm preview`; built
+  > the same day). Each row is `### 1 · Title` (the number and the title as a small
+  > heading), then `Artist · Album`, then `-# 2:40 · Explicit` in small text, all from the
+  > left edge, with the thumbnail beside it (`bot/dm.py` `_row_heading`). The old row above
+  > (`` ` 1` `2:40 | Explicit` **Title** ``) is gone. C has no monospace column, so §3's
+  > card column does not apply to the queue rows. `/dm preview` and rows A, B, D are deleted.
+  > Still 38 components. **Desk test (open):** `/dm queue` shows rows in C; ◀ ▶ page through;
+  > `/dm preview` is gone after the next restart re-syncs the commands.
 - **Picker** (`picker_view`): the top 5 with thumbnails and buttons 1–5. Only the asker sees
   it. After a pick it turns into "Picked …".
 

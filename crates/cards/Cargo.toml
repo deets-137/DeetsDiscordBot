@@ -8,7 +8,8 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
-
-[dev-dependencies]
-# The parity loader (tests/support) reads the kit in tests/parity/.
+# The bridge replies (model.rs) are plain data read with serde.
+serde.workspace = true
 serde_json.workspace = true
+# Components V2 types for the cards.
+twilight-model.workspace = true

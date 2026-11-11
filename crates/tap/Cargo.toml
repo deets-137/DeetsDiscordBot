@@ -6,6 +6,10 @@ authors = ["Aditya Sundaram"]
 edition = "2021"
 license = "MIT"
 
+[lib]
+name = "deets_tap"
+path = "src/lib.rs"
+
 [[bin]]
 name = "deets-tap"
 path = "src/main.rs"
@@ -15,6 +19,10 @@ path = "src/main.rs"
 # Pinned by rev, the way DeetsMusic pins it. Bump only after scripts/check-airplay.ps1
 # shows what changed in capture.rs / mixer.rs since this rev (docs/ops/TAP.md §3).
 deets-airplay = { git = "https://github.com/deets-137/DeetsAirplay", rev = "4185ed6c1f1feb00f351bb2be368e9bb59f8337e" }
+
+# TapStream is a symphonia MediaSource, which songbird's RawAdapter reads. The same
+# 0.5.5 songbird pulls in (rust-port-plan.md §5 P2).
+symphonia-core = "0.5.5"
 
 # OS bindings for --list / --meters (sessions, meters, process snapshot). Same major as
 # deets-airplay's, so the two never pull two copies of the bindings.

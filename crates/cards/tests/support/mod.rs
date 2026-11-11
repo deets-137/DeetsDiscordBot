@@ -82,11 +82,40 @@ pub fn normalize_custom_ids(value: &mut Value) {
     }
 }
 
+/// Drops `"disabled": false` at any depth: Discord's default for a button. discord.py writes
+/// it; twilight-model leaves it out. The only default the two disagree on (checked
+/// 2026-11-10 against every card in the kit).
+pub fn drop_default_disabled(value: &mut Value) {
+    match value {
+        Value::Object(map) => {
+            if map.get("disabled") == Some(&Value::Bool(false)) {
+                map.remove("disabled");
+            }
+            map.values_mut().for_each(drop_default_disabled);
+        }
+        Value::Array(list) => list.iter_mut().for_each(drop_default_disabled),
+        _ => {}
+    }
+}
+
+/// [`assert_json`] for a card: also drops `"disabled": false` on both sides.
+pub fn assert_card(actual: Value, rel: &str) {
+    let mut actual = actual;
+    let mut want = expected(rel);
+    drop_default_disabled(&mut actual);
+    drop_default_disabled(&mut want);
+    assert_json_against(actual, want, rel);
+}
+
 /// Asserts that `actual` matches `expected/<rel>`, with `custom_id`s normalized on both sides.
 /// On a failure, prints both sides in full and the first path where they differ.
 pub fn assert_json(actual: Value, rel: &str) {
+    assert_json_against(actual, expected(rel), rel);
+}
+
+fn assert_json_against(actual: Value, want: Value, rel: &str) {
     let mut actual = actual;
-    let mut want = expected(rel);
+    let mut want = want;
     normalize_custom_ids(&mut actual);
     normalize_custom_ids(&mut want);
     if actual != want {

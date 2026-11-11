@@ -1,0 +1,22 @@
+[package]
+name = "lildeets-voice-spike"
+description = "Spike: twilight 0.18 gateway + songbird 0.6 driver + DAVE in a real call, on the test application (rust-rewrite.md §7 step 1)."
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+twilight-gateway = "=0.18.0"
+twilight-model = "=0.18.0"
+songbird = { version = "=0.6.1", default-features = false, features = ["driver", "rustls", "tws"] }
+# songbird turns off every symphonia codec; RawAdapter's f32 PCM needs the `pcm` decoder.
+# symphonia is already in the tree through songbird: this only adds its PCM codec.
+symphonia = { version = "0.5.5", default-features = false, features = ["pcm"] }
+tokio = { version = "1.53", features = ["macros", "rt-multi-thread", "signal", "time"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+# The tap as a library (P2). crates/tap stays outside the workspace, so its own build still
+# lands in crates/tap/target/release, where bot/voice.py looks.
+deets-tap = { path = "../tap" }

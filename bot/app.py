@@ -75,7 +75,7 @@ async def links(interaction: discord.Interaction, limit: int | None = None):
     await interaction.response.defer(ephemeral=True, thinking=True)
 
     channel = interaction.channel
-    records = await collect_links(channel, limit=limit)
+    records = await collect_links(channel, limit=limit, newest=True)
     label = getattr(channel, "name", str(interaction.channel_id))
     md, csv = write_outputs(records, label)
 

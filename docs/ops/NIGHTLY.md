@@ -6,8 +6,8 @@ updated: 2026-11-10
 ---
 # The nightly publish, and the cut-over from DeetsOTD
 
-> **Status:** project · 2026-11-10. Switched at 14:40: the 6 PM run of 2026-11-10 is the first
-> from this repo. §4 steps 3–5 follow once it passes.
+> **Status:** project · 2026-11-10. Switched at 14:40. The 6 PM run of 2026-11-10 was the first
+> from this repo, and it passed. §4 is complete (2026-11-10): DeetsOTD is archived.
 
 ## 1. The job
 Windows Task Scheduler, task **"DeetsOTD Nightly SOTD"**, every day at 6 PM, runs
@@ -46,9 +46,18 @@ The `journal-refresh` skill in DeetsSolutions runs the same script.
 2. [x] 2026-11-10 14:40: `nightly-sotd.ps1` runs `python -m journal.scan` /
    `-m journal.letterboxd_web` in this repo, with a `-Check` preflight (passed). DeetsSolutions
    `a935bba`, pushed. (No hand run: tonight's real run is the first test, by his choice.)
-3. [ ] The 6 PM run of 2026-11-10 passes: expect 484 songs and 323 films published, one
-   commit and push, DeetsOTD's database unchanged. Read `nightly-sotd.log`.
-4. [ ] Update the other DeetsSolutions references (§2), and DeetsSQL's default database path
-   (§2, other repos) — else DeetsSQL keeps showing DeetsOTD's frozen copy.
-5. [ ] DeetsOTD: a README pointer here; merge its `lil-deets-voice` branch; push; archive the
-   GitHub repo (read-only). Keep the local folder until he says.
+3. [x] 2026-11-10 18:00: the 6 PM run passed (`nightly-sotd.log`, "=== done" at 18:00:51).
+   2 new posts, not the 1 expected: a second Song of the Day was posted after the 14:40 check.
+   Published 485 songs and 323 films; one commit and push, DeetsSolutions `df170f1`.
+   This repo's `storage.db`: 485 posts, 89 scans, 323 films. DeetsOTD's: 483 posts and 322 films,
+   unchanged; its working tree is clean.
+4. [x] 2026-11-10: DeetsSolutions references switched (docs, README, CLAUDE.md, the
+   journal-refresh skill, page comments; the cool-stuff card is now **DeetsDiscordBot**, and
+   `projects.json` was rebuilt). The scheduled task keeps its name "DeetsOTD Nightly SOTD".
+   DeetsSQL's `default_db_path()` now opens `Documents\DeetsDiscordBot\storage.db` only: no
+   fallback to DeetsOTD's frozen copy, which would show old data as current. `cargo check` and
+   `tsc` pass. The installed DeetsSQL changes only after a rebuild. Pushed: DeetsSolutions
+   `2542d4d`, DeetsSQL `61bf0fc`.
+5. [x] 2026-11-10: DeetsOTD's README points here; `lil-deets-voice` fast-forwarded into main;
+   pushed (`81bbf2c`); the GitHub repo is archived (read-only). The local folder stays until
+   he says.

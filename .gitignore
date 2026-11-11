@@ -19,6 +19,8 @@ crates/*/target/
 # the Rust port's workspace build output (the root Cargo.lock is committed)
 /target/
 
+# the Rust logic's last command sync (crates/logic commands.rs)
+.lildeets-commands.sync
 # the song-boundary restart hand-off (bot/live.py)
 .lildeets-resume.json
 .lildeets-hold

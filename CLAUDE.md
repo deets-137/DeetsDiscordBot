@@ -10,8 +10,8 @@ Everything Discord for the Deets family, in one repo:
 - **deets-tap** (`crates/tap`, Rust): the capture helper `/vc` runs, built on DeetsAirplay's
   `deets-airplay` crate.
 
-Started 2026-11-10 as a clone of `../DeetsOTD` (all its history). DeetsOTD stays untouched
-until the nightly job runs from here and passes; then it is archived (docs/ops/NIGHTLY.md §4).
+Started 2026-11-10 as a clone of `../DeetsOTD` (all its history). The nightly job ran from here
+and passed the same day, and DeetsOTD was archived (docs/ops/NIGHTLY.md §4).
 
 ## Start here
 - **`docs/HANDOFF.md`** — cold start: state of play, **Open now**, gotchas. Corrected in place.
@@ -81,7 +81,8 @@ and one line below.
 - **Never edit `../DeetsMusic` from this project.** The bot reaches DeetsMusic only through
   its bridge (BRIDGE.md). Never expose a library, playlist, settings, Diary or Song of the Day
   write to Discord.
-- **Never touch `../DeetsOTD` until the cut-over** (NIGHTLY.md). It runs the nightly job.
+- **Never edit or run `../DeetsOTD`.** It is archived (2026-11-10); its `storage.db` is the
+  frozen backup from the move. The live database is this repo's (NIGHTLY.md §4).
 - **Never run a second bot process on this token that syncs slash commands.** Discord keeps
   one global command list per application; the last process to sync wins (BOT.md §2). The
   journal's `scan` logs in briefly and never syncs; keep it so.
