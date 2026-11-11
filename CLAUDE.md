@@ -115,20 +115,51 @@ and one line below.
 - Hand over with the desk test written into the feature's doc.
 
 ## Working style (the user directs the architecture)
+These follow DeetsMusic's CLAUDE.md › Working style (2026-09 to 2026-10), keeping what applies
+to a bot; its UI rules (tokens, motion, hints, toasts, settings keys, the Compass, the CSP,
+the shots runner, publishing) do not apply here.
 - **Design on paper first.** Surface the real forks, confirm, then build. Follow
   `~/.claude/CLAUDE.md` › Bringing forks: open with the count, recommendation first.
-- **He decides every real fork.** One option left: build it, and say so in one line.
+- **He decides every real fork** (DeetsMusic, 2026-09-18). A default, a wording, a reply line, a
+  card layout, a command shape, a permission: bring the fork before you build it. One option
+  left: build it, and say so in one line. Reason: on 2026-09-18 a badge he never saw shipped to
+  DeetsMusic's users. LESSONS.md and TASTE.md shape the option you RECOMMEND; they are never
+  permission to skip the question.
 - **The end user first** (here: the people in the call), then maximum security that still
-  feels great. Hard or complex work is not a cost.
-- Inside a fork he HAS chosen, build the full, polished thing without asking again, and list
-  what you decided inside his choice.
-- **Commit only when he asks.** Co-author trailer: name the model that did the work.
+  feels great. Hard or complex work is not a cost. Prefer the most user-friendly and
+  user-empowering option.
+- Inside a fork he HAS chosen, build the full, polished thing without asking again; "he
+  decides" never means "build less". At hand-off, list what you decided inside his choice.
+- **One load-bearing feature in flight** (DeetsMusic, 2026-09-17). Hand it over, he desk-tests
+  it, then the next starts. Clear the open desk tests (HANDOFF.md › Open now) before new work:
+  untested features stacked in one tree hide each other's mistakes.
+- **The pattern first** (DeetsMusic, 2026-10-26). Before you design a command, card, reply or
+  button, find how the bot already does that kind of thing (or how DeetsMusic does it, for
+  anything its Rooms, cards or wording already decided), build on it, and name the precedent.
+- **Log what acts on its own.** Anything that runs without a command (the status watcher, the
+  np card watcher, live reload, the nightly job) logs when it arms, fires and stops, under
+  `discord.lildeets.*`.
+- **Stewardship.** Keep calls to the bridge, Apple and Discord few: edit on change, cache what
+  repeats, and ask the cost before a design that polls or fetches a lot.
+- **A file we cannot lose half of** (the resume hand-off, settings, tokens, `storage.db` copies)
+  is written beside, flushed, then renamed over the old one (DeetsMusic's `safe_file`).
+- **Agents.** Build and explore in the main context. Two standing uses of Sonnet agents
+  (`model: "sonnet"`): the Rust port's work packages (his ask, 2026-11-10;
+  docs/ideas/rust-port-plan.md), and after a feature is built, a pass asking how a user might
+  break it from a UX or workflow view (DeetsMusic, 2026-10-17). Read every diff an agent makes
+  and run the checks yourself: an agent's report is not proof.
+- **Commit only when he asks.** Co-author trailer: name the model that did the work (today
+  `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`); update this line when it changes.
 - **Several Deets apps run on this PC at once.** Never hardcode a port with strict failure.
 
 ## How to explain things to me
 - Write in ASD-STE100 (Simplified Technical English): short sentences, active voice, one idea
   per sentence, plain approved words, no metaphor.
-- Describe a thing by what he sees in Discord, not by an internal name.
+- Describe a thing by what he sees in Discord, not by an internal name. Name the exact
+  control ("the ⏭ button on the now-playing card", "the voice channel's status line").
+  Define the terms once, at the start.
+- Test each option against the code BEFORE you show it. Discard the options the code already
+  rules out. Show the real forks only.
 - A list, finding or count he asked for goes in the chat text, in full, before the end-of-turn
   box.
 

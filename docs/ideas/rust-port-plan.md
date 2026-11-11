@@ -31,6 +31,15 @@ handrolling where we can gain more functionality or resource savings." The journ
 7. **Never edit `bot/` or `journal/`** (the Python bot runs from them live and reloads on save).
    Never edit `../DeetsMusic` or `../DeetsAirplay`.
 8. One package per branch: `rust/<package-id>`. Commit when its tests pass; the owner merges.
+9. **Never block the async runtime.** Blocking I/O (the capture's reads, file writes, the
+   bridge if it uses `ureq`) runs in `tokio::task::spawn_blocking` or its own named thread.
+   For the tray app later: a synchronous `#[tauri::command]` runs on the UI thread, so it is
+   `async fn` + `spawn_blocking` (DeetsMusic › Conventions; 0.12.0 froze on live this way).
+10. **Name every long-lived thread** (`std::thread::Builder::name`) and list it in a thread
+    table in the crate's doc comment: what it does, how long it lives (DeetsMusic › threads).
+11. **Files we cannot lose half of** (the resume hand-off) are written beside, flushed, then
+    renamed over (DeetsMusic's `safe_file::write_atomic`).
+12. **Log what acts on its own** with `tracing`: arm, fire, stop (CLAUDE.md › Working style).
 
 ## 3. The shape
 

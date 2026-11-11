@@ -31,6 +31,10 @@ updated: 2026-11-10
    DeetsSolutions script switched on 2026-11-10 at 14:40 (`a935bba`). **The 6 PM run of
    2026-11-10 is the first from this repo.** After it passes: the other references, DeetsSQL's
    path, then archive DeetsOTD. Nothing runs from DeetsOTD any more.
+2a. **Write the resume hand-off atomically** (`bot/live.py` `restart`, the
+   `RESUME_FILE.write_text` line): beside, flush, rename over (CLAUDE.md › Working style). It is
+   a `live.py` change, so the running bot restarts at the next song: do it as the LIVE-RELOAD.md
+   §7 desk test, with him listening.
 3. **Merge DeetsOTD's `lil-deets-voice` branch** into its main at the archive step.
    (DeetsAirplay's was merged and pushed 2026-11-10: master `4185ed6`, which `crates/tap` pins.)
 4. Later, by his word: in-call extras, the Activity, image cards, the tray app, a Rust bot (ideas/rust-rewrite.md; the journal stays Python).
