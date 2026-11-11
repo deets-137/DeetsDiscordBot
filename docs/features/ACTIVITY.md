@@ -1,7 +1,7 @@
 ---
 status: project
 desk_test: open
-sources: [activity/deetsmusic-protocol/index.ts, activity/deetsmusic-ui/layout.ts, activity/deetsmusic-ui/surface.ts, activity/deetsmusic-ui/ui.css, activity/deetsmusic-ui/album-color.ts, activity/deetsmusic-ui/hint.ts, activity/deetsmusic-ui/row-drag.ts, activity/deetsmusic-ui/toast.ts, activity/deetsmusic-ui/scenery.ts, activity/scripts/look-sync.mjs, activity/mock/transport.ts]
+sources: [activity/deetsmusic-protocol/index.ts, activity/deetsmusic-ui/layout.ts, activity/deetsmusic-ui/surface.ts, activity/deetsmusic-ui/ui.css, activity/deetsmusic-ui/album-color.ts, activity/deetsmusic-ui/hint.ts, activity/deetsmusic-ui/row-drag.ts, activity/deetsmusic-ui/toast.ts, activity/deetsmusic-ui/scenery.ts, activity/relay/src/index.ts, activity/relay/src/room.ts, activity/relay/src/wire.ts, activity/discord-shell/main.ts, crates/relay-client/src/lib.rs, crates/logic/src/relay.rs, activity/scripts/look-sync.mjs, activity/mock/transport.ts]
 updated: 2026-11-11
 ---
 # The Activity: DeetsMusic's look inside the call
@@ -122,16 +122,24 @@ hidden.
 - **Sign-in.** The Activity asks Discord for a code (`authorize`, scopes `identify` and
   `rpc.activities.write`). The relay trades the code for a token with the client secret, and
   asks Discord who the token belongs to. The page's own claim of a user id is never trusted.
-- **The call.** The relay asks Discord for the instance
+- **The call.** The **bot** asks Discord for the instance
   (`GET /applications/<id>/activity-instances/<instance>`, bot token): its channel and its
-  users. The guest must be in that list, and the channel must be the one the host registered.
+  users. The relay sends the question down the bot's own socket (his call A, 2026-11-11: the
+  bot token stays on the PC). The guest must be in that list. The relay then compares the
+  instance's channel with the channels the bot named.
+- **The ticket.** After sign-in the relay gives the page a ticket: the person's id and name,
+  signed by the relay, good for five minutes. The page's socket shows it in its first frame.
 - **The host's socket.** The bot signs in to the relay with a secret that only the relay and
   the bot's `.env` hold. No host socket for a channel: the relay sends one line ("The host is
   not playing here") and nothing else.
 - **The rules.** The relay decides nothing about DeetsMusic. The logic's `check` does, for
   every action, as for a button on a card.
-- **Secrets.** The client secret, the bot token and the host secret are Worker secrets (`cf`).
-  None is in the repo. The bridge token never leaves the PC.
+- **Secrets** (his call A, 2026-11-11). The client secret and the host secret are Worker
+  secrets (`cf`). The bot token is not on Cloudflare: a leak there cannot control the bot.
+  None is in the repo. The bridge token never leaves the PC. (The 2026-11-10 text put the bot
+  token on the Worker too.)
+- **The origin.** The relay answers `/api/*` only to a page from
+  `https://<app id>.discordsays.com`. It logs each refusal with the origin it saw.
 - **Text from Discord** (names, nicknames) is drawn with `textContent`.
 
 ## 7. The look (F1, F3)
@@ -259,6 +267,56 @@ Step 2b (§13.7) adds these. Use a mouse.
     still. After half a second it gets an outline. Move the finger: the row drags, and the
     list does not scroll. Hold a row and let go with no move: its menu opens. Swipe the list
     with no hold: it scrolls, and nothing lifts.
+
+### 12.2 The relay and the sign-in page (build step 3): open
+**Setup, once. All five steps are his: they hold secrets, publish, or change the Discord app.**
+1. **Write the Worker's three secrets.** Make a file `activity/relay/.env.deploy` (gitignored):
+   ```
+   DISCORD_CLIENT_ID=<the application id>
+   DISCORD_CLIENT_SECRET=<Developer Portal › the app › OAuth2 › Client Secret>
+   HOST_SECRET=<a new random value: openssl rand -hex 32>
+   ```
+2. **Deploy the relay** (a public change). In `activity/relay`: `npm install`, then
+   `cf deploy --secrets-file .env.deploy`. It prints the Worker's address,
+   `lildeets-relay.<account>.workers.dev`. Delete the file after. A later deploy with no
+   secret change is `cf deploy` alone.
+3. **Tell the bot.** In the repo's `.env`:
+   `LILDEETS_RELAY_URL=wss://lildeets-relay.<account>.workers.dev/host/ws` and
+   `LILDEETS_RELAY_SECRET=<the same HOST_SECRET>`.
+4. **Build release** (`cargo build --workspace --release`): a live change. The logic's new
+   build does not swap in at once this time: the IPC version changed, so the old host refuses
+   it and keeps the old logic. The new pair goes live at the host's restart (the next song
+   boundary, or at once when nothing plays). The log shows `commands: synced`.
+5. **The Developer Portal**, the app "Lil Deets":
+   - OAuth2 › Redirects: add `https://127.0.0.1` (Discord's own placeholder).
+   - Activities › Settings: turn on **Enable Activities**. Discord makes the Launch command.
+   - Activities › URL Mappings: prefix `/`, target `lildeets-relay.<account>.workers.dev`.
+
+**The test.** `LD` is the bot's log; `W` is the Worker's log (the Cloudflare dashboard › the
+Worker › Logs).
+1. Start the bot. `LD`: `relay: armed; it connects when the bot is in a call`.
+2. Join a voice channel in a small server. `/vc play` DeetsMusic. `LD`: `relay: connected`.
+   `W`: `[room] the host connected`.
+3. Open the Activity: the rocket button in the call, or `/launch`. Discord asks you to
+   authorize Lil Deets (once). The page shows **Signed in as** your Discord name, then **Lil
+   Deets is in this call.** `LD`: `relay: a person is in the Activity`.
+4. `/vc leave`. The page changes to **The host is not playing here**. `LD`: `relay:
+   disconnected; the bot is in no call`.
+5. `/vc play` again. The page changes back to **Lil Deets is in this call.** with no reload.
+6. Open the Activity in a voice channel where the bot is not. The page shows your name and
+   **The host is not playing here**.
+7. Stop the bot (Ctrl+C), then open the Activity. The page shows your name and **The host is
+   not playing here**. Start the bot and `/vc play`: the page changes by itself.
+8. Restart the host during a call (LIVE-RELOAD.md §7). After the bot is back, the page shows
+   **Lil Deets is in this call.** again.
+9. Run `/dm np`, `/vc` and `/links` once: the command sync kept them, and **Launch** is still
+   in the command list after a bot restart.
+10. **§11 item 1:** a friend with no team seat opens the Activity in the small server. Then a
+    friend with a Read-only seat opens it in The Lads. Write down what each one sees.
+11. **§11 item 2:** note whether a seat needed Developer Mode on.
+
+If sign-in fails with "Not from the Activity", `W` shows the origin the relay saw
+(`[relay] refused … origin …`): Discord's proxy sent an origin the relay does not expect.
 
 ## 13. As built (2026-11-10)
 
@@ -430,3 +488,77 @@ in the page and in the fake host; the hint on ⏭ showed. On Black & Red × Cybe
 ran. No console error. `npm run check` and `npm run mock:build` pass. NOT checked: a real
 phone, a touchscreen, a pen, the tile at Discord's real sizes, the hint on a cut-off row, the
 Wide dead-band by hand, a refused drag.
+
+### 13.8 Step 3 as built (2026-11-11)
+> **Part:** built · 2026-11-11. His word: "Step 3, the relay". Not deployed, and no release
+> build: nothing is live. Tested on this PC against a fake Discord. His setup and desk test
+> are §12.2.
+
+**His calls.** Secrets: "A: secret on Cloudflare" (the client secret on the Worker, the bot
+token on the PC). Dependencies: "Yes, all three", then "Yes, in activity/relay" for
+Cloudflare's own tool set.
+
+| Part | Files |
+|---|---|
+| The relay Worker | `activity/relay/`: `cloudflare.config.ts`, `src/index.ts` (the routes), `src/room.ts` (the room, a Durable Object), `src/ticket.ts`, `src/wire.ts` (the messages), `test/relay.test.mjs` |
+| The sign-in page | `activity/relay/index.html`, `activity/discord-shell/main.ts` |
+| The bot's connection | `crates/relay-client` (`lildeets-relay-client`) |
+| The host | `crates/host/src/main.rs`: `tell_relay`, `on_relay`, the two `.env` keys |
+| Host ⇄ logic | `crates/ipc`: `RelayCheck`, `RelayChecked`; `PROTOCOL` is 2 |
+| The check | `crates/logic/src/relay.rs`; `crates/rest`: `activity_instance`, `get_global_commands` |
+| The command sync | `crates/logic/src/commands.rs` `sync_commands` |
+| The §8 fix | `crates/rest/src/lib.rs` `owners`: accepted team members only |
+
+**How a sign-in travels.**
+1. The page asks the relay for the app's id (`GET /api/config`) and starts Discord's SDK.
+2. Discord gives the page a code (`authorize`, scopes `identify`, `rpc.activities.write`).
+3. The page sends the code to the relay (`POST /api/token`). The relay trades it at Discord
+   with the client secret, asks Discord who it is, and returns Discord's token, the person,
+   and a ticket.
+4. The page opens a socket (`/api/ws`) and sends the ticket and Discord's instance id.
+5. The relay sends `check` down the bot's socket. The host passes it to the logic. The logic
+   asks Discord for the instance (once more after 1.5 s when the person is not listed yet)
+   and answers with the instance's channel, or with a line for the person.
+6. The relay tells the page `welcome`, with whether the bot is in that channel now. After
+   that it sends `host` each time that answer changes.
+
+**Decided inside his calls (for his review).**
+1. **One Worker serves the page and the relay**, at a `workers.dev` address. Discord's proxy
+   hides the address from the people in the call.
+2. **One room for the whole app** (one Durable Object, `storage: "sqlite"`, WebSocket
+   hibernation). It keeps nothing in memory: each socket's state is in its attachment. Limits:
+   200 pages, 4 KiB a frame from a page.
+3. **The bot connects only while it is in a call.** It tries again after 2 s, then up to 60 s
+   apart. A `ping` every 30 s is answered by the relay without waking the room. It logs
+   `relay: armed`, `connected`, `the connection dropped`, `disconnected`, `stopped`.
+4. **With no bot connected, a signed-in person waits.** They see "The host is not playing
+   here". When a bot connects, the relay checks each waiting person. A new bot connection
+   replaces the old one, and everyone is checked again.
+5. **The command sync keeps the Launch command.** It reads Discord's list first and carries
+   the Entry Point command as Discord holds it. When there is none and `.env` has the relay,
+   it makes Discord's default (`launch`, "Launch an activity"); if Discord refuses that, the
+   list goes without it. When the read fails, there is no sync at that start.
+6. **The lines a person can read on the page** (a test page; step 5 replaces it): "Signing
+   in…", "Signed in as <name>", "Lil Deets is in this call.", "The host is not playing here",
+   "Open this from Discord", and the refusals: "Lil Deets is starting. Close the Activity and
+   open it again.", "Discord did not answer. Close the Activity and open it again.", "Discord
+   does not know this Activity. Close it and open it again.", "Discord says you are not in
+   this Activity. Close it and open it again.", "The Activity works in a server's voice
+   channel.", "The sign-in ran out. Close the Activity and open it again.", "This page is out
+   of date. Close the Activity and open it again."
+7. **`cf dev` talks to a fake Discord only** (`cloudflare.config.ts`, mode `development`), so a
+   local run can never send a real secret anywhere.
+8. **Two more direct Rust dependencies than he approved by name:** `futures-util` and `http`.
+   `tokio-websockets`' API is written in their traits and types. Both were in `Cargo.lock`
+   already; no new crate is compiled. His word, 2026-11-11: "Those crates are ok by me."
+
+**Checked (Claude, 2026-11-11).** `activity/relay`: `npm test`, 13 steps against `cf dev` and
+a fake Discord (an origin that is not the Activity; a bad code; a forged ticket; a wrong host
+secret; no host; the check; the bot coming and going; a refusal; a second frame; a second
+host). The test found one defect, now fixed: after a bot reconnect the room sent the check to
+the old, closing socket. `cf deploy --dry-run` passes. `cargo clippy --workspace --all-targets`
+and `cargo test --workspace` pass (debug): 3 new tests in `lildeets-relay-client` (one against
+a local fake relay), 1 new and 1 changed in `lildeets-rest`. NOT checked: anything against the
+real Discord or the real Cloudflare; the page inside Discord's frame (the `/.proxy` path, the
+origin header through Discord's proxy, the consent prompt); the Launch command's carry-over
+against Discord; the bot's client against the deployed Worker over TLS.

@@ -1,8 +1,8 @@
 ---
 status: shipped
 desk_test: open
-sources: [crates/launcher/src/main.rs, crates/host/src/main.rs, crates/logic/src/main.rs, crates/logic/src/commands.rs, crates/ipc/src/lib.rs, crates/rest/src/lib.rs, Cargo.toml]
-updated: 2026-11-10
+sources: [crates/launcher/src/main.rs, crates/host/src/main.rs, crates/logic/src/main.rs, crates/logic/src/commands.rs, crates/logic/src/relay.rs, crates/ipc/src/lib.rs, crates/rest/src/lib.rs, crates/relay-client/src/lib.rs, Cargo.toml]
+updated: 2026-11-11
 ---
 # The bot: three processes
 
@@ -69,11 +69,23 @@ from the OS random source, passed in `LILDEETS_IPC_TOKEN`, compared in constant 
   app, gain, DAVE, people, `rejoining`), `MemberVoice`, `Done` (a voice op's result);
 - logic → host: `WhereIs`, `Play` (an app or the tone), `Stop`, `Leave`, `SetGain`,
   `Presence`, `Snapshot`.
+- The Activity's relay (2026-11-11, `PROTOCOL` 2; built, not live until a release build):
+  host → logic `RelayCheck` (is this person in this Activity instance?), logic → host
+  `RelayChecked` (the instance's voice channel, or a line for the person).
+
+### 5.1 The host's connection to the relay (`crates/relay-client`)
+One WebSocket out to the Activity's relay Worker (features/ACTIVITY.md §5, §13.8), held only
+while the bot is in a call. The host names its voice channels on every change (`tell_relay`,
+once a second at most). It is off unless `.env` has both relay keys (§7). It reconnects by
+itself and logs `relay: armed`, `connected`, `the connection dropped`, `disconnected`.
 
 ## 6. One command list per application
 Discord keeps **one global command list per application**; a sync replaces it. So:
 - **Only the logic syncs.** The journal's `scan` logs in with the same token to read the
   channel, then logs out; it never syncs. Keep it so.
+- **The sync keeps the Activity's Launch command** (2026-11-11). Discord makes that command
+  when Activities are turned on. The sync reads Discord's list first and carries it
+  (`sync_commands`; features/ACTIVITY.md §13.8).
 - **Never run two bots on this token.** The archived Python bot syncs its own list.
 - The harness bot (`Vibe Coding Era/harness/discord_bot.py`) shared the token and was retired
   on 2026-11-10 (HANDOFF.md › Retired).
@@ -83,6 +95,8 @@ Discord keeps **one global command list per application**; a sync replaces it. S
 - `.env` at the repo root (or the environment): `DISCORD_TOKEN` (the application "Lil
   Deets"; the journal's `scan` uses it too), `VOICE_USER_IDS` (who besides the application's
   owner may start `/vc`). Reset the token in the developer portal → update `.env`.
+  `LILDEETS_RELAY_URL` and `LILDEETS_RELAY_SECRET`: the Activity's relay (ACTIVITY.md §12.2);
+  with either missing, the bot runs with no Activity.
 - `config.py`: `ALLOWED_CHANNEL_IDS` limits `/links` (empty: any channel).
 - Files the bot writes at the root, all gitignored: `.lildeets-resume.json`,
   `.lildeets-commands.sync`, `exports/` (`/links`).

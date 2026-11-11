@@ -24,6 +24,7 @@ use tracing::{error, info, warn};
 
 mod commands;
 mod ix;
+mod relay;
 mod watch;
 
 /// The repo root: `.env`, `config.py`, `exports/`.
@@ -32,7 +33,7 @@ pub fn root() -> PathBuf {
 }
 
 /// A key from the environment, else from the repo's `.env`.
-fn env_or_dotenv(key: &str) -> Option<String> {
+pub(crate) fn env_or_dotenv(key: &str) -> Option<String> {
     if let Ok(v) = std::env::var(key) {
         return Some(v);
     }
@@ -222,6 +223,10 @@ async fn run() -> Result<(), String> {
             }
             m @ ToLogic::MemberVoice { request_id, .. } => ctx.host.answer(request_id, m),
             m @ ToLogic::Done { request_id, .. } => ctx.host.answer(request_id, m),
+            ToLogic::RelayCheck { rid, user, instance } => {
+                let c = ctx.clone();
+                tokio::spawn(async move { relay::check(&c, rid, user, instance).await });
+            }
         }
         if ctx.app_id.get().is_none() {
             warn!("logic: a message before Ready");

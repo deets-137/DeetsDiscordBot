@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: [Cargo.toml, crates/host/Cargo.toml, requirements.txt, .env.example, config.example.py, crates/tap/Cargo.toml]
-updated: 2026-11-10
+updated: 2026-11-11
 ---
 # Setup on a fresh machine
 
@@ -76,6 +76,21 @@ npm run check       # types, then the copied look against ../DeetsMusic
   the DeetsMusic repo beside this one. The copy is committed, so a machine without DeetsMusic
   still builds; there `look:check` prints that it cannot check and passes.
 - `npm install` may print that esbuild's install script was blocked. Vite still runs.
+
+**The relay Worker** (`activity/relay`, features/ACTIVITY.md §13.8) is its own package with
+Cloudflare's tools (`cf`, its Vite plugin, Vite 8, TypeScript 7). `cf` is Cloudflare's CLI;
+this repo does not use Wrangler.
+```
+cd activity/relay
+npm install
+copy .dev.vars.example .dev.vars    # test values only
+npm run dev         # the relay and the sign-in page, locally (5373, or the next free port)
+npm test            # in a second terminal: RELAY=http://127.0.0.1:<port>; 13 steps, a fake Discord
+npm run check       # types
+cf deploy --dry-run # the build and the bindings; nothing is uploaded
+```
+`npm run dev` talks to the test's fake Discord on port 5399, never to the real one. The real
+deploy, its secrets and the Discord portal steps are ACTIVITY.md §12.2.
 
 ### 9.1 On a Mac
 - **Works:** everything in `activity/` (the UI, the mock, later the relay Worker), and the

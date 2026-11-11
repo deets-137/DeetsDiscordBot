@@ -13,6 +13,8 @@ path = "src/main.rs"
 
 [dependencies]
 lildeets-ipc = { path = "../ipc" }
+# The Activity's relay: one outbound WebSocket while the bot is in a call (ACTIVITY.md §5).
+lildeets-relay-client = { path = "../relay-client" }
 # The song-boundary restart reads now-playing and pauses / resumes (bot/live.py does the same).
 deetsmusic-bridge = { path = "../bridge" }
 deets-tap = { path = "../tap" }

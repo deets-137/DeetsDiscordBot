@@ -1835,6 +1835,7 @@ dependencies = [
  "deets-tap",
  "deetsmusic-bridge",
  "lildeets-ipc",
+ "lildeets-relay-client",
  "serde_json",
  "songbird",
  "symphonia",
@@ -1868,6 +1869,19 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "twilight-model 0.18.0",
+]
+
+[[package]]
+name = "lildeets-relay-client"
+version = "0.1.0"
+dependencies = [
+ "futures-util",
+ "http",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-websockets 0.13.3",
+ "tracing",
 ]
 
 [[package]]

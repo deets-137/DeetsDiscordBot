@@ -46,11 +46,19 @@ updated: 2026-11-11
    (`npm run mock` there). **The work is on branch `disc-activities`**, not merged.
    **Most of step 2b is built and his desk test of the mock passed** (2026-11-11, §13.7, §12.1): the landscape layout,
    the Play Now button on the toast, the tile card, album colour, hints, drag to reorder
-   (a finger holds, then moves), Glass's aurora and Cyber's storm. Next, in order: the rest
-   of the scenery (§13.7: the Press record, the wallpaper, Ocean, Happy); step 3 (the relay).
-   One question is open: may a guest use Play Now (§13.5)? §11 lists what is not confirmed (a Read-only seat launching in a
-   large server is the first). No release build was made after the rename: the next one
-   restarts the host at a song boundary. `activity/` can be worked on from a Mac
+   (a finger holds, then moves), Glass's aurora and Cyber's storm.
+   **Step 3 is built, not committed, not deployed, not live** (2026-11-11, §13.8): the relay
+   Worker (`activity/relay`), the sign-in page (`activity/discord-shell`), the bot's
+   connection (`crates/relay-client`), the check in the logic, the command sync that keeps
+   the Launch command. It passes its local tests against a fake Discord; nothing was tried
+   against the real Discord or Cloudflare. **Next: his setup and desk test (§12.2):** the
+   Worker's secrets and deploy, two `.env` keys, a release build (the IPC version is 2: the
+   new logic goes live with the new host, at the host's restart), the Developer Portal steps.
+   Then step 4 (`deetsmusic_remote`). Set aside by his word ("Step 3, the relay"): the rest
+   of the scenery (§13.7: the Press record, the wallpaper, Ocean, Happy).
+   One question is open: may a guest use Play Now (§13.5)? §11 lists what is not confirmed (a
+   Read-only seat launching in a large server is the first; §12.2 steps 10 and 11 test it).
+   No release build was made after the rename. `activity/` can be worked on from a Mac
    (ops/SETUP.md §9.1); the bot cannot.
 4. Later, by his word: in-call extras, image cards, the tray app (features/TRAY.md, now over
    `lildeets.exe`).

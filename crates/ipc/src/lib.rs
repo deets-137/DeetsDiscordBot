@@ -17,7 +17,7 @@ use serde_json::Value;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
 /// Bumped whenever a message changes shape.
-pub const PROTOCOL: u32 = 1;
+pub const PROTOCOL: u32 = 2;
 /// The largest frame either side accepts.
 pub const MAX_FRAME: usize = 4 << 20;
 /// The environment variables the host passes to the logic.
@@ -57,6 +57,10 @@ pub enum ToLogic {
     MemberVoice { request_id: u64, user: u64, guild: u64, channel: Option<u64> },
     /// The result of a voice op; `error` is a line to show the user.
     Done { request_id: u64, error: Option<String> },
+    /// The Activity's relay asks: is `user` in the Activity instance `instance`, and in which
+    /// channel? The logic asks Discord (it has the REST client) and answers with
+    /// [`ToHost::RelayChecked`] and the same `rid` (ACTIVITY.md §6).
+    RelayCheck { rid: String, user: u64, instance: String },
 }
 
 /// What a voice op plays.
@@ -88,6 +92,9 @@ pub enum ToHost {
     Presence { listening: Option<String> },
     /// Ask for a [`ToLogic::VoiceSnapshot`] now.
     Snapshot { request_id: u64 },
+    /// The answer to a [`ToLogic::RelayCheck`]: the instance's voice channel when Discord
+    /// confirms the person is in it; else `None`, with a line for that person.
+    RelayChecked { rid: String, channel: Option<u64>, reason: Option<String> },
 }
 
 #[derive(Debug)]

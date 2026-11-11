@@ -13,6 +13,6 @@
     "noEmit": true,
     "types": ["vite/client"]
   },
-  "include": ["deetsmusic-protocol", "deetsmusic-ui", "mock"],
+  "include": ["deetsmusic-protocol", "deetsmusic-ui", "mock", "discord-shell"],
   "exclude": ["deetsmusic-ui/look", "mock/vite.config.ts"]
 }

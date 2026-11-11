@@ -27,21 +27,72 @@ const COMMANDS: &str = include_str!("../../../tests/parity/expected/commands.jso
 /// `.lildeets-commands.sync`), so a logic rebuild does not re-sync every time. The host
 /// deletes that record at each start, so a host start always syncs once (the Python bot,
 /// on the same token, may have synced its own list in between).
+///
+/// **The Activity's Launch command** (ACTIVITY.md §9). When Activities are turned on, Discord
+/// makes one Entry Point command (type 4). A sync replaces the whole list, so a sync without
+/// that command deletes it. The sync reads Discord's list first and carries the Entry Point
+/// command as Discord holds it. When there is none and the relay is set up in `.env`, the
+/// sync makes Discord's default one (`launch`); if Discord refuses that (Activities are off),
+/// the list goes without it.
 pub async fn sync_commands(ctx: &Ctx, app_id: u64) {
-    let hash = format!("{app_id}:{:016x}", fnv(COMMANDS.as_bytes()));
+    let mut list: Vec<Value> = serde_json::from_str(COMMANDS).expect("commands.json is a JSON list");
+    let ours = list.len();
     let file = root().join(".lildeets-commands.sync");
-    if std::fs::read_to_string(&file).is_ok_and(|h| h.trim() == hash) {
+    let synced = |list: &[Value]| format!("{app_id}:{:016x}", fnv(Value::from(list.to_vec()).to_string().as_bytes()));
+    // A logic swap with our own list unchanged: no call to Discord at all (the host clears
+    // the record at each start, so a host start always looks).
+    let last = std::fs::read_to_string(&file).unwrap_or_default();
+    if last.trim().split('+').next() == Some(synced(&list).as_str()) {
         info!("commands: unchanged since the last sync");
         return;
     }
-    let body: Value = serde_json::from_str(COMMANDS).expect("commands.json is JSON");
-    match ctx.rest.send(&routes::put_global_commands(app_id, body)).await {
+
+    let mut made_here = false;
+    match ctx.rest.send(&routes::get_global_commands(app_id)).await {
+        Ok(now) => match now.as_array().and_then(|a| a.iter().find(|c| c["type"] == ENTRY_POINT)) {
+            Some(held) => list.push(carried(held)),
+            None if crate::env_or_dotenv("LILDEETS_RELAY_URL").is_some() => {
+                made_here = true;
+                list.push(serde_json::json!({"name": "launch", "description": "Launch an activity", "type": ENTRY_POINT, "handler": 2}));
+            }
+            None => {}
+        },
+        Err(e) => {
+            // Without Discord's list a sync could delete the Launch command: do not sync now.
+            warn!(error = %e, "commands: could not read Discord's list; not synced (the next start tries again)");
+            return;
+        }
+    }
+    let mut result = ctx.rest.send(&routes::put_global_commands(app_id, Value::from(list.clone()))).await;
+    if result.is_err() && made_here {
+        info!("commands: Discord refused a Launch command (Activities are off for the app?); syncing without it");
+        list.truncate(ours);
+        result = ctx.rest.send(&routes::put_global_commands(app_id, Value::from(list.clone()))).await;
+    }
+    match result {
         Ok(_) => {
-            info!("commands: synced");
-            let _ = std::fs::write(&file, hash);
+            info!(launch = list.len() > ours, "commands: synced");
+            // "<hash of our list>+<with or without Launch>": the first part is what a swap compares.
+            let _ = std::fs::write(&file, format!("{}+{}", synced(&list[..ours]), list.len() - ours));
         }
         Err(e) => warn!(error = %e, "commands: sync failed"),
     }
+}
+
+/// Discord's command type for an Activity's Entry Point.
+const ENTRY_POINT: u64 = 4;
+
+/// The Entry Point command as Discord holds it, with only the fields a sync may send. Its
+/// `id` stays, so Discord keeps the same command.
+fn carried(held: &Value) -> Value {
+    const KEEP: [&str; 9] = ["id", "name", "name_localizations", "description", "description_localizations", "type", "handler", "integration_types", "contexts"];
+    let mut out = Map::new();
+    for key in KEEP {
+        if let Some(v) = held.get(key).filter(|v| !v.is_null()) {
+            out.insert(key.to_owned(), v.clone());
+        }
+    }
+    Value::Object(out)
 }
 
 fn fnv(bytes: &[u8]) -> u64 {

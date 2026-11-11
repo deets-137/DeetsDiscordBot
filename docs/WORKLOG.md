@@ -9,6 +9,34 @@ updated: 2026-11-11
 One dated `##` per sitting, newest first. An old entry is never corrected. DeetsOTD's earlier
 history is in `git log` and docs/archive/.
 
+## 2026-11-11 (later) — the Activity, step 3: the relay and the sign-in page
+
+- **His words.** "ran through 17 steps, looks good. commit changes" (step 2b: `f63ea4d`);
+  "What's step 3? Push please" (pushed); "Step 3, the relay" (before the rest of the
+  scenery); "A: secret on Cloudflare"; "Yes, all three"; "Yes, in activity/relay".
+- **Changed from the 2026-11-10 design:** the bot token is not on Cloudflare. The relay signs
+  a person in with the client secret, then asks the bot, over the bot's own socket, whether
+  the person is in the Activity instance. The logic asks Discord.
+- **Built** (ACTIVITY.md §13.8): `activity/relay` (the Worker: routes, one Durable Object
+  room with hibernation, tickets), `activity/discord-shell` (a page that only signs in),
+  `crates/relay-client`, the host's wiring, IPC `RelayCheck` / `RelayChecked` (`PROTOCOL` 2),
+  the logic's check, `Rest::activity_instance`, the command sync that carries Discord's Launch
+  command, and the §8 fix (an invited team member is not a host).
+- **New dependencies** (his yes): `@discord/embedded-app-sdk` 2.5.0; in `activity/relay`
+  only, `cf`, `@cloudflare/vite-plugin` (beta), Vite 8, TypeScript 7; Rust:
+  `tokio-websockets` 0.13.3. Also direct now: `futures-util`, `http` ("Those crates are ok by me"; both
+  already in `Cargo.lock`).
+- **Found:** Cloudflare's `cf` CLI uses `cloudflare.config.ts` and its own Vite plugin, not
+  `@cloudflare/workers-types`. A text binding cannot be overridden from `.dev.vars`; the
+  config's `mode` picks the fake Discord for `cf dev`. Discord's tutorial says an Activity
+  that is not distributed launches only for the app's owner and team (§11 item 1 tests it).
+- **A defect the test found, fixed:** after a bot reconnect the room asked the old, closing
+  socket.
+- **Checked:** the relay's 13-step local test; `cf deploy --dry-run`; clippy and the
+  workspace tests (debug). No release build. Nothing deployed. No secret was entered.
+- **Left open:** his setup and desk test (§12.2); steps 4 to 6; the rest of the scenery; the
+  Play Now question (§13.5). Not committed.
+
 ## 2026-11-11 — the Activity, step 2b: his three calls and most of the gaps
 
 - **His words.** "Let's pick up where we left off last night"; "Go to step 2b" (before his

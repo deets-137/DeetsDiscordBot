@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>DeetsMusic in the call</title>
+    <style>
+      /* Build step 3: a blank page that only signs in. The cards arrive at step 5. */
+      html, body { height: 100%; margin: 0; }
+      body {
+        display: grid; place-items: center;
+        background: #1e1f22; color: #dbdee1;
+        font: 15px/1.5 system-ui, sans-serif;
+      }
+      main { max-width: 32rem; padding: 1.5rem; text-align: center; }
+      h1 { font-size: 1.25rem; margin: 0 0 0.5rem; }
+      p { margin: 0.25rem 0; }
+      #detail { color: #949ba4; font-size: 0.875rem; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1 id="who">Signing in…</h1>
+      <p id="status"></p>
+      <p id="detail"></p>
+    </main>
+    <script type="module" src="../discord-shell/main.ts"></script>
+  </body>
+</html>
