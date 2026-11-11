@@ -177,9 +177,20 @@ def extract_from_message(message) -> list[LinkRecord]:
     return out
 
 
-async def collect_links(channel, limit: int | None = None) -> list[LinkRecord]:
-    """Walk a channel's history (oldest→newest) and return all link records."""
+async def collect_links(channel, limit: int | None = None, newest: bool = False) -> list[LinkRecord]:
+    """Walk a channel's history and return all link records, oldest→newest.
+
+    With a `limit`, which messages count depends on `newest`:
+    - False (the journal's scan): the channel's FIRST `limit` messages.
+    - True (`/links`, the owner, 2026-11-10): the LAST `limit` messages, still listed
+      oldest→newest.
+    """
     records: list[LinkRecord] = []
+    if newest and limit is not None:
+        recent = [m async for m in channel.history(limit=limit)]  # newest first
+        for message in reversed(recent):
+            records.extend(extract_from_message(message))
+        return records
     async for message in channel.history(limit=limit, oldest_first=True):
         records.extend(extract_from_message(message))
     return records

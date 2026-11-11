@@ -9,6 +9,85 @@ updated: 2026-11-10
 One dated `##` per sitting, newest first. An old entry is never corrected. DeetsOTD's earlier
 history is in `git log` and docs/archive/.
 
+## 2026-11-10 (night) — the switch to the Rust bot; the song-boundary restart
+
+- **His words.** "commit and push everything please"; "build the song-boundary restart, then
+  go ahead with 1, 3, and 4" (the restart, twilight, the command sync; not the docs rewrite
+  or the week); "I'll switch to the rust bot entirely now, no need to spend a week testing
+  since no one uses this live for now".
+- **Committed and pushed** `rust-rewrite` (`fa3c6b8`, P1–P8).
+- **Built:** the host's song-boundary restart (the launcher runs the host as a copy; the
+  host watches its exe, waits for the song to end, pauses, writes the resume file
+  atomically, exits 75; the new host rejoins and plays after 2 s); `.lildeets-hold` for the
+  host and the logic swap; the host clears the command-sync record at start; a 400's
+  `errors` now shows in the log.
+- **twilight:** no advisories; 0.18.0 is the newest and stays pinned (rust-port-plan.md P8).
+- **Desk test, Moshi's:** `/vc play`, the status line and "Listening to" work; two logic
+  swaps while playing, no gap. `/dm queue` failed: duplicated ◀ ▶ custom_ids on a clamped
+  page. Fixed and swapped in live; not yet retried by him.
+- **Left open:** the rest of the desk test (HANDOFF item 0) with the restart; the docs
+  rewrite; `bot/` to the archive; the merge into main. The host logs a WARN when it stops an
+  old logic (os error 10054); it is expected and should be quiet (a host change: it goes
+  live through the restart, so do it with him listening).
+- **Later the same night.** The two stuck "thinking" messages deleted by hand (REST, bot
+  token). His choice for a refused reply: "Delete + private note" (built, `ix.rs`). "My network
+  seems to drop often": the System log shows daily ephemeral-port exhaustion (Tcpip 4266/4231)
+  and Ethernet at 100 Mbps; a separate session hunts the cause. He said "Build it" to the
+  drop plan: the host now notices a lost call (songbird's DriverDisconnect), pauses
+  DeetsMusic, rejoins while someone is in the channel, plays again; follows a voice server
+  move; probes the network and swaps in a resuming shard instead of twilight's waits up to
+  255 s; re-sends presence after a new session. The watchers retry a failed write; the np
+  card stops only when deleted. Fixed: "Listening to" never cleared (twilight refused an
+  empty activity list); the 10054 warning is quiet. Live through the host restart at 04:55
+  (no call, back in 2 s). Desk test of the drops: ops/DEBUGGING.md §6.
+- **The UX pass (Sonnet agent) on the drop handling** found 15 items; 12 fixed and live
+  (05:01, second host restart, back in 2 s): one host-wide pause record for DeetsMusic (a
+  second drop, two servers, a command during a rejoin, a restart could leave it paused for
+  good); stale joins and captures dropped by driver number; a failed capture is not "back";
+  leave when alone after a rejoin or resume; a restart carries a rejoin in the resume file;
+  presence re-sent after any reconnect; the status watcher stops on a 4xx; a reply is
+  rescinded only when Discord refused it. Then his wording for a guest during a drop ("Lil
+  Deets lost the call and is getting back in.", the snapshot's `rejoining`); committed and
+  pushed (`0c07386`).
+- **His desk test passed** ("tested and good to go on the desk test"). **"Rewrite the docs
+  and move bot/ into archive please":** `bot/` and `requirements-voice.txt` → `docs/archive/bot/`
+  (the parity scripts import it from there; not run since); BOT.md, LIVE-RELOAD.md, SETUP.md
+  rewritten for Rust; VOICE-PIPELINE.md, TAP.md, DEBUGGING.md §1–5, DESIGN.md, HANDOFF.md,
+  README, AGENTS.md and CLAUDE.md follow; every doc's `sources:` names the Rust files; Rust
+  comments point to the archive. Not confirmed by him: the drop and restart-in-a-call desk
+  tests (HANDOFF Open now 0). Earlier left: the guest wording during a drop (his call);
+  a rejoin may start before the gateway notices; the np card shows "paused" during a drop
+  (intended).
+
+## 2026-11-10 (evening) — the Rust port, P0–P8, on branch `rust-rewrite`
+
+- **His words.** "let's open a new branch 'rust-rewrite' and get started, no agents";
+  "continue with the build as far as you can"; "Build as far as you can".
+- **Built** (all on `rust-rewrite`; the plan is ideas/rust-port-plan.md, each package
+  marked there): the workspace and parity loader (P0); the text formats and the cards
+  (P1); `TapStream` in `crates/tap` (P2); hand-rolled typed REST (P3); the bridge client
+  (P4); `lildeets-ipc` and `lildeets-host` (P5); `lildeets-logic` with every command,
+  button and autocomplete (P6) and the two watchers (P7); the `lildeets.exe` launcher (P8).
+  82 workspace tests + 3 in `crates/tap`; clippy clean.
+- **The voice spike passed by ear** (General in Moshi's Minecraft Monsters): twilight 0.18
+  with our glue + songbird + DAVE, "clean". Two silent runs first: songbird ships no PCM
+  decoder (fixed with symphonia's `pcm`), then DeetsMusic was on AirPlay (no Windows audio
+  session to capture; now in DEBUGGING.md §1.3).
+- **Smoke test of the whole bot** (Python bot stopped): connect as Lil Deets, logic Ready,
+  command sync, a rebuilt logic swapped in ~35 ms. Two supervisor bugs found and fixed.
+  **No command was tried in Discord**; the bot was stopped again.
+- **His decisions:** layout C for the queue (built in the Python bot too; `/dm preview`
+  deleted); `/links limit:N` reads the newest N in both bots (the journal's scan keeps the
+  first N); Lil Deets' own token for the Rust side (a copy in `Documents/Deets' Secrets/`);
+  twilight 0.18 allowed before it is two weeks old; test the Rust logic with the Python bot
+  stopped.
+- **Also:** the `deetsmusic-dev` MCP server is the CLI's debug build and never pairs with
+  the installed app; a `deetsmusic` server on the release CLI was added (user config). The
+  CLI's misleading "isn't running" message is for a DeetsMusic session to evaluate.
+- **Left open:** the Discord desk tests of the Rust bot; the host's song-boundary restart
+  and resume-file writing; the docs rewrite; twilight's advisories before the switch.
+  Nothing on the branch since P0 is committed.
+
 ## 2026-11-10 — Lil Deets joins voice; /dm; the repo is made
 
 - **His words.** "Can we wire Lil Deets (the disc bot) to be able to join vc and output audio?

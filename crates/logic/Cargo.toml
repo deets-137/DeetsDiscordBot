@@ -1,0 +1,28 @@
+[package]
+name = "lildeets-logic"
+description = "Lil Deets' logic process: commands, cards, permissions, watchers (rust-port-plan.md §3.1, P6–P7)."
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "lildeets-logic"
+path = "src/main.rs"
+
+[dependencies]
+serde_json.workspace = true
+lildeets-ipc = { path = "../ipc" }
+lildeets-rest = { path = "../rest" }
+lildeets-bridge = { path = "../bridge" }
+lildeets-cards.workspace = true
+# /vc play's autocomplete lists the apps making sound (deets_tap::list_apps).
+deets-tap = { path = "../tap" }
+twilight-model.workspace = true
+tokio = { workspace = true, features = ["fs", "io-util", "macros", "net", "rt-multi-thread", "sync", "time"] }
+tracing.workspace = true
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }

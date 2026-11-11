@@ -35,7 +35,7 @@
     },
     "components": [
      {
-      "content": "` 1` ` 2:03 | Explicit` **White (feat. Frank Ocean)** · Odd Future\n-# The OF Tape, Vol. 2",
+      "content": "### 1 · White (feat. Frank Ocean)\nOdd Future · The OF Tape, Vol. 2\n-# 2:03 · Explicit",
       "type": 10
      }
     ],
@@ -52,7 +52,7 @@
     },
     "components": [
      {
-      "content": "` 2` ` 4:09 | None    ` **White Ferrari** · Frank Ocean\n-# Blonde",
+      "content": "### 2 · White Ferrari\nFrank Ocean · Blonde\n-# 4:09 · None",
       "type": 10
      }
     ],
@@ -69,7 +69,7 @@
     },
     "components": [
      {
-      "content": "` 3` ` 3:06 | Clean   ` **DNA.** · Kendrick Lamar\n-# DAMN.",
+      "content": "### 3 · DNA.\nKendrick Lamar · DAMN.\n-# 3:06 · Clean",
       "type": 10
      }
     ],
@@ -86,7 +86,7 @@
     },
     "components": [
      {
-      "content": "` 4` ` 1:16 | None    ` **White (feat. John Mayer)** · Frank Ocean\n-# channel ORANGE",
+      "content": "### 4 · White (feat. John Mayer)\nFrank Ocean · channel ORANGE\n-# 1:16 · None",
       "type": 10
      }
     ],
@@ -103,7 +103,7 @@
     },
     "components": [
      {
-      "content": "` 5` ` 5:07 | Explicit` **Nights** · Frank Ocean\n-# Blonde",
+      "content": "### 5 · Nights\nFrank Ocean · Blonde\n-# 5:07 · Explicit",
       "type": 10
      }
     ],
@@ -120,7 +120,7 @@
     },
     "components": [
      {
-      "content": "` 6` `20:33 | None    ` **2112: Overture / The Temples Of Syrinx / Discovery / Presentation / Oracle / So…** · Rush\n-# 2112 (Remastered 2012)",
+      "content": "### 6 · 2112: Overture / The Temples Of Syrinx / Discovery / Presentation / O…\nRush · 2112 (Remastered 2012)\n-# 20:33 · None",
       "type": 10
      }
     ],
@@ -137,7 +137,7 @@
     },
     "components": [
      {
-      "content": "` 7` ` 5:02 | Explicit` **Novacane** · Frank Ocean\n-# Novacane - Single",
+      "content": "### 7 · Novacane\nFrank Ocean · Novacane - Single\n-# 5:02 · Explicit",
       "type": 10
      }
     ],
@@ -154,7 +154,7 @@
     },
     "components": [
      {
-      "content": "` 8` ` 4:09 | Explicit` **Ivy** · Frank Ocean\n-# Blonde",
+      "content": "### 8 · Ivy\nFrank Ocean · Blonde\n-# 4:09 · Explicit",
       "type": 10
      }
     ],
@@ -171,7 +171,7 @@
     },
     "components": [
      {
-      "content": "` 9` ` 4:29 | Explicit` **Pink Matter (feat. André 3000)** · Frank Ocean\n-# channel ORANGE",
+      "content": "### 9 · Pink Matter (feat. André 3000)\nFrank Ocean · channel ORANGE\n-# 4:29 · Explicit",
       "type": 10
      }
     ],
@@ -188,7 +188,7 @@
     },
     "components": [
      {
-      "content": "`10` ` 2:58 | None    ` **Godspeed** · Frank Ocean\n-# Blonde",
+      "content": "### 10 · Godspeed\nFrank Ocean · Blonde\n-# 2:58 · None",
       "type": 10
      }
     ],

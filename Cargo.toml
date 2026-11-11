@@ -1,0 +1,30 @@
+# The Rust port of Lil Deets (docs/ideas/rust-port-plan.md §3).
+#
+# crates/tap stays OUT of the workspace until P2: a workspace member builds into the root
+# target/, but the running Python bot looks for crates/tap/target/release/deets-tap.exe
+# (bot/voice.py DEFAULT_TAP). P2 moves it in together with that path change.
+[workspace]
+resolver = "2"
+members = ["crates/*"]
+exclude = ["crates/tap"]
+
+[workspace.package]
+version = "0.1.0"
+authors = ["Aditya Sundaram"]
+edition = "2021"
+license = "MIT"
+publish = false
+
+# Only crates on the allowed list (rust-port-plan.md §3.3). Anything else: ask the owner.
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1.53" }
+tracing = "0.1"
+# The same 0.12 line songbird already pulls in (one copy). rustls only: no OpenSSL.
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+lildeets-cards = { path = "crates/cards" }
+# twilight 0.18.0 (2026-11-01): allowed before it is two weeks old by the owner's word
+# (2026-11-10). Before the switch (P8): check its advisories and pin a two-week-old 0.18.x.
+twilight-model = "=0.18.0"
+twilight-gateway = "=0.18.0"

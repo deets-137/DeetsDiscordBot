@@ -1,7 +1,7 @@
 ---
 status: shipped
 desk_test: passed 2026-11-10
-sources: [bot/dm.py, bot/voice.py]
+sources: [crates/logic/src/commands.rs]
 updated: 2026-11-10
 ---
 # Who may do what

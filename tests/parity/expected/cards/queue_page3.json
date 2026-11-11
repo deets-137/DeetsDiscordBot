@@ -35,7 +35,7 @@
     },
     "components": [
      {
-      "content": "`21` `3:54 | Explicit` **Lost** · Frank Ocean\n-# channel ORANGE",
+      "content": "### 21 · Lost\nFrank Ocean · channel ORANGE\n-# 3:54 · Explicit",
       "type": 10
      }
     ],
@@ -52,7 +52,7 @@
     },
     "components": [
      {
-      "content": "`22` `3:30 | Explicit` **Chanel** · Frank Ocean\n-# Chanel - Single",
+      "content": "### 22 · Chanel\nFrank Ocean · Chanel - Single\n-# 3:30 · Explicit",
       "type": 10
      }
     ],
@@ -69,7 +69,7 @@
     },
     "components": [
      {
-      "content": "`23` `4:13 | Explicit` **She (feat. Frank Ocean)** · Tyler, The Creator\n-# Goblin",
+      "content": "### 23 · She (feat. Frank Ocean)\nTyler, The Creator · Goblin\n-# 4:13 · Explicit",
       "type": 10
      }
     ],

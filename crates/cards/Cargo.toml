@@ -1,0 +1,15 @@
+[package]
+name = "lildeets-cards"
+description = "Lil Deets' text formats and Components V2 card builders. Pure: no I/O (rust-port-plan.md §5 P1)."
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+# The bridge replies (model.rs) are plain data read with serde.
+serde.workspace = true
+serde_json.workspace = true
+# Components V2 types for the cards.
+twilight-model.workspace = true

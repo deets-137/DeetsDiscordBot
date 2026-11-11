@@ -1,7 +1,7 @@
 ---
 status: idea
 desk_test: none
-sources: [bot/app.py, bot/voice.py, bot/dm.py, bot/dm_bridge.py, bot/live.py, crates/tap/src/main.rs]
+sources: [docs/archive/bot/app.py, docs/archive/bot/voice.py, docs/archive/bot/dm.py, docs/archive/bot/dm_bridge.py, docs/archive/bot/live.py, crates/tap/src/main.rs]
 updated: 2026-11-10
 ---
 # A Rust rewrite

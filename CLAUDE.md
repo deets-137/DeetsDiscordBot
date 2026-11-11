@@ -1,17 +1,20 @@
 # DeetsDiscordBot — project guide for Claude
 
 Everything Discord for the Deets family, in one repo:
-- **Lil Deets, the bot** (`bot/`, Python, discord.py): `/vc` plays one Windows app (usually
-  DeetsMusic) into a voice channel; `/dm` lets the people in that call control DeetsMusic;
-  `/links` reads a channel's links.
+- **Lil Deets, the bot** (`crates/`, Rust: twilight + songbird): `/vc` plays one Windows app
+  (usually DeetsMusic) into a voice channel; `/dm` lets the people in that call control
+  DeetsMusic; `/links` reads a channel's links. Three processes: `lildeets.exe` (launcher),
+  the host (gateway + voice), the logic (commands + cards).
 - **The journals** (`journal/`, Python): the Song-of-the-Day channel and the Letterboxd film
   diary, kept in `storage.db` and exported as `songs.json` / `movies.json` for deets.solutions
   (`../DeetsSolutions`) by a nightly job.
-- **deets-tap** (`crates/tap`, Rust): the capture helper `/vc` runs, built on DeetsAirplay's
-  `deets-airplay` crate.
+- **deets-tap** (`crates/tap`, Rust): the capture, a library the host links and a diagnostic
+  tool, built on DeetsAirplay's `deets-airplay` crate.
 
 Started 2026-11-10 as a clone of `../DeetsOTD` (all its history). The nightly job ran from here
-and passed the same day, and DeetsOTD was archived (docs/ops/NIGHTLY.md §4).
+and passed the same day, and DeetsOTD was archived (docs/ops/NIGHTLY.md §4). The same night
+the bot was ported to Rust and switched over; the Python bot is a record in
+`docs/archive/bot/`.
 
 ## Start here
 - **`docs/HANDOFF.md`** — cold start: state of play, **Open now**, gotchas. Corrected in place.
@@ -29,16 +32,16 @@ and passed the same day, and DeetsOTD was archived (docs/ops/NIGHTLY.md §4).
 and one line below.
 
 **`docs/architecture/`** — the engine
-- `BOT.md` — the launcher and the bot process, the one command tree, intents, the token
-  shared with the journal, how modules plug in (`register(client, tree)`), logging (`bot/app.py`).
-- `LIVE-RELOAD.md` — code goes live by itself: `/dm` reloads in place, the rest restarts at a
-  song boundary (`bot/live.py`). Never keep voice state in `dm.py`.
-- `VOICE-PIPELINE.md` — app → per-process loopback → 48 kHz PCM → Opus (music mode) → DAVE →
-  Discord; why davey is pinned below 0.2 (`bot/voice.py`, `crates/tap`).
+- `BOT.md` — the three processes (launcher, host, logic), the IPC between them, the one
+  command list, intents, the token shared with the journal, settings, logging.
+- `LIVE-RELOAD.md` — a build goes live by itself: a new logic swaps in with no gap, a new
+  host restarts at a song boundary. Never keep voice state in the logic.
+- `VOICE-PIPELINE.md` — app → per-process loopback → 48 kHz PCM → songbird (Opus music mode,
+  DAVE) → Discord (`crates/tap`, `crates/host`).
 - `BRIDGE.md` — DeetsMusic's loopback bridge as the bot uses it: ports, token, routes, caches.
-  Read-only toward DeetsMusic's code (`bot/dm_bridge.py`).
+  Read-only toward DeetsMusic's code (`crates/bridge`).
 - `PERMISSIONS.md` — host versus guest; DeetsMusic's Rooms guest rules decide what a guest may
-  do (`bot/dm.py` `check`).
+  do (`crates/logic/src/commands.rs` `check`).
 - `STORAGE.md` — `storage.db`: the song tables and the film tables, their only writers, the
   idempotent keys (`journal/storage.py`, `journal/letterboxd_store.py`).
 
@@ -47,19 +50,20 @@ and one line below.
 - `DM.md` — every `/dm` command, the confidence rule for `/dm add`, the queue line on an add.
 - `CARDS.md` — the Components V2 cards: layout, the 40-component limit, the accent, the column,
   the edit-on-change rule. Never edit a card on a timer.
-- `STATUS.md` — the voice channel status and the bot's "Listening to" (`StatusWatcher`).
+- `STATUS.md` — the voice channel status and the bot's "Listening to" (the status watcher).
 - `LINKS.md` — `/links`: a channel's links as Markdown + CSV in a DM.
 - `JOURNAL.md` — the Song-of-the-Day pipeline: scan → archive → enrich → review → songs.json.
 - `FILMS.md` — the Letterboxd film journal: import, RSS, TMDB posters → movies.json.
 - `TRAY.md` — a tray app that starts the bot with one click. Project: not built.
 
 **`docs/ops/`** — build, run, diagnose
-- `SETUP.md` — a fresh machine: Python packages, `.env`, `config.py`, the Discord portal, the
-  invite permissions, building deets-tap.
-- `TAP.md` — deets-tap: build, flags, the `--info` contract, the drift rules with DeetsAirplay.
+- `SETUP.md` — a fresh machine: Rust and CMake, the build, `.env`, `config.py`, Python for
+  the journal, the Discord portal, the invite permissions.
+- `TAP.md` — deets-tap: the library and the tool, flags, the drift rules with DeetsAirplay.
 - `NIGHTLY.md` — the 6 PM job that publishes songs.json / movies.json, and the cut-over from
   DeetsOTD (its checklist).
-- `DEBUGGING.md` — no sound in the call, a quiet stream, commands missing, the bridge down.
+- `DEBUGGING.md` — no sound in the call, a quiet stream, commands missing, the bridge down,
+  network drops (what the bot does by itself, and its desk test).
 - `DISCORD-LIMITS.md` — the Discord limits the bot designs around.
 
 **`docs/guide/`** — `USAGE.md`: running the journal by hand (scan, review, export, Notion).
@@ -72,10 +76,11 @@ and one line below.
 - `auto-route.md` — `/vc play` moves the app to a silent output by itself.
 - `friends-tapping.md` — why friends do not tap their own apps through this bot.
 - `rust-rewrite.md` — the scope of a Rust port: part by part, measured costs, benefits, order.
-- `rust-port-plan.md` — the build plan for agents: the two-process shape, IPC, work packages
-  P0–P8, the parity kit in `tests/parity/` (`scripts/parity/`) that each package must pass.
+- `rust-port-plan.md` — the build plan (done 2026-11-10): the two-process shape, IPC, work
+  packages P0–P8, the parity kit in `tests/parity/` (`scripts/parity/`) each package passed.
 
-**`docs/archive/`** — DeetsOTD's June vision and handoff, kept as a record.
+**`docs/archive/`** — records: DeetsOTD's June vision and handoff, and `bot/`, the Python bot
+(the specification the Rust bot was built against; the parity scripts import it from there).
 
 ## Never
 - **Never edit `../DeetsMusic` from this project.** The bot reaches DeetsMusic only through
@@ -83,19 +88,21 @@ and one line below.
   write to Discord.
 - **Never edit or run `../DeetsOTD`.** It is archived (2026-11-10); its `storage.db` is the
   frozen backup from the move. The live database is this repo's (NIGHTLY.md §4).
-- **Never run a second bot process on this token that syncs slash commands.** Discord keeps
-  one global command list per application; the last process to sync wins (BOT.md §2). The
-  journal's `scan` logs in briefly and never syncs; keep it so.
+- **Never run a second bot process on this token that syncs slash commands** (that includes
+  the archived Python bot). Discord keeps one global command list per application; the last
+  process to sync wins (BOT.md §6). The journal's `scan` logs in briefly and never syncs; keep
+  it so.
 - **Never let a guest do what DeetsMusic's Rooms rules don't allow**, and never let a guest act
   outside the bot's voice channel or while the host is not playing DeetsMusic (PERMISSIONS.md).
-- **Never raise davey to 0.2 or above with discord.py 2.7.x.** The DAVE session never gets
-  ready and the call hears nothing (VOICE-PIPELINE.md §4).
-- **Never keep voice state in `bot/dm.py` or `bot/dm_bridge.py`.** They are reloaded while the
-  music plays (LIVE-RELOAD.md §5). Before a change across several bot files, create
-  `.lildeets-hold`; delete it when done.
+- **Never keep voice state in the logic** (`crates/logic`). It is swapped while the music
+  plays (LIVE-RELOAD.md §5); calls, captures, gain and presence live in the host. Before a
+  change across several builds, create `.lildeets-hold`; delete it when done.
+- **A release build is a live change.** `cargo build --release` while the bot runs swaps the
+  logic at once and restarts the host at the next song (LIVE-RELOAD.md §3). Build release
+  only when the change should go live; check with debug builds (`cargo clippy`, `cargo test`).
 - **Never edit a Discord message on a timer.** Edit on a change only (CARDS.md §4).
 - **Never change deets-tap's stdout format without bumping `CONTRACT`** in
-  `crates/tap/src/main.rs` and `EXPECTED_TAP` in `bot/voice.py` together (TAP.md §3).
+  `crates/tap/src/main.rs` (TAP.md §3).
 - **Never commit `.env`, `config.py`, `storage.db`, `exports/` or `secrets/`.** The repo is
   public. The bridge token lives in DeetsMusic's settings file and is never copied here.
 - **Never write songs.json or movies.json with private Discord ids** (message id, author id,
@@ -104,13 +111,14 @@ and one line below.
 
 ## How to verify your work
 - **The user runs the bot and tests in Discord.** Do not start a second bot process to test:
-  it would answer interactions too and re-sync commands. The running bot picks up a saved
-  change by itself (LIVE-RELOAD.md): a `/dm` change at once, anything else at the next song.
-- Cheap checks that ARE worth running:
-  - `python -c "import bot.voice, bot.dm, journal.scan, journal.review, journal.letterboxd_web"`
-  - `cd crates/tap && cargo build --release`, then `target/release/deets-tap.exe --info`
-  - build a card offline: `asyncio.run(bot.dm.queue_view(client, 1))` and count components
-  - the bridge: `bot.dm_bridge.Bridge().now_playing()` against the running DeetsMusic
+  it would answer interactions too and re-sync commands. The running bot picks up a release
+  build by itself (LIVE-RELOAD.md): a logic change at once, a host change at the next song.
+- Cheap checks that ARE worth running (`CMAKE` set, ops/SETUP.md §2):
+  - `cargo clippy --workspace --all-targets` and `cargo test --workspace` (the parity kit:
+    cards, text, `/links` byte for byte; the bridge, REST and IPC against local fakes)
+  - `python -c "import journal.scan, journal.review, journal.letterboxd_web"`
+  - `crates/tap/target/release/deets-tap.exe --meters` for a quiet app
+  - the bot's log in its terminal (BOT.md §8)
 - A journal change: export from a test copy of `storage.db` and compare with the published
   JSON, minus `generated_at` (NIGHTLY.md §3 has the script).
 - Hand over with the desk test written into the feature's doc.
@@ -138,16 +146,16 @@ the shots runner, publishing) do not apply here.
   button, find how the bot already does that kind of thing (or how DeetsMusic does it, for
   anything its Rooms, cards or wording already decided), build on it, and name the precedent.
 - **Log what acts on its own.** Anything that runs without a command (the status watcher, the
-  np card watcher, live reload, the nightly job) logs when it arms, fires and stops, under
-  `discord.lildeets.*`.
+  np card watcher, live reload, the drop handling, the nightly job) logs when it arms, fires
+  and stops (`tracing`, targets `lildeets_host` / `lildeets_logic`).
 - **Stewardship.** Keep calls to the bridge, Apple and Discord few: edit on change, cache what
   repeats, and ask the cost before a design that polls or fetches a lot.
 - **A file we cannot lose half of** (the resume hand-off, settings, tokens, `storage.db` copies)
   is written beside, flushed, then renamed over the old one (DeetsMusic's `safe_file`).
-- **Agents.** Build and explore in the main context. Two standing uses of Sonnet agents
-  (`model: "sonnet"`): the Rust port's work packages (his ask, 2026-11-10;
-  docs/ideas/rust-port-plan.md), and after a feature is built, a pass asking how a user might
-  break it from a UX or workflow view (DeetsMusic, 2026-10-17). Read every diff an agent makes
+- **Agents.** Build and explore in the main context. The Rust port was built here too, with no
+  agents, on the `rust-rewrite` branch (his word, 2026-11-10; docs/ideas/rust-port-plan.md).
+  One standing use of a Sonnet agent (`model: "sonnet"`): after a feature is built, a pass
+  asking how a user might break it from a UX or workflow view (DeetsMusic, 2026-10-17). Read every diff an agent makes
   and run the checks yourself: an agent's report is not proof.
 - **Commit only when he asks.** Co-author trailer: name the model that did the work (today
   `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`); update this line when it changes.
@@ -166,9 +174,9 @@ the shots runner, publishing) do not apply here.
 
 ## Run
 ```
-pip install -r requirements.txt -r requirements-voice.txt
-cd crates/tap && cargo build --release && cd ../..
-python -m bot                                   # the launcher + bot (from the repo root)
+cargo build --workspace --release              # the bot (CMAKE set: ops/SETUP.md §2)
+target/release/lildeets.exe                     # the launcher → host → logic
+pip install -r requirements.txt                 # the journal
 python -m journal.scan <channel> --enrich --web --web-out ../DeetsSolutions/sotd/songs.json
 python -m journal.letterboxd_web rss --web -o ../DeetsSolutions/movies/movies.json
 python -m journal.review list                   # songs flagged for hand-checking

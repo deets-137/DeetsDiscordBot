@@ -1,7 +1,7 @@
 ---
 status: shipped
 desk_test: open
-sources: [bot/dm.py]
+sources: [crates/cards/src/cards.rs, crates/cards/src/text.rs, crates/logic/src/watch.rs]
 updated: 2026-11-10
 ---
 # The cards
@@ -18,6 +18,16 @@ DISCORD-LIMITS.md has the limits.
   page 1 of 3"; then 10 rows, each `` ` 1` ` 2:40 | Explicit` **Title** · Artist `` over the
   album, with a 120 px thumbnail; then ◀ ▶. **38 components** with 10 rows: Discord's limit is
   40. Don't add a component per row.
+  > **Layout C, "number in a heading"** (the owner, 2026-11-10, from `/dm preview`; built
+  > the same day). Each row is `### 1 · Title` (the number and the title as a small
+  > heading), then `Artist · Album`, then `-# 2:40 · Explicit` in small text, all from the
+  > left edge, with the thumbnail beside it (`crates/cards/src/text.rs` `queue_row`; the Python `_row_heading` is in `docs/archive/bot/dm.py`). The old row above
+  > (`` ` 1` `2:40 | Explicit` **Title** ``) is gone. C has no monospace column, so §3's
+  > card column does not apply to the queue rows. `/dm preview` and rows A, B, D are deleted.
+  > Still 38 components. **Desk test passed 2026-11-10** (the Rust bot, his word: "tested
+  > and good to go"): `/dm queue` shows rows in C; ◀ ▶ page through; `/dm preview` is gone.
+  > The ◀ ▶ ids are `dm:queue:<page>:<prev|next>` (a one-page queue clamped both to the same
+  > id, which Discord refuses).
 - **Picker** (`picker_view`): the top 5 with thumbnails and buttons 1–5. Only the asker sees
   it. After a pick it turns into "Picked …".
 

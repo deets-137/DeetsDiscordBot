@@ -1,7 +1,7 @@
 ---
 status: shipped
 desk_test: passed 2026-11-10
-sources: [bot/dm_bridge.py]
+sources: [crates/bridge/src/lib.rs]
 updated: 2026-11-10
 ---
 # DeetsMusic's bridge, as the bot uses it

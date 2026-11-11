@@ -53,7 +53,6 @@ RULE = {
     "move": "roomGuests.changeQueue",
     "play": None,
     "volume": None,
-    "preview": None,
 }
 RULE_LABEL = {
     "roomGuests.playPause": "Guests may start and stop",
@@ -261,10 +260,8 @@ async def queue_view(client: discord.Client, page: int) -> ui.LayoutView:
     ) + f"\n-# Up Next · {len(upcoming)} songs · {length} · page {page} of {pages}"
     parts: list[ui.Item] = [_section(head, artwork(cur, 300)), ui.Separator()]
     start = (page - 1) * PAGE
-    width = column_width(upcoming[start : start + PAGE])
     for n, t in enumerate(upcoming[start : start + PAGE], start=start + 1):
-        text = f"`{n:>2}` {tag(t, width)} **{_clip(t.get('title', '?'), 80)}** · {_clip(t.get('artistName', ''), 60)}\n-# {_clip(t.get('albumName', ''), 60)}"
-        parts.append(_section(text, artwork(t, 120)))
+        parts.append(_section(_row_heading(n, t), artwork(t, 120)))
     if not upcoming:
         parts.append(ui.TextDisplay("Up Next is empty. Add a song with `/dm add`."))
     prev, nxt = _PageButton(page - 1, "◀"), _PageButton(page + 1, "▶")
@@ -335,58 +332,13 @@ class _PickButton(ui.Button):
         await interaction.followup.send(line + _notices(reply))
 
 
-# --- a layout preview (host only, visible only to the host) -------------------------
-# The owner, 2026-11-10: the queue row's position must come first; the album must line up
-# with the title; "Explicit / Clean / None" as words. Three ways to draw a row, shown on the
-# real queue so he can pick by eye. Delete the losers (and this command) once he picks.
-
-def _row_list(n: int, t: dict, w: int) -> str:
-    """A: a markdown numbered list: Discord draws the number in a gutter, and a continuation
-    line indented by three spaces should sit under the title."""
-    return (f"{n}. **{_clip(t.get('title', '?'), 70)}** · {_clip(t.get('artistName', ''), 50)}\n"
-            f"   {_clip(t.get('albumName', ''), 60)} · `{mmss(_secs(t)):>{w}}  {rating_word(t):<8}`")
-
-
-def _row_gutter(n: int, t: dict, w: int) -> str:
-    """B: a monospace gutter on every line, so the title, the album and the column start at
-    the same place (the album is normal size: a subtext line would shrink its gutter)."""
-    return (f"`{n:>2}` **{_clip(t.get('title', '?'), 70)}** · {_clip(t.get('artistName', ''), 50)}\n"
-            f"`  ` {_clip(t.get('albumName', ''), 60)}\n"
-            f"`  ` `{mmss(_secs(t)):>{w}}  {rating_word(t):<8}`")
-
-
-def _row_heading(n: int, t: dict, w: int) -> str:
-    """C: the number and the title as a small heading; the artist, album and column below,
-    all from the left edge."""
+def _row_heading(n: int, t: dict) -> str:
+    """A queue row, layout C (the owner, 2026-11-10, from `/dm preview`): the number and the
+    title as a small heading; the artist and album, then the length and rating, below it,
+    all from the left edge (CARDS.md §1)."""
     return (f"### {n} · {_clip(t.get('title', '?'), 70)}\n"
             f"{_clip(t.get('artistName', ''), 50)} · {_clip(t.get('albumName', ''), 60)}\n"
             f"-# {mmss(_secs(t))} · {rating_word(t)}")
-
-
-async def preview_view() -> ui.LayoutView:
-    q, accent = await asyncio.gather(bridge.queue(), bridge.accent())
-    up = (q.get("upcoming") or [])[:3]
-    w = column_width(up)
-    view = ui.LayoutView(timeout=600)
-    for label, row in (("A · numbered list", _row_list), ("B · monospace gutter", _row_gutter), ("C · number in a heading", _row_heading)):
-        parts: list[ui.Item] = [ui.TextDisplay(f"-# Layout {label}")]
-        parts += [_section(row(n, t, w), artwork(t, 120)) for n, t in enumerate(up, start=1)]
-        view.add_item(ui.Container(*parts, accent_colour=accent))
-    # D: another component. A dropdown of Up Next (up to 25 rows), so a row can be chosen
-    # without typing its number; buttons like Play next / Remove would act on the pick.
-    select = ui.Select(placeholder="D · pick a song in Up Next…", options=[
-        discord.SelectOption(label=_clip(f"{n}. {t.get('title', '?')}", 100),
-                             description=_clip(f"{t.get('artistName', '')} · {mmss(_secs(t))} · {rating_word(t)}", 100),
-                             value=str(n))
-        for n, t in enumerate((q.get("upcoming") or [])[:25], start=1)
-    ] or [discord.SelectOption(label="Up Next is empty", value="0")])
-
-    async def picked(interaction: discord.Interaction):
-        await interaction.response.send_message(f"Preview only: you picked row {select.values[0]}.", ephemeral=True)
-
-    select.callback = picked
-    view.add_item(ui.Container(ui.TextDisplay("-# Layout D · a dropdown of Up Next"), ui.ActionRow(select), accent_colour=accent))
-    return view
 
 
 async def _added(user: discord.abc.User, tracks: list[dict], next_up: bool, song_id: str) -> str:
@@ -639,16 +591,6 @@ def register(client: discord.Client, tree: app_commands.CommandTree) -> None:
             await interaction.followup.send(f"▶ {interaction.user.display_name} played **{_line(tracks[0]) if tracks else 'it'}**." + _notices(reply))
 
         await run(interaction, "play", work)
-
-    @group.command(name="preview", description="Host: compare queue-row layouts (only you see it).")
-    async def dm_preview(interaction: discord.Interaction):
-        if not await gate(interaction, "preview"):
-            return
-        await interaction.response.defer(ephemeral=True, thinking=True)
-        try:
-            await interaction.followup.send(view=await preview_view(), ephemeral=True)
-        except BridgeError as e:
-            await interaction.followup.send(str(e), ephemeral=True)
 
     @group.command(name="volume", description="The bot's volume in the call (host).")
     @app_commands.describe(percent="0–200; 100 = as DeetsMusic plays it.")

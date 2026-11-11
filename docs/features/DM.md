@@ -1,7 +1,7 @@
 ---
 status: shipped
 desk_test: passed 2026-11-10
-sources: [bot/dm.py, bot/dm_bridge.py]
+sources: [crates/logic/src/commands.rs, crates/bridge/src/lib.rs]
 updated: 2026-11-10
 ---
 # /dm — DeetsMusic from Discord
