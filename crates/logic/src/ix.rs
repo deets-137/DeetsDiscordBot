@@ -182,6 +182,16 @@ impl<'a> Answer<'a> {
         log("autocomplete", self.rest.send(&req).await)
     }
 
+    /// Opens the app's Activity for the person who pressed (Discord's response type 12,
+    /// `LAUNCH_ACTIVITY`; twilight 0.18 has no name for it, so the body is written here).
+    pub async fn launch_activity(&self) -> Result<Value, RestError> {
+        let req = lildeets_rest::Request {
+            body: lildeets_rest::Body::Json(json!({"type": 12})),
+            ..routes::interaction_callback(self.ix.id, &self.ix.token, &response(T::DeferredUpdateMessage, None))
+        };
+        log("launch activity", self.rest.send(&req).await)
+    }
+
     /// `followup.send(text, ephemeral=…)`.
     pub async fn follow_text(&self, content: impl Into<String>, ephemeral: bool) -> Result<Value, RestError> {
         self.after_reply(log("followup", self.rest.send(&routes::followup(self.ix.app_id, &self.ix.token, &MessageBody::text(content, ephemeral), vec![])).await)).await

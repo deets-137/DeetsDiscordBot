@@ -74,9 +74,13 @@ export type Action =
   | { kind: "previous" }
   | { kind: "seek"; positionMs: number }
   | { kind: "enqueue"; catalogId: string; mode: "next" | "later" }
-  | { kind: "playNow"; catalogId: string }
-  | { kind: "queueRemove"; index: number }
-  | { kind: "queueMove"; index: number; to: number };
+  /** The song plays now; Up Next stays. `dropCopy`: the person's own add put a copy of this
+   *  song in Up Next a moment ago (the toast's Play Now): the host takes the last copy out. */
+  | { kind: "playNow"; catalogId: string; dropCopy?: boolean }
+  /** `catalogId`: the song the person saw in that row. The host refuses when Up Next changed
+   *  under them, so the wrong song is never removed or moved. */
+  | { kind: "queueRemove"; index: number; catalogId?: string }
+  | { kind: "queueMove"; index: number; to: number; catalogId?: string };
 
 /** The rule that guards each action. `null`: host only, whatever the rules say. */
 export const ACTION_RULE: Record<Action["kind"], keyof GuestRules | null> = {
@@ -86,7 +90,8 @@ export const ACTION_RULE: Record<Action["kind"], keyof GuestRules | null> = {
   previous: "skip",
   seek: "seek",
   enqueue: "add",
-  playNow: null,
+  // Also needs `add` (see `allowed`): it cuts the song off AND plays a song the guest chose.
+  playNow: "skip",
   queueRemove: "changeQueue",
   queueMove: "changeQueue",
 };
@@ -96,6 +101,7 @@ export const ACTION_RULE: Record<Action["kind"], keyof GuestRules | null> = {
 export function allowed(state: Pick<HostState, "rules" | "you" | "active">, kind: Action["kind"]): boolean {
   if (!state.active) return false;
   if (state.you.host) return true;
+  if (kind === "playNow") return state.rules.skip === "everyone" && state.rules.add === "everyone";
   const rule = ACTION_RULE[kind];
   return rule !== null && state.rules[rule] === "everyone";
 }
@@ -104,6 +110,23 @@ export type ActionResult =
   | { ok: true; notices?: string[] }
   /** `reason` is the host's own line, shown to this viewer only. */
   | { ok: false; reason: string };
+
+// ── over the relay (build step 4) ──────────────────────────────────────────────
+// What rides in the relay's opaque `data` field (activity/relay/src/wire.ts). The bot's side
+// is crates/logic/src/deetsmusic_remote.rs: change both together.
+
+/** Page → host. `q` pairs the reply with its request. */
+export type Request = { q: number; act: Action } | { q: number; search: string };
+
+/** Host → page. `state` goes to everyone in the call; the rest to one person. */
+export type Reply =
+  /** The host's state, without `you` (each page knows its own). On a change only. */
+  | { kind: "state"; state: Omit<HostState, "you"> }
+  /** Whether this person is the host. Once, when the bot learns they are in the Activity. */
+  | { kind: "you"; host: boolean }
+  | { kind: "answer"; q: number; result: ActionResult }
+  /** Search results; `error` is the host's line when the search was refused or failed. */
+  | { kind: "found"; q: number; tracks: Track[]; error?: string | null };
 
 /** The one seam a UI talks to: state in, actions out. The Activity's transport is the relay;
  *  the mock's is fake data. */

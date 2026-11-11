@@ -3,7 +3,8 @@
 //
 // It sleeps between messages (the WebSocket Hibernation API), so an idle room costs nothing.
 // Because it sleeps, it keeps nothing in memory: what it knows about a socket is in that
-// socket's attachment, and it finds sockets again by tag.
+// socket's attachment, it finds sockets again by tag, and the last state the bot sent is in
+// the room's storage.
 //
 // A page's socket goes through these states:
 //   new       connected; no ticket yet
@@ -13,7 +14,8 @@
 //   in        the bot said yes, and named the instance's voice channel
 //
 // The relay decides nothing about music. It decides two things: who a person is (the ticket),
-// and whether the bot is in that person's call.
+// and whether the bot is in that person's call. Only then does a page's `data` reach the bot,
+// and only then does the bot's state reach the page.
 
 import { DurableObject, env } from "cloudflare:workers";
 import { readTicket } from "./ticket.ts";
@@ -22,6 +24,12 @@ import { CLOSE, WIRE, type FromGuest, type FromHost, type ToGuest, type ToHost }
 const MAX_GUESTS = 200;
 const MAX_GUEST_FRAME = 4096;
 const MAX_HOST_FRAME = 1 << 20;
+/** A page may send this many `data` frames in each window; more are dropped (a stuck button,
+ *  a script). A person pressing buttons stays far below it. */
+const DATA_PER_WINDOW = 30;
+const WINDOW_MS = 10_000;
+/** The storage key of the last state the bot sent (raw JSON). */
+const STATE = "state";
 
 interface HostInfo {
   kind: "host";
@@ -38,17 +46,21 @@ interface GuestInfo {
   channel?: string;
   /** What the page was last told about the bot being in its call. */
   here?: boolean;
+  /** The rate window: its start (epoch ms) and the `data` frames in it. */
+  win?: number;
+  n?: number;
 }
 type Info = HostInfo | GuestInfo;
 
 const info = (ws: WebSocket): Info | null => ws.deserializeAttachment() as Info | null;
-const send = (ws: WebSocket, msg: ToGuest | ToHost): void => {
+const sendRaw = (ws: WebSocket, raw: string): void => {
   try {
-    ws.send(JSON.stringify(msg));
+    ws.send(raw);
   } catch {
     /* the socket closed under us: its close handler tidies up */
   }
 };
+const send = (ws: WebSocket, msg: ToGuest | ToHost): void => sendRaw(ws, JSON.stringify(msg));
 
 export class Room extends DurableObject {
   constructor(ctx: DurableObjectState, e: Cloudflare.Env) {
@@ -65,6 +77,18 @@ export class Room extends DurableObject {
     return this.ctx.getWebSockets("guest");
   }
 
+  /** The last state, as the frame a page gets (`{"t":"data","data":…}`), or null. */
+  private async lastState(): Promise<string | null> {
+    const raw = await this.ctx.storage.get<string>(STATE);
+    return raw ? `{"t":"data","data":${raw}}` : null;
+  }
+
+  /** A person's page now hears that the bot is in its call: give it the last state too. */
+  private async arrived(ws: WebSocket): Promise<void> {
+    const frame = await this.lastState();
+    if (frame) sendRaw(ws, frame);
+  }
+
   override async fetch(req: Request): Promise<Response> {
     const path = new URL(req.url).pathname;
     const pair = new WebSocketPair();
@@ -76,7 +100,9 @@ export class Room extends DurableObject {
       this.ctx.acceptWebSocket(server, ["host"]);
       server.serializeAttachment({ kind: "host", channels: [] } satisfies HostInfo);
       console.log("[room] the host connected");
-      // People who signed in while no bot was here: check them now.
+      // A state from an earlier connection may be old: the new one sends its own.
+      await this.ctx.storage.delete(STATE);
+      // People who signed in while no bot was here, and people already in: check them now.
       for (const g of this.guests()) {
         const gi = info(g);
         if (gi?.kind === "guest" && gi.user && gi.instance) this.askHost(g, gi);
@@ -107,13 +133,14 @@ export class Room extends DurableObject {
     } catch {
       return ws.close(CLOSE.badFrame, "The frame is not JSON.");
     }
-    if (who.kind === "host") this.fromHost(ws, who, msg as FromHost);
+    if (who.kind === "host") await this.fromHost(ws, who, msg as FromHost);
     else await this.fromGuest(ws, who, msg as FromGuest);
   }
 
   // ── a page ───────────────────────────────────────────────────────────────────
 
   private async fromGuest(ws: WebSocket, gi: GuestInfo, msg: FromGuest): Promise<void> {
+    if (msg?.t === "data" && gi.state !== "new") return this.guestData(ws, gi, msg.data);
     if (msg?.t !== "hello" || gi.state !== "new") return ws.close(CLOSE.badFrame, "Unexpected frame.");
     if (msg.v !== WIRE) return this.refuse(ws, "This page is out of date. Close the Activity and open it again.");
     if (typeof msg.ticket !== "string" || typeof msg.instance !== "string" || !/^[\w-]{1,128}$/.test(msg.instance)) {
@@ -129,6 +156,24 @@ export class Room extends DurableObject {
     gi.here = false;
     ws.serializeAttachment(gi);
     send(ws, { t: "welcome", user, host: false });
+  }
+
+  /** A page's request reaches the bot only while the bot is in that person's call. */
+  private guestData(ws: WebSocket, gi: GuestInfo, data: unknown): void {
+    const host = this.host();
+    if (gi.state !== "in" || !gi.here || !host || data === undefined) return; // the page knows: it was told "not here"
+    const now = Date.now();
+    if (!gi.win || now - gi.win > WINDOW_MS) {
+      gi.win = now;
+      gi.n = 0;
+    }
+    gi.n = (gi.n ?? 0) + 1;
+    ws.serializeAttachment(gi);
+    if (gi.n > DATA_PER_WINDOW) {
+      if (gi.n === DATA_PER_WINDOW + 1) console.warn(`[room] a page sent more than ${DATA_PER_WINDOW} requests in ${WINDOW_MS / 1000} s; dropping the rest of the window`);
+      return;
+    }
+    send(host, { t: "data", rid: gi.id, data });
   }
 
   /** Ask the bot whether this person is in this Activity instance. */
@@ -147,12 +192,12 @@ export class Room extends DurableObject {
 
   // ── the bot ──────────────────────────────────────────────────────────────────
 
-  private fromHost(ws: WebSocket, hi: HostInfo, msg: FromHost): void {
+  private async fromHost(ws: WebSocket, hi: HostInfo, msg: FromHost): Promise<void> {
     if (msg?.t === "channels") {
       if (!Array.isArray(msg.channels) || msg.channels.some((c) => typeof c !== "string")) return;
       hi.channels = msg.channels.slice(0, 64);
       ws.serializeAttachment(hi);
-      this.tellGuests(hi.channels);
+      await this.tellGuests(hi.channels);
       return;
     }
     if (msg?.t === "checked") {
@@ -169,13 +214,35 @@ export class Room extends DurableObject {
       const changed = gi.here !== here;
       gi.here = here;
       guest.serializeAttachment(gi);
+      send(ws, { t: "joined", rid: gi.id, user: gi.user.id, name: gi.user.name, channel: msg.channel });
       if (first) send(guest, { t: "welcome", user: gi.user, host: here });
       else if (changed) send(guest, { t: "host", here });
+      if (here) await this.arrived(guest);
+      return;
+    }
+    if (msg?.t === "state") {
+      if (msg.data === null || msg.data === undefined) {
+        await this.ctx.storage.delete(STATE);
+        return;
+      }
+      const raw = JSON.stringify(msg.data);
+      await this.ctx.storage.put(STATE, raw);
+      const frame = `{"t":"data","data":${raw}}`;
+      for (const g of this.guests()) {
+        const gi = info(g);
+        if (gi?.kind === "guest" && gi.state === "in" && gi.here) sendRaw(g, frame);
+      }
+      return;
+    }
+    if (msg?.t === "to") {
+      const guest = typeof msg.rid === "string" ? this.ctx.getWebSockets(`g:${msg.rid}`)[0] : undefined;
+      const gi = guest ? info(guest) : null;
+      if (guest && gi?.kind === "guest" && gi.state === "in") send(guest, { t: "data", data: msg.data });
     }
   }
 
   /** The bot's channels changed (or the bot went away): tell each page whose answer changed. */
-  private tellGuests(channels: string[]): void {
+  private async tellGuests(channels: string[]): Promise<void> {
     for (const g of this.guests()) {
       const gi = info(g);
       if (gi?.kind !== "guest" || gi.state !== "in" || !gi.channel) continue;
@@ -184,15 +251,23 @@ export class Room extends DurableObject {
       gi.here = here;
       g.serializeAttachment(gi);
       send(g, { t: "host", here });
+      if (here) await this.arrived(g);
     }
   }
 
   override async webSocketClose(ws: WebSocket): Promise<void> {
     const who = info(ws);
+    if (who?.kind === "guest") {
+      // The bot stops looking after a person who closed the Activity.
+      const host = this.host();
+      if (host && who.state === "in") send(host, { t: "left", rid: who.id });
+      return;
+    }
     if (who?.kind !== "host") return;
     // A replaced host's close arrives after the new host connected: then nothing changed.
     if (this.ctx.getWebSockets("host").some((h) => h !== ws && h.readyState === WebSocket.OPEN)) return;
     console.log("[room] the host disconnected");
+    await this.ctx.storage.delete(STATE);
     for (const g of this.guests()) {
       const gi = info(g);
       if (gi?.kind !== "guest" || gi.state === "new") continue;

@@ -123,7 +123,8 @@ and one line below.
     cards, text, `/links` byte for byte; the bridge, REST and IPC against local fakes)
   - `python -c "import journal.scan, journal.review, journal.letterboxd_web"`
   - `crates/tap/target/release/deets-tap.exe --meters` for a quiet app
-  - the bot's log in its terminal (BOT.md §8)
+  - the bot's log: `logs\lildeets-<date>.log` when he starts it from the "Lil Deets" shortcut
+    (ops/SETUP.md §10.1), else its terminal (BOT.md §8)
 - A journal change: export from a test copy of `storage.db` and compare with the published
   JSON, minus `generated_at` (NIGHTLY.md §3 has the script).
 - Hand over with the desk test written into the feature's doc.
@@ -163,7 +164,7 @@ the shots runner, publishing) do not apply here.
   asking how a user might break it from a UX or workflow view (DeetsMusic, 2026-10-17). Read every diff an agent makes
   and run the checks yourself: an agent's report is not proof.
 - **Commit only when he asks.** Co-author trailer: name the model that did the work (today
-  `Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>`); update this line when it changes.
+  `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`); update this line when it changes.
 - **Several Deets apps run on this PC at once.** Never hardcode a port with strict failure.
 
 ## How to explain things to me

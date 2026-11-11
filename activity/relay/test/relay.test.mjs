@@ -67,8 +67,13 @@ function socket(path, headers) {
       got.length
         ? Promise.resolve(got.shift())
         : new Promise((ok, no) => {
-            const t = setTimeout(() => no(new Error(`no frame on ${path} in ${ms} ms`)), ms);
-            waiters.push((v) => (clearTimeout(t), ok(v)));
+            const waiter = (v) => (clearTimeout(t), ok(v));
+            // A waiter that timed out leaves the list, or it would swallow the next frame.
+            const t = setTimeout(() => {
+              waiters.splice(waiters.indexOf(waiter), 1);
+              no(new Error(`no frame on ${path} in ${ms} ms`));
+            }, ms);
+            waiters.push(waiter);
           }),
     quiet: async (ms = 400) => {
       await new Promise((ok) => setTimeout(ok, ms));
@@ -86,7 +91,7 @@ const signIn = async (id, name) => {
 const guest = async (ticket, instance) => {
   const g = socket("/api/ws", { origin: ORIGIN });
   await g.opened;
-  g.send({ t: "hello", v: 1, ticket, instance });
+  g.send({ t: "hello", v: 2, ticket, instance });
   return g;
 };
 
@@ -100,12 +105,13 @@ const step = async (name, fn) => {
 // ── the test ───────────────────────────────────────────────────────────────────
 try {
   await step("a request with no Activity origin is refused", async () => {
-    assert.equal((await fetch(RELAY + "/api/config")).status, 403);
-    assert.equal((await fetch(RELAY + "/api/config", { headers: { origin: "https://evil.example" } })).status, 403);
+    const post = { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ code: "x" }) };
+    assert.equal((await fetch(RELAY + "/api/token", post)).status, 403);
+    assert.equal((await fetch(RELAY + "/api/token", { ...post, headers: { ...post.headers, origin: "https://evil.example" } })).status, 403);
   });
 
-  await step("the config gives the application id", async () => {
-    assert.deepEqual(await (await api("/api/config")).json(), { client_id: CLIENT_ID });
+  await step("the old config route is gone (the page reads the app id from its address)", async () => {
+    assert.equal((await api("/api/config")).status, 404);
   });
 
   await step("a bad sign-in code is refused", async () => {
@@ -151,7 +157,13 @@ try {
     assert.equal(check.user, alice.user.id);
     assert.equal(check.instance, "i-100-gc-1-10");
     host.send({ t: "checked", rid: check.rid, ok: true, channel: "10" });
+    assert.deepEqual(await host.next(), { t: "joined", rid: check.rid, user: alice.user.id, name: "Alice", channel: "10" });
     await a.quiet(); // the bot is in no channel yet: nothing changed for Alice
+  });
+
+  await step("a page's data is dropped while the bot is not in its call", async () => {
+    a.send({ t: "data", data: { q: 1, search: "x" } });
+    await host.quiet();
   });
 
   await step("the bot comes into the person's channel: the page is told", async () => {
@@ -167,8 +179,10 @@ try {
     const check = await host.next();
     assert.equal(check.user, bob.user.id);
     host.send({ t: "checked", rid: check.rid, ok: true, channel: "20" });
+    assert.equal((await host.next()).t, "joined");
     assert.deepEqual(await b.next(), { t: "welcome", user: bob.user, host: false });
     b.ws.close();
+    assert.deepEqual(await host.next(), { t: "left", rid: check.rid });
   });
 
   await step("a person Discord does not confirm is refused", async () => {
@@ -180,16 +194,55 @@ try {
   });
 
   await step("a second frame from a page closes its socket", async () => {
-    a.send({ t: "hello", v: 1, ticket: alice.ticket, instance: "i-100-gc-1-10" });
+    a.send({ t: "hello", v: 2, ticket: alice.ticket, instance: "i-100-gc-1-10" });
     assert.equal((await a.next()).closed, 4002);
+    assert.equal((await host.next()).t, "left");
   });
 
   const a2 = await guest(alice.ticket, "i-100-gc-1-10");
+  let a2rid;
   {
     const check = await host.next();
+    a2rid = check.rid;
     host.send({ t: "checked", rid: check.rid, ok: true, channel: "10" });
+    assert.equal((await host.next()).t, "joined");
     assert.deepEqual(await a2.next(), { t: "welcome", user: alice.user, host: true });
   }
+
+  await step("a page's data reaches the bot; the bot's reply reaches that page only", async () => {
+    a2.send({ t: "data", data: { q: 1, search: "kiss" } });
+    assert.deepEqual(await host.next(), { t: "data", rid: a2rid, data: { q: 1, search: "kiss" } });
+    host.send({ t: "to", rid: a2rid, data: { kind: "found", q: 1, tracks: [] } });
+    assert.deepEqual(await a2.next(), { t: "data", data: { kind: "found", q: 1, tracks: [] } });
+  });
+
+  await step("the state goes to each page in the call, and a newcomer gets the last one", async () => {
+    host.send({ t: "state", data: { kind: "state", n: 1 } });
+    assert.deepEqual(await a2.next(), { t: "data", data: { kind: "state", n: 1 } });
+    const a3 = await guest(alice.ticket, "i-100-gc-1-10");
+    const check = await host.next();
+    host.send({ t: "checked", rid: check.rid, ok: true, channel: "10" });
+    assert.equal((await host.next()).t, "joined");
+    assert.deepEqual(await a3.next(), { t: "welcome", user: alice.user, host: true });
+    assert.deepEqual(await a3.next(), { t: "data", data: { kind: "state", n: 1 } });
+    a3.ws.close();
+    assert.deepEqual(await host.next(), { t: "left", rid: check.rid });
+  });
+
+  await step("a page that floods is cut off for the rest of its window", async () => {
+    for (let i = 0; i < 35; i++) a2.send({ t: "data", data: { q: 100 + i } });
+    let got = 0;
+    for (;;) {
+      try {
+        const f = await host.next(600);
+        if (f.t === "data") got++;
+      } catch {
+        break;
+      }
+    }
+    // The window counts the frame of the step before too (one), so 29 of these pass.
+    assert.equal(got, 29);
+  });
 
   await step("a second host replaces the first, and checks everyone again", async () => {
     const host2 = socket("/host/ws", { authorization: `Bearer ${HOST_SECRET}` });
@@ -198,6 +251,7 @@ try {
     const check = await host2.next();
     assert.equal(check.user, alice.user.id);
     host2.send({ t: "checked", rid: check.rid, ok: true, channel: "10" });
+    assert.equal((await host2.next()).t, "joined");
     // The new host has named no channel yet: for Alice the bot is away until it does.
     assert.deepEqual(await a2.next(), { t: "host", here: false });
     host2.send({ t: "channels", channels: ["10"] });

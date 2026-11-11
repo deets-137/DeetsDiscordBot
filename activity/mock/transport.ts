@@ -92,7 +92,7 @@ export function mockHost(): MockHost {
       await new Promise((r) => setTimeout(r, 120)); // a network's worth of wait
       if (!s.active) return { ok: false, reason: "The host is not playing here" };
       if (!allowed(s, a.kind)) {
-        const rule = { play: "playPause", pause: "playPause", next: "skip", previous: "skip", seek: "seek", enqueue: "add", queueRemove: "changeQueue", queueMove: "changeQueue" }[a.kind as string] as keyof GuestRules | undefined;
+        const rule = (a.kind === "playNow" && s.rules.skip === "everyone" ? "add" : { play: "playPause", pause: "playPause", next: "skip", previous: "skip", seek: "seek", enqueue: "add", playNow: "skip", queueRemove: "changeQueue", queueMove: "changeQueue" }[a.kind as string]) as keyof GuestRules | undefined;
         return { ok: false, reason: rule ? `The host has set “${RULE_NAME[rule]}” to host only in DeetsMusic` : "Only the host can do that" };
       }
       switch (a.kind) {
@@ -123,6 +123,10 @@ export function mockHost(): MockHost {
         case "playNow": {
           const t = find(a.catalogId);
           if (!t) return { ok: false, reason: "DeetsMusic could not find that song" };
+          if (a.dropCopy) {
+            const copy = upNext.map((u) => u.catalogId).lastIndexOf(a.catalogId);
+            if (copy >= 0) upNext.splice(copy, 1);
+          }
           if (s.now.track) history = [{ track: s.now.track, playedAt: Date.now() }, ...history];
           s = { ...s, now: { track: t, playing: true, positionMs: 0, at: Date.now() } };
           break;

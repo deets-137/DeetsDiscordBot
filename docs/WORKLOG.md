@@ -9,6 +9,44 @@ updated: 2026-11-11
 One dated `##` per sitting, newest first. An old entry is never corrected. DeetsOTD's earlier
 history is in `git log` and docs/archive/.
 
+## 2026-11-11 (night) — the Activity, steps 4 and 5: the real cards in the call
+
+- **His words.** "Yup, showed as expected" (§12.2 steps 1–3, 5 after the §13.9 fix); "Let's
+  build out the UI"; "1A, 2A, 3B" (1 s reads while someone has the Activity open; "Open in
+  call" on the np card; Play Now and `/dm play` for guests under "Guests may skip").
+- **Built** (ACTIVITY.md §13.10): relay WIRE 2, IPC `PROTOCOL` 3, `deetsmusic_remote`,
+  `check_for`, the bridge's `appearance`, the np card's fifth button, the page on the relay's
+  transport with layout modes and Rich Presence. PERMISSIONS.md §3, §6, §7 and BRIDGE.md §2,
+  §3 written first.
+- **Checked:** clippy, `cargo test`, `npm run check`, the relay test (17 steps), a dry-run
+  deploy. NOT checked: inside Discord. Not deployed, no release build.
+- **Fixed in passing:** the relay test's socket helper let a timed-out wait swallow the next
+  frame.
+- **The Sonnet pass** found 3 serious problems, fixed (ACTIVITY.md §13.10): removes and moves
+  by row number only; DeetsMusic's plain `/play` replaces Up Next (Play Now now keeps it and
+  needs "Guests may add songs" too); guests never saw Play Now.
+- **Live** at his word ("A, no line … go ahead and deploy + release"): the five cover URL
+  mappings added in the Portal by Claude in Chrome; the relay deployed; the release build went
+  live at 13:53 (the old host refused the IPC 3 logic, then restarted with no call; `LD`:
+  `remote: armed`, `commands: synced launch=true`).
+
+## 2026-11-11 (evening) — the "Lil Deets" shortcut, the log file
+
+- **His words.** "Shortcut only for now. Ensure you're able to debug as necessary with the
+  console logs." Velopack and start at sign-in were talked through and set aside (SETUP.md
+  §10.1 has why). The tray app stays for later (TRAY.md).
+- **Built:** `scripts/start-bot.ps1` (runs `target\release\lildeets.exe`, copies each line to
+  `logs\lildeets-<date>.log`, `NO_COLOR`, 30 days kept); `logs/` in `.gitignore`; the
+  shortcut on the Desktop and in the Start menu (not in the repo).
+- **Checked:** the script parses; the shortcuts exist. NOT checked: a start from the shortcut
+  (the bot was not started from this session; he starts it).
+- **The shortcut works:** he started the bot from it, and `logs\lildeets-2026-11-11.log` has
+  the lines (`relay: armed`, `commands: synced launch=true`).
+- **The Activity's first launch** showed "Sign-in did not work / Not from the Activity". Cause
+  and fix: ACTIVITY.md §13.9 (a same-origin GET carries no Origin; the page now reads the app
+  id from its address, and `/api/config` is gone). Tests pass. Deployed by his word ("prior
+  auth to deploy for this session"); checked live from outside Discord.
+
 ## 2026-11-11 (later) — the Activity, step 3: the relay and the sign-in page
 
 - **His words.** "ran through 17 steps, looks good. commit changes" (step 2b: `f63ea4d`);

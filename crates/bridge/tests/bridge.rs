@@ -209,7 +209,7 @@ async fn an_error_status_shows_deetsmusics_own_message() {
     })
     .await;
     let br = bridge("status", Some("tok"), vec![a.port]);
-    assert_eq!(br.play("song:1").await, Err(BridgeError("That song isn't in the catalog.".into())));
+    assert_eq!(br.play("song:1", false).await, Err(BridgeError("That song isn't in the catalog.".into())));
     assert_eq!(br.call("/queue", None, T).await, Err(BridgeError("DeetsMusic said 500.".into())));
 }
 
@@ -325,7 +325,8 @@ async fn writes_send_the_documented_bodies() {
     br.command("volume", Some(json!(0.5))).await.unwrap();
     br.enqueue("song:42", true).await.unwrap();
     br.enqueue("song:42", false).await.unwrap();
-    br.play("song:7").await.unwrap();
+    br.play("song:7", false).await.unwrap();
+    br.play("song:8", true).await.unwrap();
     br.queue_edit("remove", 3, None).await.unwrap();
     br.queue_edit("move", 3, Some(1)).await.unwrap();
     let sent: Vec<(String, String, Value)> = a.requests().into_iter().map(|r| (r.method, r.path, r.body.unwrap())).collect();
@@ -335,6 +336,7 @@ async fn writes_send_the_documented_bodies() {
         ("/queue", json!({"id": "song:42", "mode": "next"})),
         ("/queue", json!({"id": "song:42", "mode": "later"})),
         ("/play", json!({"id": "song:7"})),
+        ("/play", json!({"id": "song:8", "keepQueue": true})),
         ("/queue/edit", json!({"action": "remove", "index": 3})),
         ("/queue/edit", json!({"action": "move", "index": 3, "to": 1})),
     ];

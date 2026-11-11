@@ -27,7 +27,7 @@ use tokio_websockets::{ClientBuilder, Message};
 use tracing::{debug, info, warn};
 
 /// The relay's wire version (`WIRE` in wire.ts).
-pub const WIRE: u32 = 1;
+pub const WIRE: u32 = 2;
 /// A text frame the relay answers with `pong` without waking its room.
 const PING: &str = "ping";
 const PING_EVERY: Duration = Duration::from_secs(30);
@@ -37,12 +37,20 @@ const CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
 const RETRY_MIN: Duration = Duration::from_secs(2);
 const RETRY_MAX: Duration = Duration::from_secs(60);
 
-/// What the relay asks of the bot.
+/// What the relay asks of the bot, or tells it.
 #[derive(Clone, Debug, PartialEq)]
 pub enum FromRelay {
     /// Is `user` in the Activity instance `instance`, and in which channel? Answer with
     /// [`Relay::checked`]. The bot asks Discord with its own token, which never leaves the PC.
     Check { rid: String, user: u64, instance: String },
+    /// A checked person has the Activity open in `channel`. Sent again after each reconnect.
+    Joined { rid: String, user: u64, name: String, channel: u64 },
+    /// That person closed the Activity.
+    Left { rid: String },
+    /// A request from that person's page (deetsmusic-protocol `Request`), passed on as it came.
+    Data { rid: String, data: serde_json::Value },
+    /// The connection opened or closed: every person the relay named before is gone.
+    Reset,
 }
 
 /// The answer to a [`FromRelay::Check`].
@@ -60,6 +68,9 @@ pub enum Checked {
 #[serde(tag = "t", rename_all = "lowercase")]
 enum WireIn {
     Check { rid: String, user: String, instance: String },
+    Joined { rid: String, user: String, name: String, channel: String },
+    Left { rid: String },
+    Data { rid: String, data: serde_json::Value },
 }
 
 #[derive(Debug, Serialize)]
@@ -74,6 +85,8 @@ enum WireOut<'a> {
         #[serde(skip_serializing_if = "Option::is_none")]
         reason: Option<&'a str>,
     },
+    State { data: &'a serde_json::Value },
+    To { rid: &'a str, data: &'a serde_json::Value },
 }
 
 fn channels_frame(channels: &[u64]) -> String {
@@ -88,10 +101,21 @@ fn checked_frame(rid: &str, answer: &Checked) -> String {
     serde_json::to_string(&out).expect("plain JSON")
 }
 
+fn state_frame(data: &serde_json::Value) -> String {
+    serde_json::to_string(&WireOut::State { data }).expect("plain JSON")
+}
+
+fn to_frame(rid: &str, data: &serde_json::Value) -> String {
+    serde_json::to_string(&WireOut::To { rid, data }).expect("plain JSON")
+}
+
 /// A frame from the relay, or `None` for one this build does not know (a newer relay).
 fn parse(text: &str) -> Option<FromRelay> {
     match serde_json::from_str::<WireIn>(text).ok()? {
         WireIn::Check { rid, user, instance } => Some(FromRelay::Check { rid, user: user.parse().ok()?, instance }),
+        WireIn::Joined { rid, user, name, channel } => Some(FromRelay::Joined { rid, user: user.parse().ok()?, name, channel: channel.parse().ok()? }),
+        WireIn::Left { rid } => Some(FromRelay::Left { rid }),
+        WireIn::Data { rid, data } => Some(FromRelay::Data { rid, data }),
     }
 }
 
@@ -100,6 +124,8 @@ fn parse(text: &str) -> Option<FromRelay> {
 enum Cmd {
     Channels(Vec<u64>),
     Checked { rid: String, answer: Checked },
+    /// A frame for the relay as it is (`state` or `to`). Dropped while not connected.
+    Frame(String),
 }
 
 /// The handle the host keeps. Dropping it stops the task and closes the socket.
@@ -128,6 +154,17 @@ impl Relay {
     /// The answer to a [`FromRelay::Check`].
     pub fn checked(&self, rid: String, answer: Checked) {
         let _ = self.tx.send(Cmd::Checked { rid, answer });
+    }
+
+    /// The state, for every person whose call the bot is in (deetsmusic-protocol `Reply`).
+    /// The relay keeps the last one for a person who comes in later; `null` forgets it.
+    pub fn state(&self, data: &serde_json::Value) {
+        let _ = self.tx.send(Cmd::Frame(state_frame(data)));
+    }
+
+    /// Something for one person only: a reply, or who they are.
+    pub fn to(&self, rid: &str, data: &serde_json::Value) {
+        let _ = self.tx.send(Cmd::Frame(to_frame(rid, data)));
     }
 }
 
@@ -167,7 +204,7 @@ async fn run(url: String, secret: String, mut cmds: mpsc::UnboundedReceiver<Cmd>
         while channels.is_empty() {
             match cmds.recv().await {
                 Some(Cmd::Channels(c)) => channels = c,
-                Some(Cmd::Checked { .. }) => {} // an answer for a connection that is gone
+                Some(Cmd::Checked { .. } | Cmd::Frame(_)) => {} // for a connection that is gone
                 None => return info!(target: "lildeets_host", "relay: stopped"),
             }
         }
@@ -183,7 +220,7 @@ async fn run(url: String, secret: String, mut cmds: mpsc::UnboundedReceiver<Cmd>
                         _ = tokio::time::sleep_until(until) => break,
                         cmd = cmds.recv() => match cmd {
                             Some(Cmd::Channels(c)) => { channels = c; if channels.is_empty() { break; } }
-                            Some(Cmd::Checked { .. }) => {}
+                            Some(Cmd::Checked { .. } | Cmd::Frame(_)) => {}
                             None => return info!(target: "lildeets_host", "relay: stopped"),
                         },
                     }
@@ -193,7 +230,12 @@ async fn run(url: String, secret: String, mut cmds: mpsc::UnboundedReceiver<Cmd>
         };
         info!(target: "lildeets_host", channels = channels.len(), "relay: connected");
         retry = RETRY_MIN;
-        match serve(&mut ws, &mut channels, &mut cmds, &events).await {
+        if events.send(FromRelay::Reset).is_err() {
+            return info!(target: "lildeets_host", "relay: stopped");
+        }
+        let end = serve(&mut ws, &mut channels, &mut cmds, &events).await;
+        let _ = events.send(FromRelay::Reset);
+        match end {
             End::Idle => {
                 let _ = ws.send(Message::close(None, "")).await;
                 info!(target: "lildeets_host", "relay: disconnected; the bot is in no call");
@@ -246,6 +288,9 @@ async fn serve(ws: &mut Socket, channels: &mut Vec<u64>, cmds: &mut mpsc::Unboun
                 Some(Cmd::Checked { rid, answer }) => {
                     if let Err(e) = ws.send(Message::text(checked_frame(&rid, &answer))).await { return End::Lost(e.to_string()); }
                 }
+                Some(Cmd::Frame(text)) => {
+                    if let Err(e) = ws.send(Message::text(text)).await { return End::Lost(e.to_string()); }
+                }
                 None => return End::Stopped,
             },
             _ = ping.tick() => {
@@ -265,6 +310,9 @@ mod tests {
         assert_eq!(channels_frame(&[10, 1234567890123456789]), r#"{"t":"channels","channels":["10","1234567890123456789"]}"#);
         assert_eq!(checked_frame("r1", &Checked::In { channel: 10 }), r#"{"t":"checked","rid":"r1","ok":true,"channel":"10"}"#);
         assert_eq!(checked_frame("r1", &Checked::No { reason: "no".into() }), r#"{"t":"checked","rid":"r1","ok":false,"reason":"no"}"#);
+        assert_eq!(state_frame(&serde_json::json!({"kind": "state"})), r#"{"t":"state","data":{"kind":"state"}}"#);
+        assert_eq!(state_frame(&serde_json::Value::Null), r#"{"t":"state","data":null}"#);
+        assert_eq!(to_frame("r1", &serde_json::json!({"kind": "you", "host": true})), r#"{"t":"to","rid":"r1","data":{"host":true,"kind":"you"}}"#);
     }
 
     #[test]
@@ -272,6 +320,15 @@ mod tests {
         assert_eq!(
             parse(r#"{"t":"check","rid":"abc","user":"200000000000000001","instance":"i-1-gc-2-3"}"#),
             Some(FromRelay::Check { rid: "abc".into(), user: 200000000000000001, instance: "i-1-gc-2-3".into() })
+        );
+        assert_eq!(
+            parse(r#"{"t":"joined","rid":"abc","user":"42","name":"Deets","channel":"10"}"#),
+            Some(FromRelay::Joined { rid: "abc".into(), user: 42, name: "Deets".into(), channel: 10 })
+        );
+        assert_eq!(parse(r#"{"t":"left","rid":"abc"}"#), Some(FromRelay::Left { rid: "abc".into() }));
+        assert_eq!(
+            parse(r#"{"t":"data","rid":"abc","data":{"q":1,"search":"x"}}"#),
+            Some(FromRelay::Data { rid: "abc".into(), data: serde_json::json!({"q": 1, "search": "x"}) })
         );
         assert_eq!(parse(r#"{"t":"later","x":1}"#), None);
         assert_eq!(parse(r#"{"t":"check","rid":"abc","user":"not-a-number","instance":"i"}"#), None);
@@ -296,6 +353,8 @@ mod tests {
             ws.send(Message::text(r#"{"t":"check","rid":"r9","user":"42","instance":"i-9"}"#)).await.unwrap();
             let answer = ws.next().await.unwrap().unwrap();
             assert_eq!(answer.as_text().unwrap(), r#"{"t":"checked","rid":"r9","ok":true,"channel":"10"}"#);
+            let to = ws.next().await.unwrap().unwrap();
+            assert_eq!(to.as_text().unwrap(), r#"{"t":"to","rid":"r9","data":{"host":false,"kind":"you"}}"#);
             let moved = ws.next().await.unwrap().unwrap();
             assert_eq!(moved.as_text().unwrap(), r#"{"t":"channels","channels":["10","20"]}"#);
             let bye = ws.next().await.unwrap().unwrap();
@@ -305,9 +364,13 @@ mod tests {
         let (tx, mut events) = mpsc::unbounded_channel();
         let relay = Relay::spawn(format!("ws://127.0.0.1:{port}/host/ws"), "s3cret".into(), tx);
         relay.set_channels(vec![10]);
-        let FromRelay::Check { rid, user, instance } = tokio::time::timeout(Duration::from_secs(5), events.recv()).await.unwrap().unwrap();
+        let first = tokio::time::timeout(Duration::from_secs(5), events.recv()).await.unwrap().unwrap();
+        assert_eq!(first, FromRelay::Reset); // a new connection: nobody known yet
+        let ev = tokio::time::timeout(Duration::from_secs(5), events.recv()).await.unwrap().unwrap();
+        let FromRelay::Check { rid, user, instance } = ev else { panic!("expected a check, got {ev:?}") };
         assert_eq!((rid.as_str(), user, instance.as_str()), ("r9", 42, "i-9"));
-        relay.checked(rid, Checked::In { channel: 10 });
+        relay.checked(rid.clone(), Checked::In { channel: 10 });
+        relay.to(&rid, &serde_json::json!({"kind": "you", "host": false}));
         relay.set_channels(vec![10]); // the same list: no frame
         relay.set_channels(vec![20, 10]);
         relay.set_channels(vec![]); // the bot left its last call: the socket closes

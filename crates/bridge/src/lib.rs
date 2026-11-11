@@ -58,6 +58,13 @@ const ACCENT_TTL: Duration = Duration::from_secs(60);
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(20);
 const SETTINGS_TIMEOUT: Duration = Duration::from_secs(5);
 
+/// DeetsMusic's look: the ids it sets as `data-theme` and `data-skin`.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Appearance {
+    pub theme: String,
+    pub skin: String,
+}
+
 /// A failure worth showing the user as it is.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BridgeError(pub String);
@@ -105,7 +112,8 @@ struct State {
     port: Option<u16>,
     token: Option<String>,
     rules: Option<(Instant, HashMap<String, Option<String>>)>,
-    accent: Option<(Instant, u32)>,
+    /// DeetsMusic's theme and skin ids, and when they were read.
+    look: Option<(Instant, Appearance)>,
     search: SearchCache,
 }
 
@@ -294,23 +302,30 @@ impl Bridge {
     /// The cards' accent: DeetsMusic's current theme colour, cached 60 s. On an error the
     /// last colour stays (the default before any answer).
     pub async fn accent(&self) -> u32 {
-        if let Some((at, colour)) = self.state().accent {
+        theme_accent(&self.appearance().await.theme)
+    }
+
+    /// DeetsMusic's theme and skin ids (`GET /settings`, rows `theme` and `skin`), cached
+    /// 60 s with the accent. On an error the last answer stays (empty ids before any).
+    pub async fn appearance(&self) -> Appearance {
+        if let Some((at, look)) = &self.state().look {
             if at.elapsed() < ACCENT_TTL {
-                return colour;
+                return look.clone();
             }
         }
-        let mut colour = self.state().accent.map_or(DEFAULT_ACCENT, |(_, c)| c);
+        let mut look = self.state().look.as_ref().map(|(_, l)| l.clone()).unwrap_or_default();
         if let Ok(out) = self.call("/settings", None, SETTINGS_TIMEOUT).await {
-            let theme = settings_rows(&out).find(|(k, _)| *k == "theme").and_then(|(_, v)| v.and_then(Value::as_str));
-            colour = theme_accent(theme.unwrap_or(""));
+            let row = |key: &str| settings_rows(&out).find(|(k, _)| *k == key).and_then(|(_, v)| v.and_then(Value::as_str)).unwrap_or("").to_owned();
+            look = Appearance { theme: row("theme"), skin: row("skin") };
         }
-        self.state().accent = Some((Instant::now(), colour));
-        colour
+        self.state().look = Some((Instant::now(), look.clone()));
+        look
     }
 
     // --- writes --------------------------------------------------------------------------
 
-    /// `POST /command {kind[, value]}`: `play`, `pause`, `next`, `previous`.
+    /// `POST /command {kind[, value]}`: `play`, `pause`, `next`, `previous`, and `seek` with a
+    /// value from 0 to 1 (a fraction of the song).
     pub async fn command(&self, kind: &str, value: Option<Value>) -> Result<Value, BridgeError> {
         let mut body = json!({"kind": kind});
         if let Some(v) = value {
@@ -324,9 +339,15 @@ impl Bridge {
         self.call("/queue", Some(&json!({"id": song_id, "mode": if next_up { "next" } else { "later" }})), DEFAULT_TIMEOUT).await
     }
 
-    /// `POST /play {id}`: replace what is playing.
-    pub async fn play(&self, song_id: &str) -> Result<Value, BridgeError> {
-        self.call("/play", Some(&json!({"id": song_id})), DEFAULT_TIMEOUT).await
+    /// `POST /play {id[, keepQueue]}`: play the song now. Without `keep_queue` DeetsMusic
+    /// replaces Up Next too; with it the song goes in at the top of Up Next and plays, and the
+    /// rest of Up Next stays (DeetsMusic's `playTracksKeepQueue`).
+    pub async fn play(&self, song_id: &str, keep_queue: bool) -> Result<Value, BridgeError> {
+        let mut body = json!({"id": song_id});
+        if keep_queue {
+            body["keepQueue"] = json!(true);
+        }
+        self.call("/play", Some(&body), DEFAULT_TIMEOUT).await
     }
 
     /// `POST /queue/edit {action: remove | move, index[, to]}`.

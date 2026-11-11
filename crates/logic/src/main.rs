@@ -23,6 +23,7 @@ use tokio::sync::oneshot;
 use tracing::{error, info, warn};
 
 mod commands;
+mod deetsmusic_remote;
 mod ix;
 mod relay;
 mod watch;
@@ -104,6 +105,8 @@ pub struct Ctx {
     pub voice: Mutex<Vec<GuildVoice>>,
     pub allowed_links: HashSet<u64>,
     pub np_watchers: Mutex<HashMap<u64, tokio::task::JoinHandle<()>>>,
+    /// The Activity's side of DeetsMusic (`deetsmusic_remote`).
+    pub remote: deetsmusic_remote::Remote,
 }
 
 /// The app `/dm` opens up for (docs/archive/bot/dm.py `APP`).
@@ -188,6 +191,7 @@ async fn run() -> Result<(), String> {
         voice: Mutex::new(Vec::new()),
         allowed_links: allowed_links_channels(),
         np_watchers: Mutex::new(HashMap::new()),
+        remote: deetsmusic_remote::Remote::default(),
     });
 
     let mut watcher_started = false;
@@ -209,6 +213,7 @@ async fn run() -> Result<(), String> {
                 if !watcher_started {
                     watcher_started = true;
                     tokio::spawn(watch::status_watcher(ctx.clone()));
+                    tokio::spawn(deetsmusic_remote::watcher(ctx.clone()));
                 }
             }
             ToLogic::Dispatch { event } => {
@@ -226,6 +231,14 @@ async fn run() -> Result<(), String> {
             ToLogic::RelayCheck { rid, user, instance } => {
                 let c = ctx.clone();
                 tokio::spawn(async move { relay::check(&c, rid, user, instance).await });
+            }
+            ToLogic::RelayViewers { viewers } => {
+                let c = ctx.clone();
+                tokio::spawn(async move { deetsmusic_remote::viewers(&c, viewers).await });
+            }
+            ToLogic::RelayData { rid, data } => {
+                let c = ctx.clone();
+                tokio::spawn(async move { deetsmusic_remote::request(&c, rid, data).await });
             }
         }
         if ctx.app_id.get().is_none() {

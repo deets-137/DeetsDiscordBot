@@ -54,10 +54,11 @@ export const queueCard: CardDef = {
 
     function menuFor(row: HTMLElement, x: number, y: number): void {
       const index = Number(row.dataset.idx);
+      const catalogId = row.dataset.cid; // the song this person saw in the row
       const off = store.can("queueMove") ? undefined : HOST_ONLY;
       openMenu(x, y, [
-        { label: "Play Next", disabled: off ?? (index === 0 ? "This song is next already" : undefined), run: () => void store.act({ kind: "queueMove", index, to: 0 }) },
-        { label: "Remove from Queue", disabled: off, run: () => void store.act({ kind: "queueRemove", index }) },
+        { label: "Play Next", disabled: off ?? (index === 0 ? "This song is next already" : undefined), run: () => void store.act({ kind: "queueMove", index, to: 0, catalogId }) },
+        { label: "Remove from Queue", disabled: off, run: () => void store.act({ kind: "queueRemove", index, catalogId }) },
       ]);
     }
 
@@ -77,6 +78,7 @@ export const queueCard: CardDef = {
         // Show the row in its new place at once; the host's state confirms it, or puts it back.
         const list = body.querySelector<HTMLElement>(".qcard__list");
         const row = list?.querySelector<HTMLElement>(`.qrow[data-idx="${from}"]`);
+        const catalogId = row?.dataset.cid; // the song this person dragged
         if (list && row) {
           row.remove();
           list.insertBefore(row, list.children[to] ?? null);
@@ -84,7 +86,7 @@ export const queueCard: CardDef = {
           shown = "";
         }
         held = null;
-        void store.act({ kind: "queueMove", index: from, to }).then((ok) => {
+        void store.act({ kind: "queueMove", index: from, to, catalogId }).then((ok) => {
           if (!ok) repaint();
         });
       },

@@ -137,11 +137,14 @@ pub async fn handle(ctx: Arc<Ctx>, event: Value) {
 // --- permissions (docs/archive/bot/dm.py RULE, check) --------------------------------------------------
 
 /// action → the Rooms rule that lets a guest do it ("read": any guest in the call; None: host only).
+/// `play` (replace what plays) follows "Guests may skip": his call 3B, 2026-11-11
+/// (PERMISSIONS.md §6). `seek` and `search` are the Activity's.
 fn rule(action: &str) -> Option<&'static str> {
     match action {
-        "np" | "queue" => Some("read"),
+        "np" | "queue" | "search" => Some("read"),
         "pause" | "resume" => Some("roomGuests.playPause"),
-        "skip" | "back" => Some("roomGuests.skip"),
+        "skip" | "back" | "play" => Some("roomGuests.skip"),
+        "seek" => Some("roomGuests.seek"),
         "add" => Some("roomGuests.add"),
         "remove" | "move" => Some("roomGuests.changeQueue"),
         _ => None,
@@ -152,15 +155,28 @@ fn rule_label(rule: &str) -> &'static str {
     match rule {
         "roomGuests.playPause" => "Guests may start and stop",
         "roomGuests.skip" => "Guests may skip",
+        "roomGuests.seek" => "Guests may seek",
         "roomGuests.add" => "Guests may add songs",
         _ => "Guests may change Up Next",
     }
 }
 
+/// Is the Activity set up (`LILDEETS_RELAY_URL` in `.env`)? Read once per logic.
+pub fn activity_on() -> bool {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ON.get_or_init(|| crate::env_or_dotenv("LILDEETS_RELAY_URL").is_some())
+}
+
 /// `check`: `None` when allowed; otherwise the reason, for an ephemeral reply.
 async fn check(ctx: &Ctx, ix: &Ix, action: &str) -> Option<String> {
-    let Some(guild) = ix.guild else { return Some("/dm works in a server.".into()) };
-    if ctx.is_host(ix.user).await {
+    check_for(ctx, ix.guild, ix.user, action).await
+}
+
+/// The check for `user` in `guild` (`None`: not in a server). A `/dm` command, a card's
+/// button and the Activity all come here (PERMISSIONS.md §7).
+pub async fn check_for(ctx: &Ctx, guild: Option<u64>, user: u64, action: &str) -> Option<String> {
+    let Some(guild) = guild else { return Some("/dm works in a server.".into()) };
+    if ctx.is_host(user).await {
         return None;
     }
     let Some(rule) = rule(action) else { return Some("Only the host can do that.".into()) };
@@ -172,15 +188,19 @@ async fn check(ctx: &Ctx, ix: &Ix, action: &str) -> Option<String> {
         return Some("/dm opens up to everyone while the host is playing DeetsMusic in voice.".into());
     }
     let bot_channel = ctx.guild_voice(guild).and_then(|g| g.bot_channel)?;
-    if ctx.where_is(guild, ix.user).await != Some(bot_channel) {
+    if ctx.where_is(guild, user).await != Some(bot_channel) {
         return Some(format!("Join <#{bot_channel}> to control the music."));
     }
     if rule == "read" {
         return None;
     }
     let rules = ctx.bridge.rules().await;
-    if rules.get(rule).and_then(|v| v.as_deref()) != Some("everyone") {
-        return Some(format!("The host has set “{}” to host only in DeetsMusic.", rule_label(rule)));
+    // Play Now cuts the song off (skip) AND plays a song the guest chose (add): both rules.
+    let needs: &[&str] = if action == "play" { &[rule, "roomGuests.add"] } else { &[rule] };
+    for rule in needs {
+        if rules.get(*rule).and_then(|v| v.as_deref()) != Some("everyone") {
+            return Some(format!("The host has set “{}” to host only in DeetsMusic.", rule_label(rule)));
+        }
     }
     None
 }
@@ -326,7 +346,7 @@ pub async fn np_card(ctx: &Ctx, guild: Option<u64>) -> Result<Vec<twilight_model
     let (np, q, accent) = tokio::join!(ctx.bridge.now_playing(), ctx.bridge.queue(), ctx.bridge.accent());
     let (np, q) = (np?, q?);
     let where_ = guild.filter(|g| ctx.tapping_app(*g)).and_then(|g| ctx.guild_voice(g)).and_then(|g| g.bot_channel).map(|c| format!("<#{c}>"));
-    Ok(cards::np_card(&np, q.upcoming.first(), where_.as_deref(), accent, now()))
+    Ok(cards::np_card(&np, q.upcoming.first(), where_.as_deref(), accent, now(), activity_on()))
 }
 
 async fn queue_card(ctx: &Ctx, page: usize) -> Result<Vec<twilight_model::channel::message::component::Component>, BridgeError> {
@@ -473,7 +493,10 @@ async fn dm(ctx: &Arc<Ctx>, ix: &Ix, a: &Answer<'_>, sub: &str, opts: &Map<Strin
                     let _ = a.follow_text(format!("Not sure which song you mean{hint}."), true).await;
                     return Ok(());
                 };
-                let reply = ctx.bridge.play(&song_id).await?;
+                // A guest's play keeps Up Next: replacing it would need "Guests may change Up
+                // Next" (PERMISSIONS.md §6). The host's play replaces it, as before.
+                let keep_queue = !ctx.is_host(ix.user).await;
+                let reply = ctx.bridge.play(&song_id, keep_queue).await?;
                 let what = reply_tracks(&reply).first().map(line).unwrap_or_else(|| "it".into());
                 let _ = a.follow_text(format!("▶ {who} played **{what}**.{}", notices(&reply)), false).await;
                 Ok(())
@@ -502,6 +525,13 @@ async fn component(ctx: &Ctx, ix: &Ix, a: &Answer<'_>) {
     let parts: Vec<&str> = id.split(':').collect();
     info!(custom_id = %id, user = ix.user, "interaction: button");
     match parts.as_slice() {
+        // "Open in call": anyone may open the Activity. What they may do in it is checked
+        // there, per action. Discord opens it in the voice channel the person is in.
+        ["dm", "np", "open"] => {
+            if a.launch_activity().await.is_err() {
+                let _ = a.text("Discord did not open the Activity. Join the voice channel, then press the rocket button in the call.", true).await;
+            }
+        }
         ["dm", "np", action] => {
             if let Some(reason) = check(ctx, ix, action).await {
                 let _ = a.text(reason, true).await;

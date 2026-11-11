@@ -1,14 +1,15 @@
 ---
 status: project
 desk_test: open
-sources: [activity/deetsmusic-protocol/index.ts, activity/deetsmusic-ui/layout.ts, activity/deetsmusic-ui/surface.ts, activity/deetsmusic-ui/ui.css, activity/deetsmusic-ui/album-color.ts, activity/deetsmusic-ui/hint.ts, activity/deetsmusic-ui/row-drag.ts, activity/deetsmusic-ui/toast.ts, activity/deetsmusic-ui/scenery.ts, activity/relay/src/index.ts, activity/relay/src/room.ts, activity/relay/src/wire.ts, activity/discord-shell/main.ts, crates/relay-client/src/lib.rs, crates/logic/src/relay.rs, activity/scripts/look-sync.mjs, activity/mock/transport.ts]
+sources: [activity/deetsmusic-protocol/index.ts, activity/deetsmusic-ui/layout.ts, activity/deetsmusic-ui/surface.ts, activity/deetsmusic-ui/ui.css, activity/deetsmusic-ui/album-color.ts, activity/deetsmusic-ui/hint.ts, activity/deetsmusic-ui/row-drag.ts, activity/deetsmusic-ui/toast.ts, activity/deetsmusic-ui/scenery.ts, activity/relay/src/index.ts, activity/relay/src/room.ts, activity/relay/src/wire.ts, activity/discord-shell/main.ts, activity/discord-shell/relay-transport.ts, crates/logic/src/deetsmusic_remote.rs, crates/relay-client/src/lib.rs, crates/logic/src/relay.rs, activity/scripts/look-sync.mjs, activity/mock/transport.ts]
 updated: 2026-11-11
 ---
 # The Activity: DeetsMusic's look inside the call
 
-> **Status:** project · 2026-11-11. Build steps 1 and 2 of §10 are built (§13): the bridge
-> package's new name, and the UI on fake data. Most of step 2b is built (§13.7). Nothing talks
-> to Discord or to the bot yet.
+> **Status:** project · 2026-11-11. Build steps 1 to 5 of §10 are built (§13): the bridge
+> package's new name, the UI on fake data (2, 2b), the relay and the sign-in (3, deployed),
+> and the real cards in the call (4 and 5, §13.10: live since 2026-11-11 13:53).
+> His desk tests: §12.2 (part run), §12.3 (open).
 > §1 and §2 are the owner's calls. §3 to §10 are Claude's design inside those calls. §11 holds
 > what is not confirmed. The first notes are in [ideas/activity.md](../ideas/activity.md).
 
@@ -112,7 +113,7 @@ and a time stamp.
 | remove, drag to reorder | `POST /queue/edit` | `roomGuests.changeQueue` |
 | search | `POST /search`, cached 2 minutes per term as `/dm add` | any guest in the call |
 | seek | not on the bot's bridge list yet (BRIDGE.md §2) | `roomGuests.seek`; add the route to BRIDGE.md first |
-| play now (replace) | `POST /play` | host only |
+| play now | `POST /play` with `keepQueue` | `roomGuests.skip` and `roomGuests.add` (his call 3B, PERMISSIONS.md §6) |
 | the bot's volume | the host's gain | host only |
 
 A control the guest may not use is drawn as DeetsMusic's Rooms draws it for a guest, not
@@ -318,6 +319,64 @@ Worker › Logs).
 If sign-in fails with "Not from the Activity", `W` shows the origin the relay saw
 (`[relay] refused … origin …`): Discord's proxy sent an origin the relay does not expect.
 
+**Run so far** (2026-11-11): steps 1, 2, 3 and 5 passed ("showed as expected", after the fix
+in §13.9). Steps 4 and 6 to 11 are open.
+
+### 12.3 The cards in the call (build steps 4 and 5): open
+`LD` is the bot's log (`logs\lildeets-<date>.log` when started from the shortcut).
+
+**Setup, once.**
+1. **His, in the Developer Portal** (Activities › URL Mappings). Apple's covers come from five
+   hosts, and the frame loads nothing from another site. Add five rows; keep the `/` row:
+
+   | Prefix | Target |
+   |---|---|
+   | `/mz/is1` | `is1-ssl.mzstatic.com` |
+   | `/mz/is2` | `is2-ssl.mzstatic.com` |
+   | `/mz/is3` | `is3-ssl.mzstatic.com` |
+   | `/mz/is4` | `is4-ssl.mzstatic.com` |
+   | `/mz/is5` | `is5-ssl.mzstatic.com` |
+
+   The root mapping (`/`) is its own section in the Portal, so the order does not matter.
+   **Done** 2026-11-11 (Claude in Chrome, at his word).
+2. **Done** 2026-11-11, at his word: deploy the relay (`cf deploy`, WIRE 2) and make the release build.
+   The IPC version is 3, so the old host refuses the new logic; the new pair goes live at the
+   host's restart (the next song boundary, or at once when nothing plays). `LD`: `remote:
+   armed; it reads DeetsMusic while someone has the Activity open`.
+
+**The test.**
+1. `/vc play` DeetsMusic in a voice channel. Open the Activity. The cards show the song, Up
+   Next and History in DeetsMusic's current theme and skin, with the covers. `LD`: `remote:
+   someone has the Activity open; reading DeetsMusic every 1 s`.
+2. In DeetsMusic, press pause. The Activity shows it paused within about 1 s. Skip in
+   DeetsMusic: the Activity follows within about 1 s.
+3. In the Activity: ⏯, ⏮, ⏭. Drag the scrub bar: DeetsMusic jumps there.
+4. Search for a song and tap it: it goes to the end of Up Next, with a toast. As the host, the
+   toast's **Play Now** plays it.
+5. In the Queue: right-click a row › Play Next, then › Remove. Drag a row to a new place.
+   DeetsMusic's Up Next follows each one.
+6. Change the theme and the skin in DeetsMusic. The Activity follows within 60 s.
+7. Your Discord profile shows the song while the Activity is open. Pause: it shows "Paused".
+8. Make the Activity small (picture-in-picture: go to a text channel). The tile card shows
+   the cover, the title, the artist and the album.
+9. **A guest** (a friend in the call, no team seat): they see the same song. With "Guests may
+   skip" and "Guests may add songs" on, their toast has **Play Now**: the song plays, and Up
+   Next keeps every other song. In DeetsMusic › Settings › Rooms, turn "Guests may skip" off.
+   Within about 10 s their ⏭ greys, its hint gives the reason, and Play Now is gone. Turn it on
+   again.
+10. **`/dm play` for a guest** follows both rules (PERMISSIONS.md §6) and keeps Up Next.
+    Your own `/dm play` still replaces Up Next, as before.
+10a. **Two at once:** you and the guest each open the Queue. You remove row 1 in the Activity;
+    straight after, the guest removes the same row from their stale list. Their remove takes
+    out the song they saw, or says "Up Next changed a moment ago…". Never another song.
+11. Run `/dm np`. The card has **Open in call**. Press it while in the voice channel: the
+    Activity opens. Press it while in no voice channel: write down what Discord does.
+12. Close the Activity. `LD`: `remote: nobody has the Activity open; reading stopped`.
+13. Close DeetsMusic with the Activity open: the title reads "The host is not playing here".
+    Open DeetsMusic again and play: the Activity follows.
+14. Restart the host during a call (LIVE-RELOAD.md §7). The page shows "The host is not
+    playing here", then the song again when the bot is back.
+
 ## 13. As built (2026-11-10)
 
 > **Part:** built · 2026-11-10. Steps 1 and 2 of §10. Checked by Claude in Chrome on this PC
@@ -510,7 +569,8 @@ Cloudflare's own tool set.
 | The §8 fix | `crates/rest/src/lib.rs` `owners`: accepted team members only |
 
 **How a sign-in travels.**
-1. The page asks the relay for the app's id (`GET /api/config`) and starts Discord's SDK.
+1. The page reads the app's id from its own address (`<app id>.discordsays.com`) and starts
+   Discord's SDK. (Before §13.9 it asked the relay, `GET /api/config`.)
 2. Discord gives the page a code (`authorize`, scopes `identify`, `rpc.activities.write`).
 3. The page sends the code to the relay (`POST /api/token`). The relay trades it at Discord
    with the client secret, asks Discord who it is, and returns Discord's token, the person,
@@ -562,3 +622,112 @@ a local fake relay), 1 new and 1 changed in `lildeets-rest`. NOT checked: anythi
 real Discord or the real Cloudflare; the page inside Discord's frame (the `/.proxy` path, the
 origin header through Discord's proxy, the consent prompt); the Launch command's carry-over
 against Discord; the bot's client against the deployed Worker over TLS.
+
+### 13.9 The first launch: "Not from the Activity" (2026-11-11)
+**Seen.** His first launch in Discord showed **Sign-in did not work** / **Not from the
+Activity.** The bot was running and in no call (its log: `relay: armed`, `commands: synced
+launch=true`).
+
+**Cause.** The page's first call was `GET /.proxy/api/config`. It is same-origin (the page and
+the proxy share `<app id>.discordsays.com`), and a browser sends no `Origin` header on a
+same-origin GET. The relay refuses an `/api/*` call with no origin (§6, "The origin"), so the
+sign-in stopped before it began. The bot had no part in it.
+
+**Fix (one option left, so no fork).** The page reads the app id from its own address, which
+Discord sets, and `/api/config` is removed. The origin check is unchanged and stays strict: each
+`/api/*` call left is a POST or a WebSocket, and a browser always sends `Origin` on those. The
+other option, accepting a GET with no origin, weakens the check for no gain.
+
+**Checked (Claude).** `npm test` in `activity/relay`: 13 steps pass (the origin test now uses
+`POST /api/token`; a step checks the old route answers 404). `npm run check` and
+`cf deploy --dry-run` pass. **Deployed** (2026-11-11, `cf deploy`, his yes). Checked live: the
+page's script reads the address and has no `/api/config`; `/api/config` answers 404; a made-up
+code on `POST /api/token` with the Activity's origin reaches Discord and is refused (401), so
+the origin check and the secrets work. NOT checked: inside Discord.
+**Passed** in Discord (his word, 2026-11-11: "Yup, showed as expected").
+
+### 13.10 Steps 4 and 5 as built: the real cards in the call (2026-11-11)
+> **Part:** built and live · 2026-11-11. His word: "Let's build out the UI", then "1A, 2A,
+> 3B", then "go ahead and deploy + release". The five URL mappings were added in the Portal
+> by Claude in Chrome at his word; the relay was deployed; the release build went live at
+> 13:53 (the host restarted with no call). Desk test §12.3.
+
+**His calls.**
+| # | Question | His call |
+|---|---|---|
+| 1 | How fast the Activity follows DeetsMusic | **A**: the bridge is read every 1 s while someone has the Activity open, and not at all when nobody does. Messages leave the PC on a change only. |
+| 2 | A button that opens the Activity on the `/dm np` card | **A**: "Open in call", the fifth button. |
+| 3 | May a guest use Play Now? | **B**: yes, under "Guests may skip". It also opens `/dm play` to guests under that rule (PERMISSIONS.md §6), so neither surface has an action the other lacks. The review added "Guests may add songs" and keeping Up Next, so a guest's Play Now never passes a rule that is off. |
+
+**Built.**
+| Part | Files |
+|---|---|
+| The relay, WIRE 2: `data` both ways, `state` (kept in the room's storage for a newcomer), `to`, `joined`, `left`, 30 requests per 10 s per page | `activity/relay/src/wire.ts`, `src/room.ts`, `test/relay.test.mjs` (17 steps) |
+| The bot's connection: the new frames, and a `Reset` on each connect and drop | `crates/relay-client` |
+| Host ⇄ logic, `PROTOCOL` 3: `RelayViewers` (the host keeps the list and gives it to each new logic), `RelayData`, `RelayState`, `RelayTo` | `crates/ipc`, `crates/host/src/main.rs` |
+| State out, actions in, search | `crates/logic/src/deetsmusic_remote.rs` |
+| One check for `/dm`, the cards and the Activity; `seek`, `search`, `play` under its rule | `crates/logic/src/commands.rs` (`check_for`, `rule`) |
+| The theme and the skin from the bridge (cached 60 s with the accent) | `crates/bridge` (`appearance`) |
+| "Open in call" (`dm:np:open`, Discord's response type 12) | `crates/cards/src/cards.rs` (`np_card`'s `open`), `crates/logic/src/ix.rs` (`launch_activity`) |
+| The page: the cards on the relay's transport, the sign-in card over them, the layout modes (picture-in-picture and grid show the tile card), Rich Presence, the safe areas | `activity/discord-shell/main.ts`, `relay-transport.ts`, `activity/relay/index.html` |
+| The message shapes over the relay | `activity/deetsmusic-protocol` (`Request`, `Reply`) |
+
+**Decided inside his calls (for his review).**
+1. **Steps 4 and 5 were built together:** step 4 alone shows nothing in Discord.
+2. **An action from the Activity posts nothing in the text channel** (his call A at the
+   hand-off, 2026-11-11: "A, no line"). A `/dm` action posts a line ("⏭ Skipped — name"); the
+   Activity shows the change itself. A refusal is a toast for that person only (§5).
+3. **What counts as a change:** the song, play or pause, Up Next, History, the theme, the skin,
+   a rule, the bot coming or going, DeetsMusic opening or closing, or a position more than 2 s
+   from where the clock puts it (a seek). A song playing on is not a change.
+4. **Up Next shows at most 200 songs; History the last 50, newest first.** (The bridge lists
+   History oldest first.) Search shows 25 songs.
+5. **The progress bar runs on the viewer's own clock**, stamped when a state arrives, so a
+   phone with a wrong clock still shows the right time. A person who comes in gets a fresh
+   state from the bot within 1 s.
+6. **Covers come through Discord's proxy** (`/.proxy/mz/is1/…`), rewritten in the page; the
+   profile's Rich Presence uses Apple's own address (Discord fetches that itself).
+7. **Rich Presence** is "Listening to" the title, with the artist (or "Paused · artist"), the
+   cover and the album, and the song's time while it plays. Set on a change of song or of play
+   and pause only.
+8. **Who is the host** is sent once to each person, when the bot learns they are in. The relay
+   never knows it.
+9. **"Open in call"** shows only when `.env` has the relay. Anyone may press it: what they may do
+   inside is checked there, per action.
+10. **A search refusal** shows in the Search card. A `/dm` line's channel mention reads "Lil
+    Deets' voice channel" in the Activity (a mention shows as digits outside a message).
+
+**The Sonnet pass** (2026-11-11, CLAUDE.md › Agents; Claude checked each finding against the
+code and DeetsMusic's). Fixed:
+1. **A remove or a move hit a row by number only.** Two people at once, or a song ending,
+   could remove the wrong song. The page now sends the song it saw in the row. The bot refuses
+   a move when that row holds another song ("Up Next changed a moment ago…"); a remove takes
+   the nearest row with that song, or is refused.
+2. **DeetsMusic's plain `/play` replaces all of Up Next.** A guest's Play Now (and `/dm play`)
+   would have wiped the queue without "Guests may change Up Next". Play Now now keeps Up Next
+   (`keepQueue`), and needs "Guests may add songs" too (PERMISSIONS.md §6).
+3. **The page never offered a guest Play Now** (its rule was "host only"). It now follows
+   both rules, in the toast and in a search row's menu.
+4. **The toast's Play Now** took out its copy by a row number the page saw. It is now one
+   action: the bot takes the last copy out of its own Up Next, then plays.
+5. **With DeetsMusic closed**, the old Up Next and History showed. They are cleared.
+6. **A search while the bot is away** said "/dm works in a server." It says "The host is not
+   playing here".
+
+Not changed, and why:
+- A rule turned off in DeetsMusic still lets a press through for up to 10 s: the rules cache
+  is the `/dm` one (BRIDGE.md §1); the buttons grey on the same clock.
+- An action that waited 15 s says "The host did not answer"; it may have run. The relay drops a
+  page's requests above 30 in 10 s; a person pressing buttons stays far below that.
+- The progress bar runs a network delay (a few hundred ms) behind.
+- A seek sent as the song changes lands at the same fraction of the new song.
+
+**Checked (Claude, 2026-11-11).** `cargo clippy --workspace --all-targets` (no warnings) and
+`cargo test --workspace` pass: 4 new tests in `deetsmusic_remote`, new frames in
+`lildeets-relay-client`, the "Open in call" card. `npm run check` (types, the look) passes.
+`activity/relay`: `npm test` against `cf dev`, 17 steps (data reaches the bot only while it is
+in the call; a reply reaches that page only; the state reaches each page in the call and a
+newcomer gets the last one; a flood is cut off). `cf deploy --dry-run` builds the page with
+DeetsMusic's fonts and look. NOT checked: anything inside Discord or against the real
+DeetsMusic (the 1 s reads, the seek fraction, the covers through the URL mappings, the layout
+mode events, Rich Presence, response type 12).

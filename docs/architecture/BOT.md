@@ -104,7 +104,8 @@ Discord keeps **one global command list per application**; a sync replaces it. S
 ## 8. Logging
 `tracing` to the console. The default filter is `info` plus debug for `lildeets_host` and
 `lildeets_logic`, `warn` for songbird; `RUST_LOG` overrides it. Anything that acts on its own
-logs when it arms, fires and stops (CLAUDE.md › Working style).
+logs when it arms, fires and stops (CLAUDE.md › Working style). Started from the "Lil Deets"
+shortcut, the same lines also go to `logs\lildeets-<date>.log` (ops/SETUP.md §10.1).
 
 ## 9. The Python bot (archived 2026-11-10)
 `docs/archive/bot/` (discord.py; `requirements-voice.txt` beside it). It is the

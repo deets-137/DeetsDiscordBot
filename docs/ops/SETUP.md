@@ -105,3 +105,19 @@ deploy, its secrets and the Discord portal steps are ACTIVITY.md §12.2.
 `target\release\lildeets.exe`. The log shows `gateway: ready`, `logic: ready` and `commands:
 synced` (or `unchanged since the last sync`). New commands may need Ctrl+R in the Discord
 client. Ctrl+C stops it.
+
+### 10.1 The shortcut (2026-11-11)
+His call: a shortcut only, for now; no start at sign-in; the tray app (features/TRAY.md) later.
+Velopack was ruled out: an installed copy does not watch `target\release` (LIVE-RELOAD.md), and
+its update restarts the app and drops the call.
+- **"Lil Deets"** on the Desktop and in the Start menu runs `scripts\start-bot.ps1` in a
+  console window titled "Lil Deets". The script starts `target\release\lildeets.exe`, so a
+  release build still goes live by itself.
+- **The log file.** Every console line is also written to `logs\lildeets-<date>.log`
+  (gitignored, UTF-8, plain text: the script sets `NO_COLOR`). A Claude session reads the log
+  there. Each start adds a `==== start … ====` line. Logs older than 30 days are deleted at a
+  start. The last lines after Ctrl+C can be missing from the file (the copy stops with the bot).
+- A second start fails at once: the launcher cannot copy the host while one runs.
+- The shortcut is not in the repo. To make it again on a new machine: a shortcut to
+  `powershell.exe -NoProfile -ExecutionPolicy Bypass -File "<repo>\scripts\start-bot.ps1"`,
+  starting in `<repo>`, with the icon of `target\release\lildeets.exe`.

@@ -39,11 +39,29 @@ fn np_playing_paused_nothing() {
     let q = queue();
     let np = now_playing();
     let up = q.upcoming.first();
-    support::assert_card(json(&cards::np_card(&np, up, None, ACCENT, now())), "cards/np_playing.json");
+    support::assert_card(json(&cards::np_card(&np, up, None, ACCENT, now(), false)), "cards/np_playing.json");
     let paused = NowPlaying { playing: false, ..np };
-    support::assert_card(json(&cards::np_card(&paused, up, None, ACCENT, now())), "cards/np_paused.json");
+    support::assert_card(json(&cards::np_card(&paused, up, None, ACCENT, now(), false)), "cards/np_paused.json");
     let nothing = NowPlaying { active: false, ..NowPlaying::default() };
-    support::assert_card(json(&cards::np_card(&nothing, None, None, ACCENT, now())), "cards/np_nothing.json");
+    support::assert_card(json(&cards::np_card(&nothing, None, None, ACCENT, now(), false)), "cards/np_nothing.json");
+}
+
+/// The "Open in call" button (his call 2A, 2026-11-11): the fifth button of the row, and the
+/// rest of the card as the Python one. Not in the parity kit: the Python card has no Activity.
+#[test]
+fn np_with_the_open_button() {
+    let q = queue();
+    let np = now_playing();
+    let plain = json(&cards::np_card(&np, q.upcoming.first(), None, ACCENT, now(), false));
+    let open = json(&cards::np_card(&np, q.upcoming.first(), None, ACCENT, now(), true));
+    let row = |v: &Value| v[0]["components"][1]["components"].as_array().unwrap().clone();
+    let (plain_row, open_row) = (row(&plain), row(&open));
+    assert_eq!(open_row.len(), plain_row.len() + 1);
+    assert_eq!(open_row[..plain_row.len()], plain_row[..]);
+    assert_eq!(open_row.last().unwrap()["custom_id"], "dm:np:open");
+    assert_eq!(open_row.last().unwrap()["label"], "Open in call");
+    assert_eq!(open[0]["components"][0], plain[0]["components"][0]);
+    assert!(count(&cards::np_card(&np, q.upcoming.first(), None, ACCENT, now(), true)) <= MAX_COMPONENTS);
 }
 
 #[test]

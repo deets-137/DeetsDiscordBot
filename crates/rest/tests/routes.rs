@@ -76,7 +76,7 @@ fn channel_routes() {
 
 #[test]
 fn a_card_has_the_v2_flag_and_no_content() {
-    let card = lildeets_cards::cards::np_card(&Default::default(), None, None, 0xDFECFC, 0.0);
+    let card = lildeets_cards::cards::np_card(&Default::default(), None, None, 0xDFECFC, 0.0, false);
     let v = serde_json::to_value(MessageBody::card(card, false)).unwrap();
     assert_eq!(v["flags"], json!(COMPONENTS_V2));
     assert!(v.get("content").is_none());

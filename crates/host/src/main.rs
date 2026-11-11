@@ -378,6 +378,9 @@ struct Host {
     relay: Option<Relay>,
     /// The voice channels the relay was last told the bot is in.
     relay_channels: Vec<u64>,
+    /// Everyone with the Activity open, as the relay named them. Kept here, not in the logic:
+    /// a new logic gets the list at once (LIVE-RELOAD.md §5).
+    relay_viewers: Vec<lildeets_ipc::RelayViewer>,
 }
 
 impl Host {
@@ -892,6 +895,16 @@ impl Host {
                     relay.checked(rid, answer);
                 }
             }
+            ToHost::RelayState { data } => {
+                if let Some(relay) = &self.relay {
+                    relay.state(&data);
+                }
+            }
+            ToHost::RelayTo { rid, data } => {
+                if let Some(relay) = &self.relay {
+                    relay.to(&rid, &data);
+                }
+            }
         }
     }
 
@@ -1037,6 +1050,8 @@ impl Host {
             let guilds = self.guilds.clone();
             self.send_logic(ToLogic::Ready { app_id, bot_user_id, guilds }).await;
             self.push_snapshot(None).await;
+            let viewers = self.relay_viewers.clone();
+            self.send_logic(ToLogic::RelayViewers { viewers }).await;
         }
     }
 
@@ -1109,7 +1124,35 @@ impl Host {
                     relay.checked(rid, Checked::No { reason: "Lil Deets is starting. Close the Activity and open it again.".into() });
                 }
             }
+            FromRelay::Joined { rid, user, name, channel } => {
+                self.relay_viewers.retain(|v| v.rid != rid);
+                self.relay_viewers.push(lildeets_ipc::RelayViewer { rid, user, name, channel });
+                self.tell_viewers().await;
+            }
+            FromRelay::Left { rid } => {
+                let before = self.relay_viewers.len();
+                self.relay_viewers.retain(|v| v.rid != rid);
+                if self.relay_viewers.len() != before {
+                    self.tell_viewers().await;
+                }
+            }
+            FromRelay::Reset => {
+                if !self.relay_viewers.is_empty() {
+                    self.relay_viewers.clear();
+                    self.tell_viewers().await;
+                }
+            }
+            // With no logic (a swap in progress) the request is dropped; the page times out
+            // and says so. A guest presses again a moment later.
+            FromRelay::Data { rid, data } => self.send_logic(ToLogic::RelayData { rid, data }).await,
         }
+    }
+
+    /// The logic hears who has the Activity open, on every change.
+    async fn tell_viewers(&mut self) {
+        info!(viewers = self.relay_viewers.len(), "relay: the Activity's viewers changed");
+        let viewers = self.relay_viewers.clone();
+        self.send_logic(ToLogic::RelayViewers { viewers }).await;
     }
 
     /// Leave-when-alone, as a safety net: `VoiceStateUpdate` catches the last person
@@ -1286,6 +1329,7 @@ async fn run() -> Result<i32, String> {
         last_replace: Instant::now() - REPLACE_EVERY,
         relay: None,
         relay_channels: Vec::new(),
+        relay_viewers: Vec::new(),
     };
     // The Activity's relay: the client connects only while the bot is in a call (`tell_relay`).
     match (setting(ENV_RELAY_URL), setting(ENV_RELAY_SECRET)) {

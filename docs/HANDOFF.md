@@ -41,7 +41,7 @@ updated: 2026-11-11
    advisories then (rust-port-plan.md P8).
 2. **The installed DeetsSQL** opens the new `storage.db` path only after a rebuild
    (DeetsSQL `61bf0fc`).
-3. **The Activity: steps 1 and 2 of 6 are built** (features/ACTIVITY.md §13, 2026-11-10):
+3. **The Activity: steps 1 to 5 of 6 are built** (features/ACTIVITY.md §13, 2026-11-10/11):
    the bridge package is `deetsmusic-bridge`, and `activity/` holds the UI on fake data
    (`npm run mock` there). **The work is on branch `disc-activities`**, not merged.
    **Most of step 2b is built and his desk test of the mock passed** (2026-11-11, §13.7, §12.1): the landscape layout,
@@ -57,16 +57,20 @@ updated: 2026-11-11
    secret was reset that day; a copy is in `Documents/Deets' Secrets/`. Checked live: the
    page loads, the origin check, a made-up sign-in code is refused by the real Discord, the
    host socket takes the secret in `.env`. **The release build is made** (2026-11-11 12:00;
-   the bot was not running, so it goes live at the bot's next start). **Next: the Developer
-   Portal steps (§12.2 step 5, his).** On 2026-11-11 the URL mapping's target read
-   `127.0.0.1`: it must be the Worker's address (`127.0.0.1` belongs in OAuth2 › Redirects, as
-   `https://127.0.0.1`). Then his desk test (§12.2).
-   Then step 4 (`deetsmusic_remote`). Set aside by his word ("Step 3, the relay"): the rest
-   of the scenery (§13.7: the Press record, the wallpaper, Ocean, Happy).
-   One question is open: may a guest use Play Now (§13.5)? §11 lists what is not confirmed (a
-   Read-only seat launching in a large server is the first; §12.2 steps 10 and 11 test it).
-   No release build was made after the rename. `activity/` can be worked on from a Mac
-   (ops/SETUP.md §9.1); the bot cannot.
+   the bot was not running, so it goes live at the bot's next start). **The Developer
+   Portal steps are done** (his word, 2026-11-11: "steps 1 to 3 complete": the mapping's
+   target, the redirect, Enable Activities). The first launch failed ("Not from the
+   Activity"); fixed and deployed (§13.9). **§12.2 steps 1, 2, 3, 5 passed**; 4 and 6 to 11
+   are open.
+   **Steps 4 and 5 are built and live** (2026-11-11 13:53, §13.10; his calls 1A, 2A, 3B, and
+   "A, no line"): the real cards in the call, `deetsmusic_remote`, "Open in call" on the
+   `/dm np` card, Play Now and `/dm play` for guests under "Guests may skip" and "Guests may add
+   songs" (keeping Up Next). IPC `PROTOCOL` 3, relay WIRE 2, the five cover URL mappings in the
+   Portal. **Next: his desk test §12.3** (15 steps). Set aside by his word ("Step 3,
+   the relay"): the rest of the scenery (§13.7: the Press record, the wallpaper, Ocean, Happy).
+   §11 lists what is not confirmed (a Read-only seat launching in a large server is the first;
+   §12.2 steps 10 and 11 test it). `activity/` can be worked on from a Mac (ops/SETUP.md
+   §9.1); the bot cannot.
 4. Later, by his word: in-call extras, image cards, the tray app (features/TRAY.md, now over
    `lildeets.exe`).
 

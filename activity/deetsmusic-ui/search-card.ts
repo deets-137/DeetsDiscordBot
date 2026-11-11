@@ -85,8 +85,9 @@ export const searchCard: CardDef = {
         rootEl.innerHTML = found.length
           ? `<section class="search__sec" data-key="sec:songs"><h3 class="search__sec-title">Songs</h3><div class="search__scroller search__scroller--songs">${found.map(songHTML).join("")}</div></section>`
           : `<p class="search__prompt">No results for “${esc(term)}”.</p>`;
-      } catch {
-        if (mine === serial) prompt("The host's search did not answer. Try again.");
+      } catch (e) {
+        // A refusal carries the host's line ("Join #General to control the music").
+        if (mine === serial) prompt(e instanceof Error && e.message ? e.message : "The host's search did not answer. Try again.");
       } finally {
         if (mine === serial) busy(false);
       }
@@ -94,12 +95,11 @@ export const searchCard: CardDef = {
 
     const titleOf = (id: string): string => results.find((t) => t.catalogId === id)?.title ?? "The song";
 
-    /** Play Now from the "is in the queue" toast: the song plays, and the copy that the tap
-     *  put at the end of the queue goes, so the song is not there twice. */
+    /** Play Now from the "is in the queue" toast: the song plays, and the host takes out the
+     *  copy that the tap put in Up Next, so the song is not there twice. One action: the host
+     *  finds the copy in its own Up Next, never by a row number this page saw. */
     async function playNowFromToast(catalogId: string): Promise<void> {
-      if (!(await store.act({ kind: "playNow", catalogId }))) return;
-      const index = store.state()?.upNext.map((t) => t.catalogId).lastIndexOf(catalogId) ?? -1;
-      if (index >= 0 && store.can("queueRemove")) void store.act({ kind: "queueRemove", index });
+      await store.act({ kind: "playNow", catalogId, dropCopy: true });
     }
 
     async function add(catalogId: string, mode: "next" | "later"): Promise<void> {
@@ -145,7 +145,8 @@ export const searchCard: CardDef = {
         openMenu(x, y, [
           { label: "Play Next", disabled: off, run: () => void add(catalogId, "next") },
           { label: "Add to Queue", disabled: off, run: () => void add(catalogId, "later") },
-          ...(store.state()?.you.host ? [{ label: "Play Now", run: () => void store.act({ kind: "playNow", catalogId }) }] : []),
+          // A guest may when "Guests may skip" and "Guests may add songs" are both on (his call 3B).
+          ...(store.can("playNow") ? [{ label: "Play Now", run: () => void store.act({ kind: "playNow", catalogId }) }] : []),
         ]);
       }),
       () => window.clearTimeout(timer),

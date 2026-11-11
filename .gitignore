@@ -24,3 +24,5 @@ crates/*/target/
 # the song-boundary restart hand-off (crates/host)
 .lildeets-resume.json
 .lildeets-hold
+# the bot's log files (scripts/start-bot.ps1)
+logs/
