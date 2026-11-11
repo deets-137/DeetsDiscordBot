@@ -43,7 +43,8 @@ updated: 2026-11-11
    (DeetsSQL `61bf0fc`).
 3. **The Activity: steps 1 to 5 of 6 are built** (features/ACTIVITY.md §13, 2026-11-10/11):
    the bridge package is `deetsmusic-bridge`, and `activity/` holds the UI on fake data
-   (`npm run mock` there). **The work is on branch `disc-activities`**, not merged.
+   (`npm run mock` there). **Merged into main** (`f360a04`, 2026-11-11, his word) from
+   branch `disc-activities`. This checkout is on main.
    **Most of step 2b is built and his desk test of the mock passed** (2026-11-11, §13.7, §12.1): the landscape layout,
    the Play Now button on the toast, the tile card, album colour, hints, drag to reorder
    (a finger holds, then moves), Glass's aurora and Cyber's storm.
