@@ -47,13 +47,20 @@ updated: 2026-11-11
    **Most of step 2b is built and his desk test of the mock passed** (2026-11-11, §13.7, §12.1): the landscape layout,
    the Play Now button on the toast, the tile card, album colour, hints, drag to reorder
    (a finger holds, then moves), Glass's aurora and Cyber's storm.
-   **Step 3 is built, not committed, not deployed, not live** (2026-11-11, §13.8): the relay
-   Worker (`activity/relay`), the sign-in page (`activity/discord-shell`), the bot's
-   connection (`crates/relay-client`), the check in the logic, the command sync that keeps
-   the Launch command. It passes its local tests against a fake Discord; nothing was tried
-   against the real Discord or Cloudflare. **Next: his setup and desk test (§12.2):** the
-   Worker's secrets and deploy, two `.env` keys, a release build (the IPC version is 2: the
-   new logic goes live with the new host, at the host's restart), the Developer Portal steps.
+   **Step 3 is built and committed (`294e0d1`); the relay is deployed; the bot's side is not
+   live** (2026-11-11, §13.8): the relay Worker (`activity/relay`), the sign-in page
+   (`activity/discord-shell`), the bot's connection (`crates/relay-client`), the check in the
+   logic, the command sync that keeps the Launch command. **Setup steps 1 to 3 of §12.2 are
+   done** (2026-11-11): the Worker `lildeets-relay` is on Cloudflare with its three secrets,
+   and `.env` has `LILDEETS_RELAY_URL` and `LILDEETS_RELAY_SECRET`. The Worker's address is in
+   `.env` only (it names the Cloudflare account: keep it out of this public repo). The client
+   secret was reset that day; a copy is in `Documents/Deets' Secrets/`. Checked live: the
+   page loads, the origin check, a made-up sign-in code is refused by the real Discord, the
+   host socket takes the secret in `.env`. **The release build is made** (2026-11-11 12:00;
+   the bot was not running, so it goes live at the bot's next start). **Next: the Developer
+   Portal steps (§12.2 step 5, his).** On 2026-11-11 the URL mapping's target read
+   `127.0.0.1`: it must be the Worker's address (`127.0.0.1` belongs in OAuth2 › Redirects, as
+   `https://127.0.0.1`). Then his desk test (§12.2).
    Then step 4 (`deetsmusic_remote`). Set aside by his word ("Step 3, the relay"): the rest
    of the scenery (§13.7: the Press record, the wallpaper, Ocean, Happy).
    One question is open: may a guest use Play Now (§13.5)? §11 lists what is not confirmed (a

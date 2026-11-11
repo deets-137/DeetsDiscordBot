@@ -36,6 +36,16 @@ history is in `git log` and docs/archive/.
   workspace tests (debug). No release build. Nothing deployed. No secret was entered.
 - **Left open:** his setup and desk test (§12.2); steps 4 to 6; the rest of the scenery; the
   Play Now question (§13.5). Not committed.
+- **The same sitting, on his words** ("Those crates are ok by me. Commit changes"; "can you
+  pull the secrets … without reading them and add them in"; "Yes, deploy"): committed
+  `294e0d1`. A script placed the secrets and printed names and lengths only: the application
+  id (from the bot token's first part) and a new host secret. The client secret was on no
+  disk; he reset it in the portal and pasted it into `.env.deploy`, and a script copied it to
+  `Documents/Deets' Secrets/`. Deployed `lildeets-relay` with `cf deploy --secrets-file`.
+  Checked live: the page (200), the origin check (403 twice, 200 for the Activity's origin),
+  a made-up code refused through the real Discord (401), the host socket (a wrong secret
+  refused, `.env`'s accepted). `LILDEETS_RELAY_URL` written to `.env`. Still open: the
+  release build, the Developer Portal steps, his desk test.
 
 ## 2026-11-11 — the Activity, step 2b: his three calls and most of the gaps
 
