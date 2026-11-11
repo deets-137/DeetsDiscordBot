@@ -22,7 +22,7 @@ what the parts are for and which decisions shaped them.
 Discord ──── Lil Deets (lildeets.exe → host + logic, Rust) ─────────────────────────┐
               ├─ /links ── logic (links.rs, a byte-for-byte port of journal.linkscan)    │
               ├─ /vc ───── host ── TapStream (crates/tap) ── per-process loopback ── DeetsMusic's WebView2
-              └─ /dm ───── logic ── lildeets-bridge ── http://127.0.0.1:47825 (DeetsMusic's bridge)
+              └─ /dm ───── logic ── deetsmusic-bridge ── http://127.0.0.1:47825 (DeetsMusic's bridge)
 Task Scheduler 6 PM ── DeetsSolutions/scripts/nightly-sotd.ps1
               ├─ python -m journal.scan … --web ──── storage.db ── songs.json
               └─ python -m journal.letterboxd_web rss --web ── storage.db ── movies.json

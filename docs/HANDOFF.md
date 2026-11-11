@@ -15,7 +15,7 @@ updated: 2026-11-10
   (ops/SETUP.md). Three processes: launcher, host, logic (architecture/BOT.md).
 - **The Python bot is archived** in `docs/archive/bot/` (BOT.md §9). It is not a fallback:
   it was not run after the move. **Never run two bots on this token.**
-- **The work is on branch `rust-rewrite`** (this checkout; pushed). Not merged into main.
+- **`rust-rewrite` is merged into main** (`42f76b8`). This checkout is on main.
 - **A rebuild goes live by itself:** a new `lildeets-logic.exe` swaps in with no gap; a new
   `lildeets-host.exe` restarts the host at the next song boundary (LIVE-RELOAD.md). So a
   `cargo build --release` while he listens is a live change. `.lildeets-hold` holds both.
@@ -37,13 +37,22 @@ updated: 2026-11-10
    - **The network drops:** ops/DEBUGGING.md §6 (unplug the cable for 10 s, 60 s, 5 min).
    - **The host restart while a call hears DeetsMusic:** LIVE-RELOAD.md §7.
    - Not seen yet: a refused reply rescinded (no reply has failed since it was built).
-1. **Merge `rust-rewrite` into main** when he says (the owner merges; rust-port-plan rule 8).
-2. **twilight:** 0.18.0 is two weeks old on 2026-11-15; check for a newer 0.18.x and its
+1. **twilight:** 0.18.0 is two weeks old on 2026-11-15; check for a newer 0.18.x and its
    advisories then (rust-port-plan.md P8).
-3. **The installed DeetsSQL** opens the new `storage.db` path only after a rebuild
+2. **The installed DeetsSQL** opens the new `storage.db` path only after a rebuild
    (DeetsSQL `61bf0fc`).
-4. Later, by his word: in-call extras, the Activity, image cards, the tray app
-   (features/TRAY.md, now over `lildeets.exe`).
+3. **The Activity: steps 1 and 2 of 6 are built** (features/ACTIVITY.md §13, 2026-11-10):
+   the bridge package is `deetsmusic-bridge`, and `activity/` holds the UI on fake data
+   (`npm run mock` there). **The work is on branch `disc-activities`**, not merged.
+   Next, in order: his desk test of the mock (§12.1); step 2b (§13.6: the landscape
+   composition, the Play Now toast, the tile card, then the gaps: album colour, skin
+   scenery, drag to reorder, hints); step 3 (the relay). One question is open: may a guest
+   use Play Now (§13.5)? §11 lists what is not confirmed (a Read-only seat launching in a
+   large server is the first). No release build was made after the rename: the next one
+   restarts the host at a song boundary. `activity/` can be worked on from a Mac
+   (ops/SETUP.md §9.1); the bot cannot.
+4. Later, by his word: in-call extras, image cards, the tray app (features/TRAY.md, now over
+   `lildeets.exe`).
 
 ## Retired (2026-11-10)
 The harness Discord bot (`../Vibe Coding Era/harness/discord_bot.py`) shared this token. Its

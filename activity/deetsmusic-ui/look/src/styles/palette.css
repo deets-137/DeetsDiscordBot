@@ -1,0 +1,124 @@
+/* ============================================================
+   PALETTE — raw named colors (Tier 1)
+   ------------------------------------------------------------
+   Literal hexes only. Nothing in the UI references these
+   directly; themes map them onto semantic roles (see themes.css).
+   Add a color here, name it after the paint, then wire it in a theme.
+   ============================================================ */
+
+:root {
+  /* twilight-lilac family — the Lilac theme (enchanted twilight fairy) */
+  --paint-dewy-lilac:          #E0DCF0; /* dewy lilac canvas */
+  --paint-dusk-plum:           #39255F; /* deep dusk plum (title); readable on every opaque card (WCAG AA, 2026-10-14) */
+  --paint-violet-ink:          #463F5F; /* violet-slate ink (text) */
+  --paint-lavender-ink:        #575071; /* lavender-grey ink (subtext) */
+  --paint-fae-mint:            #2FB089; /* enchanted mint-green (go) */
+  --paint-lilac-white:         #F2EFFA; /* elevated lilac surface */
+  --paint-lilac-tint:          #E7E1F5; /* lilac hover tint */
+
+  /* fae accents — shared sparkle (magenta + gold) */
+  --paint-purple-cactus-flower:#A63A79; /* magenta-purple (stop) */
+  --paint-lemon-chrome:        #F6C700; /* vivid gold (pause) */
+
+  /* sepia family — vibe pulled from the harness "Sepia Dreams" theme */
+  --paint-parchment:           #F5EFE6; /* warm paper */
+  --paint-espresso:            #3E2C1C; /* dark roast brown */
+  --paint-cocoa-ink:           #594430; /* mid brown (text); readable on every opaque card (WCAG AA, 2026-10-14) */
+  --paint-tan-ink:             #685737; /* deep tan (subtext) */
+  --paint-olive-leaf:          #6B8E4E; /* muted green */
+  --paint-terracotta:          #A8432F; /* burnt red */
+  --paint-amber-glow:          #D4A017; /* warm amber */
+  --paint-parchment-light:     #FBF6EE; /* elevated parchment surface */
+  --paint-parchment-tint:      #EFE6D6; /* parchment hover tint */
+
+  /* moonlight family — dark slate-blue night theme */
+  --paint-deep-slate:          #1A2436; /* deep slate-blue canvas */
+  --paint-moon-bright:         #DFECFC; /* bright moonlit blue-white (title); readable on every opaque card (WCAG AA, 2026-10-14) */
+  --paint-moon-mid:            #BFCEE5; /* mid moonlit blue-gray (text) */
+  --paint-moon-dim:            #A4B6CE; /* dim moonlit blue-gray (subtext) */
+  --paint-moonlight-white:     #EEF2F7; /* brightest moonlight white */
+  --paint-moonlight-silver:    #C4CCD6; /* moonlight silver */
+  --paint-moonlight-gray:      #9AA3AF; /* moonlight gray */
+  --paint-slate-surface:       #232F40; /* elevated slate panel */
+  --paint-slate-surface-tint:  #2E3C50; /* slate hover tint */
+
+  /* Green family — chartreuse fairy-forest (light) */
+  --paint-dewy-chartreuse:     #E9F0C0; /* dewy chartreuse canvas */
+  --paint-forest:              #1E4D2B; /* deep forest green (the rule chip) */
+  --paint-deep-forest:         #0C3D1C; /* deeper forest green (title); readable on every opaque card (WCAG AA, 2026-10-14) */
+  --paint-moss-ink:            #3B4C32; /* moss ink (text) */
+  --paint-sage-ink:            #4E5C41; /* sage-grey ink (subtext) */
+  --paint-fern:                #4C9A46; /* fresh fern green (go) */
+  --paint-foxglove:            #B04A6E; /* berry-rose (stop) — Green's fae sparkle */
+  --paint-chartreuse-white:    #F4F8E3; /* elevated chartreuse surface */
+  --paint-chartreuse-tint:     #EAF1D0; /* chartreuse hover tint */
+  /* (Green's --pause reuses --paint-lemon-chrome from the fae accents) */
+
+  /* Black & Red family — cyber villain
+     (canvas/surfaces reuse Black & Yellow's pitch / onyx / onyx-tint) */
+  --paint-siren:               #FF4D45; /* bright siren red (title / go); lighter from #FF2B2B so a chosen fill reads (2026-10-14) */
+  --paint-blood:               #C01020; /* deep blood red (pause) */
+  --paint-ember:               #D8837A; /* muted ember (text-dim / stop) */
+  --paint-ash-white:           #EFE2DE; /* red-warmed off-white (body text) */
+
+  /* Black & Yellow family — Noir Gold */
+  --paint-pitch:               #0F0F0F; /* near-black canvas */
+  --paint-onyx:                #1A1A1A; /* elevated surface */
+  --paint-onyx-tint:           #242424; /* hover tint */
+  --paint-hazard:              #FFD400; /* hi-vis yellow (title / go) */
+  --paint-amber-wax:           #E0B100; /* deep amber (pause) */
+  --paint-straw:               #D8C97A; /* muted yellow (text-dim / stop) */
+  --paint-paper-warm:          #ECE6CF; /* warm off-white (body text) */
+
+  /* Apple Music brand mark — Apple ships the monochrome icon only as pure black
+     or pure white (Identity Guidelines); never tint it with a theme color. */
+  --paint-apple-music-black:   #000000;
+  --paint-apple-music-white:   #FFFFFF;
+
+  /* Metal (docs/features/metal.md §1b): each theme's metal and the floor under it, and the gold
+     Black & Yellow's titles take under Metal. Dark themes are steels, light themes aluminum,
+     Sepia a champagne bronze. */
+  --paint-dark-steel:          #242426; /* Black & Yellow's cards under Metal */
+  --paint-dark-steel-floor:    #161617;
+  --paint-gold-leaf:           #E8C773; /* Black & Yellow's titles under Metal: gold, not hi-vis (lifted from #D9B45A to read on the lighter controls) */
+  --paint-blackened-steel:     #231F20; /* Black & Red */
+  --paint-blackened-floor:     #141213;
+  --paint-blue-steel:          #2B3340; /* Moonlight */
+  --paint-blue-steel-floor:    #1A202A;
+  --paint-lilac-aluminum:      #DEDCE6; /* Lilac */
+  --paint-lilac-aluminum-floor:#C4C1CF;
+  --paint-green-aluminum:      #DBDFD6; /* Green */
+  --paint-green-aluminum-floor:#C3C9BD;
+  --paint-champagne-bronze:    #DDCFB4; /* Sepia */
+  --paint-champagne-floor:     #C5B492;
+  /* Metal over Sepia as brushed brass (his call, 2026-10-20): a dark brass plate with cream text.
+     The brushed grain lifts a plate by about 1.5× on screen (its noise averages ~0.73 there), and
+     the controls on it lighter still, so the plate is set dark and the text light; the
+     readability check reads the real pixels in every Metal look. */
+  --paint-brass:               #3A3019; /* Sepia's cards under Metal */
+  --paint-brass-floor:         #2C2414;
+  --paint-brass-gold:          #F2D488; /* its titles and accent fills */
+  --paint-brass-cream:         #F7EED8; /* its text */
+  --paint-brass-sand:          #E8DBB6; /* its subtext */
+  /* Metal's text roles in the other themes, where the theme's own fall short on the brushed
+     plates and controls as they render (the readability check, 2026-10-20) */
+  --paint-moon-steel-text:     #E4ECF7; /* Moonlight */
+  --paint-moon-steel-subtext:  #C8D4E6;
+  --paint-anodized-red:        #FF8A80; /* Black & Red: red anodized, light enough on steel */
+  --paint-anodized-red-subtext:#E9A79F;
+  --paint-lilac-metal-subtext: #484260; /* Lilac */
+  --paint-green-metal-text:    #32412A; /* Green */
+  --paint-green-metal-subtext: #3E4B34;
+
+  /* the sky over a scene skin (Happy, docs/features/happy.md §1.2): top and horizon for each
+     part of the day. A natural sky, the same in every theme until he says otherwise. */
+  --paint-sky-day:            #5FA8E0;
+  --paint-sky-day-low:        #CDE9F8;
+  --paint-sky-dawn:           #8AA9D6;
+  --paint-sky-dawn-low:       #FFC79A;
+  --paint-sky-dusk:           #4D4C99;
+  --paint-sky-dusk-low:       #FF8C5A;
+  --paint-sky-night:          #0C1430;
+  --paint-sky-night-low:      #2A3768;
+  --paint-bubble-ink:         #2B2620; /* the words in a sprite's speech bubble: the bubble art's own outline ink */
+}

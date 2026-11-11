@@ -63,7 +63,30 @@ bridge). For `/vc` to be heard: DeetsMusic plays to a Windows output (not AirPla
 audio session, so the capture hears silence), its volume high in the Windows mixer, and its
 output routed to a device you don't listen to if you want the PC quiet (VOICE-PIPELINE.md §1).
 
-## 9. Run
+## 9. Node (the Activity only)
+`activity/` is TypeScript and Vite (features/ACTIVITY.md). It needs Node 22 or newer (built
+on 24.18).
+```
+cd activity
+npm install
+npm run mock        # the UI on fake data; Vite prints the address (5273, or the next free port)
+npm run check       # types, then the copied look against ../DeetsMusic
+```
+- `npm run look:sync` copies DeetsMusic's look into `activity/deetsmusic-ui/look/`. It needs
+  the DeetsMusic repo beside this one. The copy is committed, so a machine without DeetsMusic
+  still builds; there `look:check` prints that it cannot check and passes.
+- `npm install` may print that esbuild's install script was blocked. Vite still runs.
+
+### 9.1 On a Mac
+- **Works:** everything in `activity/` (the UI, the mock, later the relay Worker), and the
+  docs. Clone, `npm install`, `npm run mock`.
+- **Does not work:** the bot. The capture is Windows audio (`crates/tap`), DeetsMusic is a
+  Windows app, and its bridge is on this PC's loopback. A `cargo build` of the workspace on
+  macOS was not tried; expect `crates/tap` and `crates/host` to fail. So steps 3 to 5 of
+  ACTIVITY.md §10 can be written on a Mac, and are tested on the PC.
+- `.env`, `config.py` and `storage.db` are not in the repo and stay on the PC.
+
+## 10. Run
 `target\release\lildeets.exe`. The log shows `gateway: ready`, `logic: ready` and `commands:
 synced` (or `unchanged since the last sync`). New commands may need Ctrl+R in the Discord
 client. Ctrl+C stops it.

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>DeetsMusic in the call: every frame size (mock)</title>
+    <style>
+      body { margin: 16px; font: 13px system-ui; background: #2b2d31; color: #dbdee1; }
+      h1 { font-size: 15px; margin: 0 0 4px; }
+      p { margin: 0 0 16px; color: #b5bac1; }
+      .wall { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+      figure { margin: 0; }
+      figcaption { margin-bottom: 6px; }
+      iframe { border: 1px solid #1e1f22; border-radius: 8px; background: #fff; display: block; }
+    </style>
+  </head>
+  <body>
+    <h1>Every frame size in docs/features/ACTIVITY.md §3</h1>
+    <p>Each frame is the same mock page with its own fake host. The sizes are guesses at Discord's frames; the tile sizes are not documented.</p>
+    <div class="wall">
+      <figure><figcaption>Tile (picture-in-picture, grid) · 320 × 180 · Mini › Cover</figcaption><iframe src="./index.html?cover" width="320" height="180"></iframe></figure>
+      <figure><figcaption>Phone, portrait · 390 × 760 · Mini</figcaption><iframe src="./index.html" width="390" height="760"></iframe></figure>
+      <figure><figcaption>Phone, landscape · 760 × 390 · Midi</figcaption><iframe src="./index.html" width="760" height="390"></iframe></figure>
+      <figure><figcaption>Medium frame · 700 × 760 · Midi</figcaption><iframe src="./index.html" width="700" height="760"></iframe></figure>
+      <figure><figcaption>Desktop call · 1280 × 800 · Max</figcaption><iframe src="./index.html" width="1280" height="800"></iframe></figure>
+    </div>
+  </body>
+</html>

@@ -7,7 +7,7 @@
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
-use lildeets_bridge::BridgeError;
+use deetsmusic_bridge::BridgeError;
 use lildeets_cards::cards;
 use lildeets_cards::model::Track;
 use lildeets_cards::text::{self, clip, confident, line, notices, suggestion, Placement};

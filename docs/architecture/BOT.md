@@ -50,7 +50,7 @@ so the host knows someone will start it again.
   (features/VC.md, DM.md, LINKS.md). Interactions are read from JSON by hand, so a field
   Discord adds can never make one unreadable.
 - Discord's REST API through `lildeets-rest` (hand-rolled, with Discord's rate limits);
-  DeetsMusic through `lildeets-bridge` (architecture/BRIDGE.md); the cards from
+  DeetsMusic through `deetsmusic-bridge` (architecture/BRIDGE.md); the cards from
   `lildeets-cards` (features/CARDS.md).
 - **The watchers:** the status watcher (features/STATUS.md) and the np card watcher
   (CARDS.md §4).

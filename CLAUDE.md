@@ -55,6 +55,11 @@ and one line below.
 - `JOURNAL.md` — the Song-of-the-Day pipeline: scan → archive → enrich → review → songs.json.
 - `FILMS.md` — the Letterboxd film journal: import, RSS, TMDB posters → movies.json.
 - `TRAY.md` — a tray app that starts the bot with one click. Project: not built.
+- `ACTIVITY.md` — the Discord Activity (`activity/`, TypeScript + Vite): DeetsMusic's
+  surfaces inside the call, the relay Worker, the part names (`deetsmusic-*` only where a part
+  knows DeetsMusic). Never request Discord verification; never put an action in the Activity
+  only; never edit `activity/deetsmusic-ui/look/` (a copy of DeetsMusic's look:
+  `npm run look:sync`).
 
 **`docs/ops/`** — build, run, diagnose
 - `SETUP.md` — a fresh machine: Rust and CMake, the build, `.env`, `config.py`, Python for
@@ -71,7 +76,7 @@ and one line below.
 
 **`docs/ideas/`** — not built; never tell a user the bot does these. §1 is what he said.
 - `in-call-extras.md` — the card in the call's own chat, vote-to-skip.
-- `activity.md` — a Discord Activity: DeetsMusic's Rooms look inside the call.
+- `activity.md` — the Activity's first notes and his words; the design is features/ACTIVITY.md.
 - `image-cards.md` — rendered PNG cards in DeetsMusic's theme, next to the native ones.
 - `auto-route.md` — `/vc play` moves the app to a silent output by itself.
 - `friends-tapping.md` — why friends do not tap their own apps through this bot.
@@ -158,7 +163,7 @@ the shots runner, publishing) do not apply here.
   asking how a user might break it from a UX or workflow view (DeetsMusic, 2026-10-17). Read every diff an agent makes
   and run the checks yourself: an agent's report is not proof.
 - **Commit only when he asks.** Co-author trailer: name the model that did the work (today
-  `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`); update this line when it changes.
+  `Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>`); update this line when it changes.
 - **Several Deets apps run on this PC at once.** Never hardcode a port with strict failure.
 
 ## How to explain things to me
@@ -181,4 +186,6 @@ python -m journal.scan <channel> --enrich --web --web-out ../DeetsSolutions/sotd
 python -m journal.letterboxd_web rss --web -o ../DeetsSolutions/movies/movies.json
 python -m journal.review list                   # songs flagged for hand-checking
 crates/tap/target/release/deets-tap.exe --meters   # every app's level and mixer volume
+cd activity && npm run mock                     # the Activity's UI on fake data, in a browser
+cd activity && npm run check                    # types, and the look against ../DeetsMusic
 ```

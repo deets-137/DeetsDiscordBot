@@ -1,0 +1,138 @@
+/* Queue card — flat Now-Playing + Up-Next renderer in the Playlists slot.
+   Colors come from theme roles, spacing/radius/type from skin tokens. Up-Next
+   ROWS share the Library's row tokens (--lib-row-art / --lib-row-art-radius) so
+   both song lists keep one shape + density and a skin restyles them together.
+   The Now-Playing cover (--qcard-now-art) moved to skin.css base on 2026-09-17: the stage
+   column's Queue floor (--max-queue-min, docs/cards/STAGE-COLUMN.md) is arithmetic over this card's
+   parts, and a token it reads cannot live inside the card. */
+.qcard {
+  --qcard-label-spacing: 0.06em;
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Now Playing */
+.qnow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2);
+  background: var(--surface-hover);
+  border-radius: var(--radius-control);
+}
+.qnow--idle { opacity: var(--qcard-idle-dim); }
+/* Buffering a jump — dim the cover (docs/architecture/UX-COVERUPS.md §1); a skin may set the depth. */
+.qnow--loading .qnow__art { opacity: var(--qcard-loading-dim); }
+.qnow__art {
+  flex: 0 0 auto;
+  width: var(--qcard-now-art);
+  height: var(--qcard-now-art);
+  border-radius: var(--radius-control);
+  object-fit: cover;
+  display: block;
+  background: var(--surface);
+}
+.qnow__art--empty { display: grid; place-items: center; color: var(--subtext); }
+.qnow__text { min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.qnow__title {
+  font-family: var(--font-title);
+  font-weight: var(--fw-title);
+  font-size: var(--fs-text);
+  color: var(--title);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.qnow__artist {
+  font-size: var(--fs-subtext);
+  color: var(--subtext);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Up Next */
+.qcard__label {
+  font-family: var(--font-caps);   /* a skin's label face (Metal); unset, it inherits as before */
+  font-weight: var(--fw-caps);
+  font-stretch: var(--caps-stretch);
+  font-size: calc(var(--fs-subtext) + var(--caps-grow, 0px));
+  color: var(--subtext);
+  text-transform: uppercase;
+  letter-spacing: var(--caps-tracking, var(--qcard-label-spacing));
+  padding: 0 var(--space-1);
+}
+.qcard__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  position: relative;   /* anchor for the drag insertion line (row-drag.ts) */
+}
+/* Its scrollbar is the app's one rule set (styles.css, "The app's scrollbar"). */
+.qrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-control);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-ui), transform var(--dur-fast) var(--ease-ui), opacity var(--dur-fast) var(--ease-ui);
+}
+.qrow:hover { background: var(--surface-hover); transform: var(--hover-lift); }
+/* Suggest Less (SUGGEST-LESS.md §6): a row the queue steps over. A click still plays it. */
+.qrow.is-less { opacity: var(--suggest-less-opacity); }
+/* The station row (radio): the "next song" is the station itself — informative, not a
+   jump target, so no lift; right-click still offers Stop Station / Don't resume. */
+.qrow--station { cursor: default; }
+.qrow--station:hover { transform: none; }
+.qrow--station .qrow__art { border-radius: 50%; }
+.qrow:focus-visible,
+.qrow.is-context,
+.qnow.is-context { outline: var(--focus-ring-w) solid var(--title); outline-offset: calc(-1 * var(--focus-ring-off)); }
+/* The dragged row and the insertion line are shared with playlists: styles.css §Row drag. */
+.qrow__art {
+  flex: 0 0 auto;
+  width: var(--lib-row-art);
+  height: var(--lib-row-art);
+  border-radius: var(--lib-row-art-radius);
+  object-fit: cover;
+  display: block;
+  background: var(--surface);
+}
+.qrow__art--empty { display: grid; place-items: center; color: var(--subtext); font-size: var(--fs-subtext); }
+.qrow__text { min-width: 0; display: flex; flex-direction: column; }
+.qrow__title {
+  font-size: var(--fs-text);
+  color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.qrow__artist {
+  font-size: var(--fs-subtext);
+  color: var(--subtext);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* History's right-hand column: when the play started, and a mark when it was cut short.
+   It sits inside the row's own height (two subtext lines are shorter than the mini-cover),
+   so the list keeps the shape it has in the Queue card. */
+.qrow__meta {
+  flex: 0 0 auto; margin-left: auto;
+  display: flex; align-items: center; gap: var(--space-1);
+  color: var(--subtext); font-size: var(--fs-subtext);
+}
+.qrow__time { font-variant-numeric: tabular-nums; }
+.qrow__skip { display: inline-flex; opacity: var(--disabled-alpha); }
+.qrow__skip svg { width: var(--icon-sm); height: var(--icon-sm); fill: currentColor; }
+
+.qcard__more,
+.qcard__empty {
+  color: var(--subtext);
+  font-size: var(--fs-subtext);
+  padding: var(--space-2);
+  text-align: center;
+}

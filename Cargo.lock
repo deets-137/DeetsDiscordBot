@@ -518,6 +518,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "deetsmusic-bridge"
+version = "0.1.0"
+dependencies = [
+ "lildeets-cards",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "der"
 version = "0.7.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1808,18 +1820,6 @@ name = "lildeets"
 version = "0.1.0"
 
 [[package]]
-name = "lildeets-bridge"
-version = "0.1.0"
-dependencies = [
- "lildeets-cards",
- "reqwest",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
-]
-
-[[package]]
 name = "lildeets-cards"
 version = "0.1.0"
 dependencies = [
@@ -1833,7 +1833,7 @@ name = "lildeets-host"
 version = "0.1.0"
 dependencies = [
  "deets-tap",
- "lildeets-bridge",
+ "deetsmusic-bridge",
  "lildeets-ipc",
  "serde_json",
  "songbird",
@@ -1859,7 +1859,7 @@ name = "lildeets-logic"
 version = "0.1.0"
 dependencies = [
  "deets-tap",
- "lildeets-bridge",
+ "deetsmusic-bridge",
  "lildeets-cards",
  "lildeets-ipc",
  "lildeets-rest",

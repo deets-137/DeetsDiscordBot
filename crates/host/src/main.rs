@@ -42,7 +42,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
 
 use deets_tap::TapStream;
-use lildeets_bridge::Bridge;
+use deetsmusic_bridge::Bridge;
 use lildeets_ipc::{GuildVoice, Sound, ToHost, ToLogic, ENV_ADDR, ENV_TOKEN, PROTOCOL};
 use serde_json::Value;
 use songbird::input::{Input, RawAdapter};

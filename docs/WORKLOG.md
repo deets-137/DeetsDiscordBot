@@ -9,6 +9,35 @@ updated: 2026-11-10
 One dated `##` per sitting, newest first. An old entry is never corrected. DeetsOTD's earlier
 history is in `git log` and docs/archive/.
 
+## 2026-11-10 (late night) — the Activity: design, the bridge's new name, the mock UI
+
+- **His words.** "Let's build out the discord live activity to allow users to control my
+  music"; "replicate DeetsMusic's UI as one to one as it makes sense for each aspect ratio";
+  the host piece "named appropriately to note its specific for DeetsMusic"; "new worker in
+  this repo works, typescript and vite works … we can show the song"; "F1-A F2-A F3-A";
+  "I would like it to be a private activity regardless"; team seats ("A works, I don't mind
+  everyone being a host"); "Yes start".
+- **Designed:** docs/features/ACTIVITY.md. Read from Discord's docs the same day: three
+  layout modes and no documented frame sizes; an unverified Activity launches only in a
+  server under 25 members, except for the app's developer team.
+- **Read from Discord (the bot's token, `GET /applications/@me`):** the app is owned by the
+  team "DeetsTeam", one member (him, admin); Public Bot on; server and user install on.
+- **Built, step 1:** the package `lildeets-bridge` is `deetsmusic-bridge`. clippy and the
+  tests pass on debug builds. No release build was made, so the running bot did not change.
+- **Built, step 2:** `activity/` (TypeScript, Vite): `deetsmusic-protocol`, `deetsmusic-ui`
+  (the four cards on Mini, Midi and Max, in DeetsMusic's look, copied by
+  `scripts/look-sync.mjs`), and `mock` (a fake host and a desk). The real markup of each card
+  was read from DeetsMusic's published web demo, served locally.
+- **New dependencies** (his yes): `vite`, `typescript`. Node is in this repo now.
+- **His calls on the build's forks:** "1A works, 2A with a toast on the desktop/web version
+  to play now, 3 a unique player card with cover, title, album, and artist can scale the
+  cover down to fit it all in and make it neat." His question: "Can those gaps be fixed in
+  any way?" Yes: ACTIVITY.md §13.6 has the way and the size of each. None is built.
+- **Committed** to the new branch `disc-activities` (his word: "Update all our docs and
+  commit to a branch"). Not pushed, not merged.
+- **Left open:** his desk test of the mock (ACTIVITY.md §12.1); step 2b (§13.6); whether a
+  guest may use Play Now (§13.5); steps 3 to 6.
+
 ## 2026-11-10 (night) — the switch to the Rust bot; the song-boundary restart
 
 - **His words.** "commit and push everything please"; "build the song-boundary restart, then

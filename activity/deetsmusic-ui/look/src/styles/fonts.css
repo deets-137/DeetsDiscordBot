@@ -1,0 +1,156 @@
+/* ============================================================
+   FONTS — bundled @font-face faces
+   ------------------------------------------------------------
+   Liberation Serif is not present on Windows, so we ship it to
+   render the intended (hinted) font instead of a substitute.
+   Liberation fonts © Red Hat, licensed under SIL OFL 1.1.
+   See fonts/NOTICE.txt.
+   ============================================================ */
+
+@font-face {
+  font-family: "Liberation Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/LiberationSerif-Regular.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Liberation Serif";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("./fonts/LiberationSerif-Bold.ttf") format("truetype");
+}
+
+/* ------------------------------------------------------------
+   Skin fonts (all SIL OFL 1.1, bundled like Liberation above).
+   Each pairs with a [data-skin] in skin.css:
+     Press        → Anton (poster grotesque title) + IBM Plex Mono
+                    (spec-sheet body).
+     Ocean        → Cinzel (engraved caps title) + Spectral (serif body).
+     Cyber → Orbitron (machined title) + Rajdhani (condensed body).
+   ------------------------------------------------------------ */
+
+/* Press — Anton (title). One weight only; --fw-title is 400 there. */
+@font-face {
+  font-family: "Anton";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/Anton-Regular.woff2") format("woff2");
+}
+
+/* Press — IBM Plex Mono (body). SemiBold, not Bold, is bound to 700: at
+   mono widths the bold face blocks up, and 600 already reads as emphasis. */
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/IBMPlexMono-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("./fonts/IBMPlexMono-SemiBold.woff2") format("woff2");
+}
+
+/* Ocean — Cinzel (engraved caps title) */
+@font-face {
+  font-family: "Cinzel";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("./fonts/Cinzel-SemiBold.woff2") format("woff2");
+}
+
+/* Ocean — Spectral (body) */
+@font-face {
+  font-family: "Spectral";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/Spectral-Regular.woff2") format("woff2");
+}
+
+/* Cyber — Orbitron (machined sci-fi title) */
+@font-face {
+  font-family: "Orbitron";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("./fonts/Orbitron-Bold.woff2") format("woff2");
+}
+
+/* Cyber — Rajdhani (condensed squared body; 500 is the body weight —
+   Rajdhani's 400 runs thin at list sizes, so the skin sets --fw-text: 500) */
+@font-face {
+  font-family: "Rajdhani";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("./fonts/Rajdhani-Medium.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Rajdhani";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("./fonts/Rajdhani-Bold.woff2") format("woff2");
+}
+
+/* Happy (docs/features/happy.md §1.4, his pick) — Baloo 2 (bubbly title), Quicksand (round body;
+   thin at 400 in small sizes, so the skin sets 500 and up), Pixelify Sans (the skin's own words:
+   Deets' speech bubble, --font-skin). Each is one variable file per subset: latin, then latin-ext
+   for the accents a song title may carry. */
+@font-face {
+  font-family: "Baloo 2";
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url("./fonts/Baloo2-Var-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Baloo 2";
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url("./fonts/Baloo2-Var-latinext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Quicksand";
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url("./fonts/Quicksand-Var-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Quicksand";
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url("./fonts/Quicksand-Var-latinext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Pixelify Sans";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("./fonts/PixelifySans-Var-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Pixelify Sans";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("./fonts/PixelifySans-Var-latinext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}

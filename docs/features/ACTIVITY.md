@@ -1,0 +1,320 @@
+---
+status: project
+desk_test: open
+sources: [activity/deetsmusic-protocol/index.ts, activity/deetsmusic-ui/layout.ts, activity/deetsmusic-ui/surface.ts, activity/scripts/look-sync.mjs, activity/mock/transport.ts]
+updated: 2026-11-10
+---
+# The Activity: DeetsMusic's look inside the call
+
+> **Status:** project · 2026-11-10. Build steps 1 and 2 of §10 are built (§13): the bridge
+> package's new name, and the UI on fake data. Nothing talks to Discord or to the bot yet.
+> §1 and §2 are the owner's calls. §3 to §10 are Claude's design inside those calls. §11 holds
+> what is not confirmed. The first notes are in [ideas/activity.md](../ideas/activity.md).
+
+**Terms used here.**
+- **The Activity**: a web page that Discord shows inside the call, in a frame. Everyone in the
+  call can open it.
+- **The relay**: a Cloudflare Worker between the Activity and the bot. The PC is not reachable
+  from the internet, so the bot connects out to the relay.
+- **A surface**: one of DeetsMusic's three compositions, Mini, Midi and Max
+  (`../DeetsMusic/docs/cards/SURFACES-AND-CARDS.md` §4).
+- **A seat**: a place on the Discord developer team that owns the Lil Deets app.
+
+## 1. What he wants (2026-11-10)
+- The people in the call control his DeetsMusic from the Activity. The bot keeps the audio.
+- The Activity looks like DeetsMusic, "as one to one as it makes sense for each aspect ratio".
+  DeetsMusic's surfaces already fit touchscreens of many sizes. Use them.
+- The same UI replaces the Rooms page on deets.solutions later. It is built here first.
+- The parts are modular. A part that is particular to DeetsMusic says so in its name.
+- The Activity is **private**. No Discord verification, ever (§8).
+
+## 2. His calls
+
+| # | Question | His call |
+|---|---|---|
+| R | Where the relay lives | A new Worker in this repo. |
+| S | The stack | TypeScript and Vite. The site receives a built copy, as the DeetsMusic demo is published. |
+| P | Each person's profile | Shows the song (Rich Presence). |
+| F1 | Where the 1:1 comes from | New code here. DeetsMusic's look files are copied in by a script. |
+| F2 | The bridge crate's name | Rename the package `lildeets-bridge` to `deetsmusic-bridge`. |
+| F3 | Which theme and skin show | The host's current theme and skin, the same for everyone. |
+| V | Large servers (25 members or more) | Friends get seats on the developer team. "I don't mind everyone being a host since its all close friends anyway." |
+
+This replaces the 2026-10-13 plan for the site (`../DeetsSolutions/docs/rooms-web.md`: the
+DeetsMusic repo's own four cards, built by `listen:build`). Mark that doc when the port starts.
+
+## 3. Surfaces: what each frame size shows
+The Activity uses DeetsMusic's bands and numbers (`../DeetsMusic/src/surface.ts`).
+
+| What the person sees in Discord | Frame | Surface |
+|---|---|---|
+| The picture-in-picture tile, or a grid tile | small, about 16:9 (not documented; measure) | Mini › Cover |
+| A phone in portrait, a narrow desktop frame | up to 460 px wide | Mini: Now Playing plus one card. Mini › Player one tap away. |
+| A phone in landscape, a tablet, a medium frame | 461 to 820 px wide | Midi: the Now Playing strip plus two card slots |
+| The Activity filling a desktop call | above 820 px wide | Max: the stage column plus the card grid |
+
+- The flips keep DeetsMusic's dead-bands: in below 455 px and out above 465 px for Mini; 40 px
+  at the Midi and Max edge. A wide but short frame stays Midi.
+- Discord reports the mode (`ACTIVITY_LAYOUT_MODE_UPDATE`: focused 0, picture-in-picture 1,
+  grid 2). Picture-in-picture and grid always show Mini › Cover, whatever the size.
+- The cards are Now Playing, Queue, Search and History. Library, Playlists, Settings, the Diary
+  and the Compass are never in the Activity (CLAUDE.md › Never).
+- Phones: the safe-area values (`--discord-safe-area-inset-*`) pad the page. No orientation
+  lock.
+
+## 4. The parts and their names
+The rule: a part that knows DeetsMusic's data has `deetsmusic` in its name. A part that does
+not, never does.
+
+| Part | Path | Knows DeetsMusic? |
+|---|---|---|
+| The capture | `crates/tap` (`deets-tap`), unchanged | No |
+| The relay Worker | `activity/relay` | No. It checks Discord sign-in and the call, then passes messages between one host and its guests. |
+| The host's connection to the relay | `crates/relay-client` | No |
+| Discord's frame code: SDK, sign-in, layout modes, Rich Presence | `activity/discord-shell` | No |
+| The message shapes: track, queue, state, actions | `activity/deetsmusic-protocol` | Yes |
+| The cards and surfaces | `activity/deetsmusic-ui` | Yes |
+| A fake transport and a dev page, so the UI runs in a browser with no Discord | `activity/mock` | Yes |
+| The part of the bot that turns an action into a bridge call | module `deetsmusic_remote` in `crates/logic` | Yes |
+| The bridge client | `crates/bridge`, package `deetsmusic-bridge` (F2) | Yes |
+
+`deetsmusic-ui` talks to one **transport** interface: state in, actions out. The Activity's
+transport is the relay. The site's transport, later, is the rooms worker plus MusicKit
+(`activity/site`, not designed here).
+
+## 5. How an action travels
+1. A guest presses ⏭ in the Activity.
+2. `discord-shell` sends `{action: "skip"}` on its WebSocket to the relay
+   (`<app id>.discordsays.com/.proxy/…`; WebSocket is the only real-time transport Discord allows).
+3. The relay knows who the guest is (§6) and passes the action, with the guest's user id, to
+   the host's socket for that voice channel.
+4. `crates/host` holds that socket. It passes the action to the logic over the IPC, as it
+   passes an interaction. The logic is swapped while music plays, so it holds no socket
+   (LIVE-RELOAD.md §5).
+5. `deetsmusic_remote` runs the same `check` as `/dm` (PERMISSIONS.md), then calls the bridge.
+6. The reply goes back the same way. A refusal says why, in the guest's Activity only, with
+   the `/dm` wording.
+
+**State** goes the other way. The logic already watches DeetsMusic for the now-playing card
+and the status line. On a change it sends one state message (now playing, queue, history,
+theme, skin, the five guest rules) to the relay, which sends it to every guest. On a change
+only: never on a timer (CARDS.md §4). The progress bar runs in the page from `currentTime`
+and a time stamp.
+
+| Action | Bridge route | Rule |
+|---|---|---|
+| play, pause | `POST /command` | `roomGuests.playPause` |
+| skip, back | `POST /command` | `roomGuests.skip` |
+| add to queue (next, later) | `POST /queue` | `roomGuests.add` |
+| remove, drag to reorder | `POST /queue/edit` | `roomGuests.changeQueue` |
+| search | `POST /search`, cached 2 minutes per term as `/dm add` | any guest in the call |
+| seek | not on the bot's bridge list yet (BRIDGE.md §2) | `roomGuests.seek`; add the route to BRIDGE.md first |
+| play now (replace) | `POST /play` | host only |
+| the bot's volume | the host's gain | host only |
+
+A control the guest may not use is drawn as DeetsMusic's Rooms draws it for a guest, not
+hidden.
+
+## 6. Security
+- **Sign-in.** The Activity asks Discord for a code (`authorize`, scopes `identify` and
+  `rpc.activities.write`). The relay trades the code for a token with the client secret, and
+  asks Discord who the token belongs to. The page's own claim of a user id is never trusted.
+- **The call.** The relay asks Discord for the instance
+  (`GET /applications/<id>/activity-instances/<instance>`, bot token): its channel and its
+  users. The guest must be in that list, and the channel must be the one the host registered.
+- **The host's socket.** The bot signs in to the relay with a secret that only the relay and
+  the bot's `.env` hold. No host socket for a channel: the relay sends one line ("The host is
+  not playing here") and nothing else.
+- **The rules.** The relay decides nothing about DeetsMusic. The logic's `check` does, for
+  every action, as for a button on a card.
+- **Secrets.** The client secret, the bot token and the host secret are Worker secrets (`cf`).
+  None is in the repo. The bridge token never leaves the PC.
+- **Text from Discord** (names, nicknames) is drawn with `textContent`.
+
+## 7. The look (F1, F3)
+- A script copies DeetsMusic's look files into `activity/deetsmusic-ui/look/`: `palette.css`,
+  `themes.css`, `skin.css`, the fonts, and the rules of the four cards and three surfaces from
+  `styles.css` and `styles/qcard.css`. It reads `../DeetsMusic`; it never writes there.
+- A check compares the copy with the source and fails when they differ. Run it before a
+  publish.
+- The cards are written new, with DeetsMusic's class names and token names, so the copied
+  rules apply as they are.
+- The theme and skin come from the host through the bridge (`GET /settings`, cached 60 s, the
+  accent's precedent in BRIDGE.md §4) and ride in the state message.
+- Apple's artwork host needs a URL mapping in the Developer Portal.
+
+## 8. Private, and the 25-member limit
+- **No verification.** The bot plays the host's Apple Music into a call. A Discord review has
+  a reason to refuse that, and it ties his identity to the app. His call: private.
+- Discord blocks an unverified Activity in a server with 25 or more members, except for the
+  app's developer team. Two of his servers are that large (The Lads is one).
+- **The app is already owned by a team**: "DeetsTeam", one member, him, as admin (read from
+  Discord 2026-11-10). No transfer is needed.
+- **His call V: friends get seats.** Use the **Read-only** role: it cannot see the client
+  secret or reset the bot token (the Developer role can). Each friend needs two-factor
+  sign-in and must be his Discord friend.
+- **Every team member is a host in the bot** (`crates/rest/src/lib.rs` `owners`): each seat
+  can use `/vc`, which plays any app on his PC into a call. He accepts this (2026-11-10).
+  The code counts a member who was invited and has not accepted yet; fix that in the build.
+- `/dm` and the cards work in every server, for everyone, with no seat. An action must never
+  exist in the Activity only.
+- Portal settings, read 2026-11-10: "Public Bot" is on; the app can be installed to a server
+  and to a user. Proposed for him: Public Bot off. User Install: see §11.
+
+## 9. Discord features used
+- **Rich Presence** (`setActivity`): the song, the artist, the artwork, the elapsed time, on
+  each person's profile while they have the Activity open. Set on a song change only.
+- **The Launch command.** Discord makes one Entry Point command when Activities are turned
+  on. The host's command sync replaces the whole list (BOT.md §6), so the sync must carry
+  that command or it deletes it.
+- **A button that opens the Activity** on the now-playing card (reply type `LAUNCH_ACTIVITY`).
+  A card change: his fork when the build reaches it.
+- **Who is here**: the participants list and avatars, for the "added by" marks.
+- **Open in Apple Music**: `openExternalLink`.
+- Not used: invites, share moments, purchases, thermal state, friends lists, voice events.
+
+## 10. Build order
+One part at a time. Each ends with a check he can see.
+1. **F2**: rename the bridge package. `cargo clippy`, `cargo test`. A release build is a live
+   change: build release when he says.
+2. **The mock UI**: `deetsmusic-protocol`, `deetsmusic-ui` and `mock`. The four cards and
+   three surfaces on fake data, in a browser at each width in §3. He compares it with
+   DeetsMusic side by side.
+   **2b** (§13.6): his three calls from the build, and the mock's gaps.
+3. **The relay** and **`relay-client`**, with a blank Activity page that only signs in. This
+   is the step that answers §11 items 1 to 3.
+4. **`deetsmusic_remote`**: state out, actions in, the `check`.
+5. **`discord-shell`**: the real UI in the frame, layout modes, Rich Presence, the Launch
+   command in the sync.
+6. The Sonnet pass (how a user might break it), then his desk test.
+
+New dependencies, each needs his yes: `@discord/embedded-app-sdk`, `vite`, `typescript`
+(Node comes into this repo with them); a WebSocket crate for `relay-client`
+(`tokio-websockets` and `tokio-tungstenite` are already in `Cargo.lock` through twilight and
+songbird).
+
+## 11. Not confirmed
+1. **A Read-only seat can launch the Activity in a large server.** Discord's pages say
+   "members of the developer team" and name no role. The Teams page does not mention
+   Activities. Test at build step 3: one friend, one Read-only seat, one launch in The Lads.
+   If it fails, try the Developer role with him (it can reset the bot token).
+2. Whether a seat needs Developer Mode on in Discord's settings to see the Activity.
+3. The 25-member number. It comes from support pages about 18 months old that refused a
+   read on 2026-11-10.
+4. Whether anything uses the app's User Install today. If nothing does, turn it off so the
+   Activity cannot be opened where the bot is not.
+5. The size of the picture-in-picture and grid tiles. Measure at build step 5.
+
+## 12. Desk test
+The whole Activity's test is to write when step 5 is built. It must cover: each surface width
+in §3; a phone; a guest with each Rooms rule on and off; a person outside the call; a server
+without the bot; a logic swap and a host restart while the Activity is open; DeetsMusic closed.
+
+### 12.1 The mock UI (build step 2): open
+In `activity/`: `npm install` once, then `npm run mock`. Open the address it prints.
+1. Open `/frames.html`. Five frames show: the tile, a phone in portrait, a phone in
+   landscape, a medium frame, a desktop call. Compare each with DeetsMusic at that size.
+2. Open `/` in its own window. Drag the window narrower. It flips Max → Midi near 780 px and
+   Midi → Mini near 455 px, and back near 860 px and 465 px, with no flicker at an edge.
+   Max also needs a window taller than 785 px; a shorter one stays Midi, as in the app.
+3. The ⚙ at the bottom left is the mock's desk. Change the theme and the skin: the whole page
+   follows. Compare two looks with DeetsMusic.
+4. Press ⏯, ⏮, ⏭. Drag the scrub bar. The song, the Queue and History follow.
+5. In Search, type a word. Tap a song: it goes to the end of Up Next, and a toast says so.
+   Right-click a song (or press and hold on a touchscreen): Play Next, Add to Queue.
+6. Right-click a row in the Queue: Play Next, Remove from Queue.
+7. On the desk, clear "Guests may skip". ⏮ and ⏭ grey out, and their hint gives the reason.
+   Clear "Guests may add songs" and tap a search result: a toast gives the host's line.
+   Tick "I am the host": every control works again.
+8. Clear "The host is playing here": the title reads "The host is not playing here".
+9. On Mini (a narrow window): tap the cover. The player shows alone. The square at its top
+   right goes back to the cards. On Midi and Mini, a card's title picks the card in that place.
+
+## 13. As built (2026-11-10)
+
+> **Part:** built · 2026-11-10. Steps 1 and 2 of §10. Checked by Claude in Chrome on this PC
+> (§13.3). His desk test is §12.1.
+
+### 13.1 The files
+| Part | Files |
+|---|---|
+| Step 1, the name | `crates/bridge/Cargo.toml` (`deetsmusic-bridge`); the `use` lines in `crates/host`, `crates/logic`, the bridge's tests. The folder stays `crates/bridge`. |
+| `deetsmusic-protocol` | `activity/deetsmusic-protocol/index.ts`: `Track`, `HostState`, `Action`, `Transport`, the rule for each action (`ACTION_RULE`, `allowed`). |
+| `deetsmusic-ui` | `index.ts` (`mountDeetsMusicUI(transport)`), `layout.ts` (the page skeleton, which card in which slot), `surface.ts` (the bands), `look.ts` (theme, skin, the skin hooks), the four cards, `rows.ts`, `menu.ts`, `slider.ts`, `toast.ts`, `store.ts`, `ui.css`. |
+| The look | `activity/deetsmusic-ui/look/`: 60 files copied from DeetsMusic 1.4.2 by `scripts/look-sync.mjs` (all of `src/styles.css` and `src/styles/`, the fonts, the images a stylesheet names). `MANIFEST.json` holds each file's hash. **Never edit a file there.** |
+| `mock` | `mock/index.html`, `main.ts` (the desk), `transport.ts` (a fake host that obeys the rules), `data.ts`, `frames.html`, `vite.config.ts`. |
+
+Commands, in `activity/`: `npm run mock`, `npm run check` (types, then the look against
+DeetsMusic), `npm run look:sync` (copy the look again after a DeetsMusic change),
+`npm run mock:build`.
+
+### 13.2 Decided inside his calls (for his review)
+1. **The whole stylesheet set is copied**, not only the four cards' rules. The rules lean on
+   each other; a part of them would break in ways a check cannot see. Cost: 1.8 MB in the repo.
+2. **Max is DeetsMusic's two-card layout** (`data-max-cards="2cols"`): Now Playing over the
+   Queue, Search and History beside them. The precedent is DeetsMusic's own Rooms web port.
+3. **Midi opens with Queue and Search; Mini opens with Queue.** A card's title picks another,
+   as in the app. Now Playing's Queue and Search squares bring that card in.
+4. **Mini's player:** a tap on the cover opens it; a square at its top right goes back. The
+   app does both from its Surface menu, which a frame does not have.
+5. **A tap on a search result adds the song to the end of the queue.** In the app a click
+   plays the song now, which is host only for a guest. The menu has Play Next and Add to
+   Queue, and Play Now for the host.
+6. **A row's menu opens on a right-click or a long press** (450 ms), so a touchscreen has it.
+7. **A control the rules forbid stays on screen, greyed**, with the `/dm` refusal as its hint.
+8. **The title bar** shows the app's name and "Host" or "Guest". No menu, no window buttons.
+9. **Left out of Now Playing:** Shuffle and Repeat (the bridge has no route), Favorite, Add
+   to Library, AirPlay, the Last.fm counts, and the volume row (the bot's volume is the
+   host's; each person sets Lil Deets's level for themself in Discord).
+10. **Search shows songs only**, with no category filter and no recents: the bot's bridge
+    call asks for songs only (BRIDGE.md §2).
+11. **The tile is the cover alone**, as DeetsMusic's pin › Cover. The controls show on hover.
+
+### 13.3 Checked (Claude, Chrome, 2026-11-10)
+On `npm run mock`: Max, Midi, Mini, the player and the cover draw in DeetsMusic's look
+(Lilac × Press; also Sepia × Ocean, Moonlight × Glass, Black & Red × Cyber). Pause, next, the
+Search square, a search, an add with its toast, a refused add with the host's line, ⏭ greyed
+under "Guests may skip", the cover tap and the title picker all work.
+`cargo clippy --workspace --all-targets` and `cargo test --workspace` pass after the rename.
+`npm run check` and `npm run mock:build` pass. NOT checked: a real phone, a touch long press,
+the Metal and Happy skins.
+
+### 13.4 Known gaps in the mock UI
+- **No album colour.** The app reads colours from the cover for the Now Playing card
+  (`album-color.ts`). On Glass the song's title is faint without them.
+- **No skin scenery.** The Ocean sea, the Cyber storm, the Glass aurora and wallpaper, the
+  Happy scene and the Press record's turn are driven by the app's code. Their layers are not
+  on the page; the cards, the type and the colours are.
+- **No drag to reorder** in the Queue. The menu's Play Next and Remove stand in.
+- **A phone in landscape** (760 × 390) is Midi by DeetsMusic's bands, and the two cards get
+  about 120 px of height. The app never meets a window that short. A fork for him (§13.5).
+- **No hints.** The app's hover hint box is not ported; controls carry plain `title` text.
+- `npm install` printed that esbuild's install script was blocked. Vite runs and builds.
+
+### 13.5 Forks found by the build — his calls (2026-11-10)
+| # | Question | His call |
+|---|---|---|
+| 1 | A short, wide frame (a phone in landscape) | "1A works": Now Playing on the left and one card on the right. A new composition, not in the app. |
+| 2 | A tap on a search result | "2A with a toast on the desktop/web version to play now": the tap adds the song to the end of the queue. On desktop and web, the toast that confirms it carries a **Play Now** button. |
+| 3 | The tile (picture-in-picture, grid) | "a unique player card with cover, title, album, and artist can scale the cover down to fit it all in and make it neat." Not the cover alone. |
+
+**None of the three is built.** They are step 2b (§13.6).
+
+**One question on call 2 (open).** Play Now replaces what plays. PERMISSIONS.md §3 makes
+that host only, and DeetsMusic's Rooms has no rule for it. As the rule stands, only the host
+sees the toast's Play Now button. If guests should have it, that is a new permission: his
+call, and PERMISSIONS.md changes first.
+
+### 13.6 Step 2b: the gaps and his three calls
+> **Part:** designed · 2026-11-10. His question: "Can those gaps be fixed in any way?" Yes,
+> each one. Nothing here is built.
+
+| Item | How | Size, and what to check first |
+|---|---|---|
+| Album colour (§13.4) | Port DeetsMusic's `src/album-color.ts`: it reads the cover on a canvas and sets `--album-bg`, `--album-c1`, `--album-c2` and the `np--album` class. | About 260 lines. The canvas needs the cover with CORS. In Discord the cover comes through a URL mapping, so it is same-origin there; check it at step 5. |
+| Skin scenery (§13.4) | Put the layers from DeetsMusic's `index.html` on the page (ocean, wallpaper, aurora, storm, scene), then port each driver: `ambient.ts`, `storm.ts`, `ocean.ts` (with its worker), `scene.ts`, `vinyl.ts` (the Press record's turn). | The largest item. Read each driver's imports first: one that reaches into the player or the settings store needs a small stand-in. Order by what he uses: the Press record, then Glass, Cyber, Ocean, Happy. Each must stop when the frame is hidden (the app's `ambient.ts` rule). |
+| Drag to reorder (§13.4) | Port `src/row-drag.ts` (pointer events, so a finger works) onto the Queue's rows; send `queueMove` on the drop. | About 600 lines in the app. On a touchscreen a drag must start from a press-and-hold or a grip, or it fights the list's scroll and the long-press menu. |
+| Hints (§13.4) | Port `src/hint.ts`; its stylesheet is already in the look. Each `title` becomes `data-hint`. | About 300 lines. No hover on a touchscreen: hints are for desktop and web. |
+| Call 1: the landscape composition | A fourth composition for a frame under about 500 px high and over 460 px wide: Now Playing (the player view) on the left, one pickable card on the right. | New rules in `ui.css` and one more case in `surface.ts` and `layout.ts`. The height edge needs its own dead-band. |
+| Call 2: the Play Now toast | The toast gains DeetsMusic's `toast__actions` row with one `toast__btn`. Shown when the pointer is a mouse (`matchMedia("(hover: hover)")`) and the person may play now. | Small. Waits on the question above only for guests. |
+| Call 3: the tile card | A new composition for Discord's picture-in-picture and grid modes: the cover, then title, artist and album beside or under it, the cover scaled so all four fit at any tile size (a container query on the frame). No controls: the tile is not clickable by default. | New rules in `ui.css`; `setCover` becomes `setTile`. Measure Discord's real tile sizes at step 5 (§11 item 5). |

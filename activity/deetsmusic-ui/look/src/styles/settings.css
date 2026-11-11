@@ -1,0 +1,322 @@
+/* ── Settings card (SETTINGS.md) ──────────────────────────────────────────────
+   One scroll, section headers. Row kinds: a TOGGLE (label + dot, the title-menu idiom),
+   a CHOICE / SPLIT (label + a split pill), a RANGE (label + a .scrub slider + its value),
+   and HTML (markup of its own). Color through theme roles, geometry through skin
+   tokens — the card must survive every theme × skin. */
+
+.set { display: flex; flex-direction: column; gap: var(--set-section-gap); }
+
+/* The scrollbar's space is always kept, so opening a section never narrows the rows. The
+   thumb fades in when the rows outgrow the card (`is-scrollable`, set in settings-card.ts)
+   and fades out when they fit again. A registered color, so the thumb's color can transition. */
+@property --set-thumb {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: transparent;
+}
+.panel__body.set {
+  scrollbar-gutter: stable;
+  --set-thumb: transparent;
+  transition: --set-thumb var(--dur-med) var(--ease-ui);
+}
+.panel__body.set.is-scrollable { --set-thumb: var(--scrollbar); }
+.panel__body.set::-webkit-scrollbar-thumb { background: var(--set-thumb); }
+.panel__body.set.is-scrollable::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
+
+:root[data-motion="reduced"] .panel__body.set { transition: none; }
+
+.set__section { display: flex; flex-direction: column; gap: var(--space-1); }
+.set__head {
+  font-family: var(--font-caps, var(--font-title));
+  font-weight: var(--fw-caps, var(--fw-title));
+  font-size: calc(var(--fs-subtext) + var(--caps-grow, 0px));
+  font-stretch: var(--caps-stretch, normal);
+  letter-spacing: var(--caps-tracking, 0.08em);
+  text-transform: uppercase;
+  color: var(--subtext);
+  padding: 0 var(--space-2) var(--space-1);
+  border-bottom: 1px solid var(--border); /* a hairline groups the section; no boxes */
+  margin-bottom: var(--space-1);
+}
+/* The header is a fold button (the Playlists shelf idiom): chevron, title, count right.
+   The chevron + count reuse .lib-shelf__chev / .lib-shelf__count (styles.css). */
+.set__fold {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: none;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.set__fold:hover { color: var(--text); }
+.set__fold:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+.set__head.is-collapsed .lib-shelf__chev { transform: rotate(-90deg); }
+
+/* A sub-heading inside ONE section's fold (Window's three groups, 2026-09-18). It joins the
+   section-header family, not the bordered .set__group family that My reports uses: a group of
+   plain rows inside a section gets a name, not a box ("a hairline groups the section; no
+   boxes", above). It differs from a section header by having no chevron, no count and no
+   hairline, so nothing invites a click. */
+.set__sub-head {
+  padding: var(--space-2) var(--space-2) 0;
+  font-family: var(--font-caps, var(--font-title));
+  font-weight: var(--fw-caps, var(--fw-title));
+  font-size: calc(var(--fs-subtext) + var(--caps-grow, 0px));
+  font-stretch: var(--caps-stretch, normal);
+  letter-spacing: var(--caps-tracking, 0.08em);
+  text-transform: uppercase;
+  color: var(--subtext);
+}
+/* The first group sits right under the section header, which already has its own gap. */
+.set__sub-head:first-of-type { padding-top: 0; }
+
+.set__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-control);
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  color: var(--text);
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+}
+.set__row--toggle { cursor: pointer; }
+.set__row--toggle:hover { background: var(--surface-hover); }
+.set__row--toggle:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+/* Locked (HIDE-CARDS.md §3): aria-disabled, not disabled, so the hint still shows on hover. */
+.set__row--toggle[aria-disabled="true"] { opacity: var(--set-locked-dim); cursor: default; }
+.set__row--toggle[aria-disabled="true"]:hover { background: none; }
+/* An image file held over Glass › Picture: the row takes the drop (the hero cover's dashed ring). */
+.set__row.is-drop { outline: var(--focus-ring-w) dashed var(--title); outline-offset: var(--focus-ring-off); background: var(--surface-hover); }
+/* A choice row keeps its pills on the label's line, right-aligned; they wrap under the
+   label only when the slot is too narrow (flex-wrap on the row, pills pushed right). */
+.set__row--choice { flex-wrap: wrap; min-height: var(--set-row-h); }
+.set__label { min-width: 0; flex: 1 1 auto; }
+/* A part of the row above it (Reset › Look and feel): indented one more step, quieter label. */
+.set__row--sub { padding-left: calc(var(--space-2) * 2); color: var(--subtext); }
+/* The row that heads them: an underlined label marks the group. */
+.set__row--group .set__label { text-decoration: underline; text-decoration-thickness: var(--focus-ring-w); text-underline-offset: var(--space-1); }
+/* A range row (Glass's Tint / Frost): the shared .scrub slider, then its value. The
+   handle shape is the skin's --scrubber-handle, like the Now Playing bar. */
+.set__row--range { min-height: var(--set-row-h); }
+.set__range { flex: 0 1 var(--set-range-w); min-width: 0; }
+.set__range:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); border-radius: var(--set-pill-radius); }
+.set__range-val {
+  flex: 0 0 var(--set-range-val-w);
+  text-align: right;
+  font-size: var(--fs-subtext);
+  color: var(--subtext);
+  font-variant-numeric: tabular-nums;
+}
+.set__dot { width: 1em; text-align: center; color: var(--title); }
+.set__row--toggle { min-height: var(--set-row-h); }
+.set__row--toggle[aria-checked="true"] .set__dot::after { content: "•"; }
+
+/* Split pill (the search pin idiom, NEXT-VERSION §1): one border, halves cut by a
+   hairline. A half is a choice option, an action, an on/off, or a menu trigger. The
+   pressed / on half takes the hover wash + title ink. */
+.set__split {
+  display: inline-flex;
+  align-items: stretch;
+  max-width: 100%;
+  margin-left: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--set-pill-radius);
+  overflow: hidden;
+}
+.set__menu-wrap { display: flex; min-width: 0; }
+.set__half {
+  min-width: 0;
+  font-family: var(--font-body);
+  font-size: var(--fs-subtext);
+  color: var(--subtext);
+  background: none;
+  border: none;
+  padding: var(--set-pill-pad);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+/* The line between halves, so two halves read as two buttons. AFTER .set__half: its
+   `border: none` has the same weight and erased this line while it came first (it never
+   showed, his screenshot 2026-10-16). */
+.set__split > * + * { border-left: 1px solid var(--split-rule); }
+.set__half:hover { background: var(--surface-hover); color: var(--title); }
+.set__half[aria-pressed="true"],
+.set__half--toggle[aria-checked="true"] { color: var(--title); background: var(--surface-hover); }
+.set__half[aria-expanded="true"] { background: var(--surface-hover); }
+/* Inset ring: the pill's overflow clip would cut an outside one. */
+.set__half:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: calc(-1 * var(--focus-ring-w)); }
+.set__caret { margin-left: var(--space-1); }
+
+/* The small menu behind a menu half — portaled to <body>, JS sets top/left (settings-card.ts). */
+.set__menu {
+  position: fixed;
+  margin-top: var(--space-1);       /* the gap under the trigger — JS reads it back */
+  min-width: var(--set-menu-min-w);
+  max-height: var(--set-menu-max-h);
+  overflow-y: auto;
+  background: var(--menu-surface);
+  -webkit-backdrop-filter: var(--menu-backdrop);
+  backdrop-filter: var(--menu-backdrop);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
+  padding: var(--space-1);
+  z-index: 100;
+}
+.set__menu[hidden] { display: none; }
+.set__menu-row {
+  width: 100%;
+  min-height: var(--set-row-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border: none;
+  background: none;
+  border-radius: var(--radius-control);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.set__menu-row:hover { background: var(--surface-hover); }
+.set__menu-row:focus-visible { outline: var(--focus-ring-w) solid var(--title); outline-offset: var(--focus-ring-off); }
+.set__menu-row[aria-checked="true"] .set__dot::after { content: "•"; }
+
+/* A row opened from elsewhere (a toast's [Settings] button, requestSetting): one wash
+   and ring that fade out. settings-card.ts keeps the clock across re-renders with a
+   negative animation-delay. Reduced motion: the wash holds, then snaps off. */
+.set__row.is-flash { animation: set-flash var(--set-flash-dur) var(--ease-ui); }
+@keyframes set-flash {
+  from { background: var(--surface-hover); box-shadow: inset 0 0 0 var(--focus-ring-w) var(--title); }
+  to { background: transparent; box-shadow: inset 0 0 0 var(--focus-ring-w) transparent; }
+}
+
+:root[data-motion="reduced"] .set__row.is-flash { animation-timing-function: steps(1, end); }
+
+/* Extension block: a status line then two action rows. */
+.set__status { padding: var(--space-1) var(--space-2); font-size: var(--fs-subtext); color: var(--subtext); }
+
+/* Tips (SETTINGS.md §3, 2026-09-15): the gesture in the text color, what it does under it
+   in the subtext color — the same two-line shape as a list row, no control. */
+.set__tip { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-1) var(--space-2); }
+.set__tip-what { font-size: var(--fs-subtext); color: var(--subtext); }
+/* The dots legend (Settings › Tips): each line leads with its dot, centred on the text. */
+.set__legend { display: flex; align-items: center; }
+.set__action { cursor: pointer; }
+.set__action:hover { background: var(--surface-hover); }
+
+/* Bugs › the report form (report.rs): the search field's box, a title line and a details
+   area, then the log text the report would send. */
+.set__field {
+  display: flex;
+  margin: var(--space-1) var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  background: var(--canvas);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+}
+.set__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--fs-text);
+}
+.set__input::placeholder { color: var(--subtext); }
+.set__textarea { min-height: var(--set-textarea-min-h); resize: vertical; }
+.set__preview {
+  margin: var(--space-1) var(--space-2);
+  max-height: var(--set-preview-max-h);
+  overflow: auto;
+  padding: var(--space-1) var(--space-2);
+  background: var(--canvas);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  font-family: var(--font-mono);
+  font-size: var(--fs-subtext);
+  color: var(--subtext);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.set__link { color: var(--title); user-select: text; word-break: break-all; }
+/* About › What is sent (USAGE-COUNTS.md §2 rule 8): the menu panel's shell (.set__menu),
+   wider, holding status lines and the report form's preview box (.set__preview) per report.
+   The panel scrolls, so a box inside it does not. */
+.set__usage { width: var(--set-usage-w); max-width: calc(100vw - 2 * var(--space-2)); max-height: var(--set-usage-max-h); }
+.set__usage .set__preview { max-height: none; }
+.set__usage-kind { padding: var(--space-2) var(--space-2) 0; font-size: var(--fs-body); color: var(--title); }
+/* My reports: one bordered group, so the heading reads as belonging to the rows under it.
+   The heading takes the shelf-header voice (.ctx-menu__label) and the card headers'
+   refresh square (.panel__action), with a hairline under it. */
+.set__group {
+  margin: var(--space-1) var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  overflow: hidden;
+}
+.set__group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-caps, var(--font-title));
+  font-weight: var(--fw-caps, var(--fw-title));
+  font-size: calc(var(--fs-subtext) + var(--caps-grow, 0px));
+  font-stretch: var(--caps-stretch, normal);
+  color: var(--subtext);
+  text-transform: uppercase;
+  letter-spacing: var(--caps-tracking, 0.06em);
+}
+/* My reports' Resolved fold (2026-10-30): a group head that is a fold button, with the
+   section headers' chevron and count (.set__fold). A rule above it, since it follows rows;
+   shut, it is the group's last line, so no rule under it. */
+.set__group-fold { border-top: 1px solid var(--border); }
+.set__group-fold:last-child { border-bottom: none; }
+.set__group-fold.is-collapsed .lib-shelf__chev { transform: rotate(-90deg); }
+
+/* The record of what has left this PC (docs/integrations/DeetsOTD.md §10.6): five rows, then it scrolls
+   inside the group so the section does not grow without end. `app-scroll` for the themed bar
+   (never the grey OS one) and a stable gutter, so the rows do not shift when it appears. */
+.set__group-scroll {
+  max-height: var(--set-log-max-h);
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+.set__group-scroll .set__row + .set__row { border-top: 1px solid var(--border); }
+.set__group .set__row { border-radius: 0; }
+.set__group .set__row + .set__row { border-top: 1px solid var(--border); }
+/* The worker's state at the last Refresh, and a dot for an unseen owner reply. */
+.set__tag {
+  margin-left: var(--space-1);
+  padding: 0 var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--set-pill-radius);
+  font-size: var(--fs-subtext);
+  color: var(--subtext);
+  white-space: nowrap;
+}
+.set__new { margin-left: var(--space-1); color: var(--title); }

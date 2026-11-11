@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use lildeets_bridge::{Bridge, BridgeError, Config, DEFAULT_ACCENT};
+use deetsmusic_bridge::{Bridge, BridgeError, Config, DEFAULT_ACCENT};
 use serde_json::{json, Value};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
@@ -109,7 +109,7 @@ fn dead_port() -> u16 {
 
 /// A fresh settings file with this token (or none).
 fn settings(name: &str, token: Option<&str>) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("lildeets-bridge-test-{}-{name}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("deetsmusic-bridge-test-{}-{name}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("settings.json");
     let body = match token {

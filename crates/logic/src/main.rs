@@ -1,6 +1,6 @@
 //! `lildeets-logic`: every interaction (rust-port-plan.md §3.1, P6–P7). The host starts it
 //! with `LILDEETS_IPC` and `LILDEETS_IPC_TOKEN`, and replaces it when it is rebuilt. It calls
-//! Discord's REST API itself (`lildeets-rest`) and DeetsMusic's bridge (`lildeets-bridge`),
+//! Discord's REST API itself (`lildeets-rest`) and DeetsMusic's bridge (`deetsmusic-bridge`),
 //! and asks the host for anything voice or gateway.
 //!
 //! The Python bot is the specification: every reply, its wording and who sees it follow
@@ -15,7 +15,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
-use lildeets_bridge::Bridge;
+use deetsmusic_bridge::Bridge;
 use lildeets_ipc::{GuildVoice, ToHost, ToLogic, ENV_ADDR, ENV_TOKEN, PROTOCOL};
 use lildeets_rest::Rest;
 use tokio::net::tcp::OwnedWriteHalf;

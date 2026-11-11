@@ -1,0 +1,45 @@
+/* deetsmusic-ui's own rules. Everything that DeetsMusic already draws comes from look/ (a
+   copy of its stylesheets; never edit that folder). This file holds only what a frame in
+   Discord needs and the app does not have. Colors and sizes are DeetsMusic's tokens. */
+
+/* The frame is not a window: nothing to drag, and no window buttons. */
+.dm-activity__bar { -webkit-app-region: no-drag; }
+.dm-activity__bar .drag-region { flex: 1 1 auto; }
+.dm-activity__who {
+  font-family: var(--font-body);
+  font-size: var(--fs-text);
+  color: var(--subtext);
+  padding: 0 var(--space-2);
+}
+
+/* Phones: Discord's safe-area values, with the browser's own as the fallback (ACTIVITY.md §3). */
+body {
+  padding:
+    var(--discord-safe-area-inset-top, env(safe-area-inset-top, 0px))
+    var(--discord-safe-area-inset-right, env(safe-area-inset-right, 0px))
+    var(--discord-safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))
+    var(--discord-safe-area-inset-left, env(safe-area-inset-left, 0px));
+  box-sizing: border-box;
+}
+
+/* Mini: a tap on the cover opens the player; the corner square goes back to the cards. In the
+   app the Surface menu does both, and a frame has no such menu. */
+[data-surface="mini"]:not([data-mini="player"]) .np__art { cursor: pointer; }
+[data-surface="mini"][data-mini="player"]:not([data-cover]) .np__close {
+  display: grid;
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  z-index: 2;
+}
+
+/* A control the host's rules keep from this person: on screen, greyed (the look greys
+   .np__btn[disabled] the same way). */
+.np__scrub[data-locked] { cursor: default; }
+.flyout__item:disabled { opacity: 0.45; cursor: default; }
+
+/* The row menu hangs at the pointer, not from a title. */
+.dm-menu { position: fixed; top: 0; left: 0; z-index: 60; }
+
+/* A long press must not select text or open the browser's own menu on a row. */
+.qrow, .search__song, .qnow { -webkit-touch-callout: none; user-select: none; }

@@ -1,5 +1,5 @@
 [package]
-name = "lildeets-bridge"
+name = "deetsmusic-bridge"
 description = "Lil Deets' client for DeetsMusic's loopback bridge (architecture/BRIDGE.md; rust-port-plan.md §5 P4)."
 version.workspace = true
 authors.workspace = true
