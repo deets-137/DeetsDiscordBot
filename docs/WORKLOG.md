@@ -2,12 +2,35 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-11-10
+updated: 2026-11-11
 ---
 # DeetsDiscordBot — Work log
 
 One dated `##` per sitting, newest first. An old entry is never corrected. DeetsOTD's earlier
 history is in `git log` and docs/archive/.
+
+## 2026-11-11 — the Activity, step 2b: his three calls and most of the gaps
+
+- **His words.** "Let's pick up where we left off last night"; "Go to step 2b" (before his
+  desk test of the mock, which is still open).
+- **Built** in `activity/deetsmusic-ui` (ACTIVITY.md §13.7): the landscape layout ("Wide":
+  the player on the left, one card on the right, under 500 px high); the Play Now button on
+  the "is in the queue" toast (desktop and web, the host); the tile card (cover, title,
+  artist, album; no controls) in place of the cover alone; album colour; hover hints; drag to
+  reorder in the Queue (mouse and pen); Glass's aurora and Cyber's storm, held still while the
+  frame is hidden.
+- **Found:** §13.6 said the app reads the cover on a canvas for album colour. It does not: it
+  asks Apple's palette through its Rust side. The page reads the cover's pixels with the
+  app's rule for a picture with no palette. Apple's image server allows the read (CORS `*`).
+- **Checked** in Chrome on the mock; `npm run check` and `npm run mock:build` pass. No Rust
+  file changed. No release build. No new dependency.
+- **His call, the same sitting:** "A: hold, then move" for a finger's drag in the Queue.
+  Built: a row held 450 ms lifts; a move drags it; a still release opens its menu. Checked
+  with simulated finger events; not on a real touchscreen.
+- **His desk test of the mock passed** ("ran through 17 steps, looks good"). Committed to
+  `disc-activities` on his word ("commit changes").
+- **Left open:** the Press record's turn, the wallpaper, Ocean's sea and
+  Happy's scene; whether a guest may use Play Now (§13.5); steps 3 to 6.
 
 ## 2026-11-10 (late night) — the Activity: design, the bridge's new name, the mock UI
 

@@ -2,7 +2,7 @@
 status: sop
 desk_test: none
 sources: []
-updated: 2026-11-10
+updated: 2026-11-11
 ---
 # DeetsDiscordBot — Handoff
 
@@ -44,10 +44,11 @@ updated: 2026-11-10
 3. **The Activity: steps 1 and 2 of 6 are built** (features/ACTIVITY.md §13, 2026-11-10):
    the bridge package is `deetsmusic-bridge`, and `activity/` holds the UI on fake data
    (`npm run mock` there). **The work is on branch `disc-activities`**, not merged.
-   Next, in order: his desk test of the mock (§12.1); step 2b (§13.6: the landscape
-   composition, the Play Now toast, the tile card, then the gaps: album colour, skin
-   scenery, drag to reorder, hints); step 3 (the relay). One question is open: may a guest
-   use Play Now (§13.5)? §11 lists what is not confirmed (a Read-only seat launching in a
+   **Most of step 2b is built and his desk test of the mock passed** (2026-11-11, §13.7, §12.1): the landscape layout,
+   the Play Now button on the toast, the tile card, album colour, hints, drag to reorder
+   (a finger holds, then moves), Glass's aurora and Cyber's storm. Next, in order: the rest
+   of the scenery (§13.7: the Press record, the wallpaper, Ocean, Happy); step 3 (the relay).
+   One question is open: may a guest use Play Now (§13.5)? §11 lists what is not confirmed (a Read-only seat launching in a
    large server is the first). No release build was made after the rename: the next one
    restarts the host at a song boundary. `activity/` can be worked on from a Mac
    (ops/SETUP.md §9.1); the bot cannot.

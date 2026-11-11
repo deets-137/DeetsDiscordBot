@@ -5,17 +5,18 @@
 // to one Transport (deetsmusic-protocol). The page that mounts it owns <html> and <body>.
 
 import "./look/src/styles.css";
-import "./look/src/styles/pin.css"; // the cover-only view (DeetsMusic's pin › Cover)
 import "./ui.css";
 import type { Transport } from "../deetsmusic-protocol";
+import { initHints } from "./hint";
 import { initLayout } from "./layout";
 import { initLook, paintLook } from "./look";
+import { initAmbient, initStorm } from "./scenery";
 import { makeStore } from "./store";
-import { initSurface, setCover } from "./surface";
+import { initSurface, setTile } from "./surface";
 
 export interface DeetsMusicUI {
-  /** Show the cover alone (Discord's picture-in-picture and grid tiles), or the full UI again. */
-  setCover(cover: boolean): void;
+  /** Show the tile card alone (Discord's picture-in-picture and grid tiles), or the full UI again. */
+  setTile(tile: boolean): void;
 }
 
 export function mountDeetsMusicUI(transport: Transport, root: HTMLElement = document.body): DeetsMusicUI {
@@ -29,7 +30,10 @@ export function mountDeetsMusicUI(transport: Transport, root: HTMLElement = docu
   const store = makeStore(transport);
   store.watch((s) => paintLook(s.theme, s.skin));
   initLayout(root, store);
-  return { setCover };
+  initStorm(); // after the layout: the storm's layer is in its shell
+  initAmbient();
+  initHints();
+  return { setTile };
 }
 
 export type { CardId } from "./cards";

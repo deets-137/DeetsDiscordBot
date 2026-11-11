@@ -1,6 +1,6 @@
 // The mock page: deetsmusic-ui on a fake host, plus a small desk panel (the ⚙ at the bottom
 // left) to change what a real host would decide: the theme, the skin, host or guest, each
-// Rooms rule, the stream on or off, and the cover-only view.
+// Rooms rule, the stream on or off, and the tile.
 
 import { mountDeetsMusicUI } from "../deetsmusic-ui";
 import type { GuestRules } from "../deetsmusic-protocol";
@@ -30,7 +30,7 @@ desk.innerHTML = `
     <label>Skin <select id="desk-skin">${options(SKINS, s.skin)}</select></label>
     <label><input type="checkbox" id="desk-host"> I am the host</label>
     <label><input type="checkbox" id="desk-active" checked> The host is playing here</label>
-    <label><input type="checkbox" id="desk-cover"> Cover only (picture-in-picture, grid)</label>
+    <label><input type="checkbox" id="desk-tile"> Tile (picture-in-picture, grid)</label>
     ${RULES.map(([k, label]) => `<label><input type="checkbox" data-rule="${k}" checked> ${label}</label>`).join("")}
     <span id="desk-size"></span>
   </div>`;
@@ -46,7 +46,7 @@ $<HTMLSelectElement>("desk-theme").addEventListener("change", (e) => host.set({ 
 $<HTMLSelectElement>("desk-skin").addEventListener("change", (e) => host.set({ skin: (e.target as HTMLSelectElement).value }));
 $<HTMLInputElement>("desk-host").addEventListener("change", (e) => host.set({ host: (e.target as HTMLInputElement).checked }));
 $<HTMLInputElement>("desk-active").addEventListener("change", (e) => host.set({ active: (e.target as HTMLInputElement).checked }));
-$<HTMLInputElement>("desk-cover").addEventListener("change", (e) => ui.setCover((e.target as HTMLInputElement).checked));
+$<HTMLInputElement>("desk-tile").addEventListener("change", (e) => ui.setTile((e.target as HTMLInputElement).checked));
 desk.querySelectorAll<HTMLInputElement>("[data-rule]").forEach((box) =>
   box.addEventListener("change", () => host.set({ rules: { [box.dataset.rule as keyof GuestRules]: box.checked ? "everyone" : "host" } })),
 );
@@ -54,18 +54,33 @@ desk.querySelectorAll<HTMLInputElement>("[data-rule]").forEach((box) =>
 const size = $("desk-size");
 const showSize = (): void => {
   const d = document.documentElement.dataset;
-  size.textContent = `${window.innerWidth} × ${window.innerHeight} · ${d.surface}${d.surface === "mini" ? ` (${"cover" in d ? "cover" : d.mini})` : ""}`;
+  const what = "tile" in d ? "tile" : "wide" in d ? "wide" : d.surface === "mini" ? `mini (${d.mini})` : d.surface;
+  size.textContent = `${window.innerWidth} × ${window.innerHeight} · ${what}`;
 };
 window.addEventListener("resize", showSize);
 new MutationObserver(showSize).observe(document.documentElement, { attributes: true });
 showSize();
 
-// `?cover` opens on the cover alone (mock/frames.html uses it for the tile).
-if (new URLSearchParams(location.search).has("cover")) {
-  $<HTMLInputElement>("desk-cover").checked = true;
-  ui.setCover(true);
+// `?tile` opens on the tile card (mock/frames.html uses it for the tiles).
+const query = new URLSearchParams(location.search);
+if (query.has("tile")) {
+  $<HTMLInputElement>("desk-tile").checked = true;
+  ui.setTile(true);
   desk.hidden = true;
 }
+// `?host`, `?theme=` and `?skin=` set the desk's switches from the address, for a check of one look.
+if (query.has("host")) {
+  $<HTMLInputElement>("desk-host").checked = true;
+  host.set({ host: true });
+}
+const pick = (key: "theme" | "skin", list: string[]): void => {
+  const v = query.get(key);
+  if (!v || !list.includes(v)) return;
+  $<HTMLSelectElement>(`desk-${key}`).value = v;
+  host.set({ [key]: v });
+};
+pick("theme", THEMES);
+pick("skin", SKINS);
 
 // For a check from the browser's console.
 Object.assign(window, { mock: host, ui });

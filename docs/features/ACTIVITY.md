@@ -1,13 +1,14 @@
 ---
 status: project
 desk_test: open
-sources: [activity/deetsmusic-protocol/index.ts, activity/deetsmusic-ui/layout.ts, activity/deetsmusic-ui/surface.ts, activity/scripts/look-sync.mjs, activity/mock/transport.ts]
-updated: 2026-11-10
+sources: [activity/deetsmusic-protocol/index.ts, activity/deetsmusic-ui/layout.ts, activity/deetsmusic-ui/surface.ts, activity/deetsmusic-ui/ui.css, activity/deetsmusic-ui/album-color.ts, activity/deetsmusic-ui/hint.ts, activity/deetsmusic-ui/row-drag.ts, activity/deetsmusic-ui/toast.ts, activity/deetsmusic-ui/scenery.ts, activity/scripts/look-sync.mjs, activity/mock/transport.ts]
+updated: 2026-11-11
 ---
 # The Activity: DeetsMusic's look inside the call
 
-> **Status:** project · 2026-11-10. Build steps 1 and 2 of §10 are built (§13): the bridge
-> package's new name, and the UI on fake data. Nothing talks to Discord or to the bot yet.
+> **Status:** project · 2026-11-11. Build steps 1 and 2 of §10 are built (§13): the bridge
+> package's new name, and the UI on fake data. Most of step 2b is built (§13.7). Nothing talks
+> to Discord or to the bot yet.
 > §1 and §2 are the owner's calls. §3 to §10 are Claude's design inside those calls. §11 holds
 > what is not confirmed. The first notes are in [ideas/activity.md](../ideas/activity.md).
 
@@ -48,15 +49,17 @@ The Activity uses DeetsMusic's bands and numbers (`../DeetsMusic/src/surface.ts`
 
 | What the person sees in Discord | Frame | Surface |
 |---|---|---|
-| The picture-in-picture tile, or a grid tile | small, about 16:9 (not documented; measure) | Mini › Cover |
+| The picture-in-picture tile, or a grid tile | small, about 16:9 (not documented; measure) | The tile card: the cover, the title, the artist, the album. No controls (§13.5 call 3) |
 | A phone in portrait, a narrow desktop frame | up to 460 px wide | Mini: Now Playing plus one card. Mini › Player one tap away. |
-| A phone in landscape, a tablet, a medium frame | 461 to 820 px wide | Midi: the Now Playing strip plus two card slots |
+| A phone in landscape | wider than 460 px, under 500 px high | Wide: the player on the left, one card on the right (§13.5 call 1). Not in the app. |
+| A tablet, a medium frame | 461 to 820 px wide | Midi: the Now Playing strip plus two card slots |
 | The Activity filling a desktop call | above 820 px wide | Max: the stage column plus the card grid |
 
 - The flips keep DeetsMusic's dead-bands: in below 455 px and out above 465 px for Mini; 40 px
-  at the Midi and Max edge. A wide but short frame stays Midi.
+  at the Midi and Max edge. A wide frame between 500 and 745 px high stays Midi. Wide starts
+  under 500 px high and ends above 520 px.
 - Discord reports the mode (`ACTIVITY_LAYOUT_MODE_UPDATE`: focused 0, picture-in-picture 1,
-  grid 2). Picture-in-picture and grid always show Mini › Cover, whatever the size.
+  grid 2). Picture-in-picture and grid always show the tile card, whatever the size.
 - The cards are Now Playing, Queue, Search and History. Library, Playlists, Settings, the Diary
   and the Compass are never in the Activity (CLAUDE.md › Never).
 - Phones: the safe-area values (`--discord-safe-area-inset-*`) pad the page. No orientation
@@ -210,10 +213,14 @@ The whole Activity's test is to write when step 5 is built. It must cover: each 
 in §3; a phone; a guest with each Rooms rule on and off; a person outside the call; a server
 without the bot; a logic swap and a host restart while the Activity is open; DeetsMusic closed.
 
-### 12.1 The mock UI (build step 2): open
+### 12.1 The mock UI (build steps 2 and 2b): passed 2026-11-11
+His words: "ran through 17 steps, looks good."
+
 In `activity/`: `npm install` once, then `npm run mock`. Open the address it prints.
-1. Open `/frames.html`. Five frames show: the tile, a phone in portrait, a phone in
-   landscape, a medium frame, a desktop call. Compare each with DeetsMusic at that size.
+1. Open `/frames.html`. Eight frames show: four tiles, a phone in portrait, a phone in
+   landscape, a medium frame, a desktop call. Compare the last four with DeetsMusic at that
+   size. Each tile shows the cover, the title, the artist and the album, with no control. The
+   phone in landscape shows the player on the left and one card on the right.
 2. Open `/` in its own window. Drag the window narrower. It flips Max → Midi near 780 px and
    Midi → Mini near 455 px, and back near 860 px and 465 px, with no flicker at an edge.
    Max also needs a window taller than 785 px; a shorter one stays Midi, as in the app.
@@ -229,6 +236,29 @@ In `activity/`: `npm install` once, then `npm run mock`. Open the address it pri
 8. Clear "The host is playing here": the title reads "The host is not playing here".
 9. On Mini (a narrow window): tap the cover. The player shows alone. The square at its top
    right goes back to the cards. On Midi and Mini, a card's title picks the card in that place.
+
+Step 2b (§13.7) adds these. Use a mouse.
+10. Make the window wide and under 500 px high. The player is on the left, one card on the
+    right. The card's title picks Queue, Search or History. Make it taller than 520 px: Midi
+    comes back.
+11. Tick "I am the host". In Search, tap a song. The toast "… is in the queue" has a **Play
+    Now** button. Press it: the song plays, and it is not in Up Next a second time. Clear "I am
+    the host" and tap a song: the toast has no button.
+12. On the desk, tick "Tile". The tile card shows. Drag the window to a tall shape: the cover
+    goes on top and the text under it.
+13. Set the skin to Glass. The Now Playing card glows in the cover's colours, and its title
+    takes a colour from the cover. Press ⏭: the colours fade to the next cover's. Three drifting
+    blobs of light show behind the cards.
+14. Set the skin to Cyber. Two lightning bolts strike behind the cards, each time in a new place.
+15. Rest the pointer on ⏭. After a moment a hint box in DeetsMusic's look says "Plays the next
+    song". Rest it on a Queue row with a cut-off name: the hint shows the whole name and the artist.
+16. In the Queue, press a row and drag it. A copy of the row follows the pointer and a line
+    shows where it lands. Let go: the row is there. Press Escape during a drag: nothing moves.
+    Clear "Guests may change Up Next" (and "I am the host"): a row does not drag.
+17. On a touchscreen (or Chrome's device mode with touch), as the host: hold a Queue row
+    still. After half a second it gets an outline. Move the finger: the row drags, and the
+    list does not scroll. Hold a row and let go with no move: its menu opens. Swipe the list
+    with no hold: it scrolls, and nothing lifts.
 
 ## 13. As built (2026-11-10)
 
@@ -269,6 +299,7 @@ DeetsMusic), `npm run look:sync` (copy the look again after a DeetsMusic change)
 10. **Search shows songs only**, with no category filter and no recents: the bot's bridge
     call asks for songs only (BRIDGE.md §2).
 11. **The tile is the cover alone**, as DeetsMusic's pin › Cover. The controls show on hover.
+    Replaced on 2026-11-11 by his call 3 (§13.5): the tile card (§13.7).
 
 ### 13.3 Checked (Claude, Chrome, 2026-11-10)
 On `npm run mock`: Max, Midi, Mini, the player and the cover draw in DeetsMusic's look
@@ -280,6 +311,7 @@ under "Guests may skip", the cover tap and the title picker all work.
 the Metal and Happy skins.
 
 ### 13.4 Known gaps in the mock UI
+As of 2026-11-10. §13.7 says which of these step 2b closed.
 - **No album colour.** The app reads colours from the cover for the Now Playing card
   (`album-color.ts`). On Glass the song's title is faint without them.
 - **No skin scenery.** The Ocean sea, the Cyber storm, the Glass aurora and wallpaper, the
@@ -298,7 +330,7 @@ the Metal and Happy skins.
 | 2 | A tap on a search result | "2A with a toast on the desktop/web version to play now": the tap adds the song to the end of the queue. On desktop and web, the toast that confirms it carries a **Play Now** button. |
 | 3 | The tile (picture-in-picture, grid) | "a unique player card with cover, title, album, and artist can scale the cover down to fit it all in and make it neat." Not the cover alone. |
 
-**None of the three is built.** They are step 2b (§13.6).
+**All three are built** (2026-11-11, §13.7).
 
 **One question on call 2 (open).** Play Now replaces what plays. PERMISSIONS.md §3 makes
 that host only, and DeetsMusic's Rooms has no rule for it. As the rule stands, only the host
@@ -307,7 +339,7 @@ call, and PERMISSIONS.md changes first.
 
 ### 13.6 Step 2b: the gaps and his three calls
 > **Part:** designed · 2026-11-10. His question: "Can those gaps be fixed in any way?" Yes,
-> each one. Nothing here is built.
+> each one. This table is the plan. §13.7 is what was built from it, and what was not.
 
 | Item | How | Size, and what to check first |
 |---|---|---|
@@ -318,3 +350,83 @@ call, and PERMISSIONS.md changes first.
 | Call 1: the landscape composition | A fourth composition for a frame under about 500 px high and over 460 px wide: Now Playing (the player view) on the left, one pickable card on the right. | New rules in `ui.css` and one more case in `surface.ts` and `layout.ts`. The height edge needs its own dead-band. |
 | Call 2: the Play Now toast | The toast gains DeetsMusic's `toast__actions` row with one `toast__btn`. Shown when the pointer is a mouse (`matchMedia("(hover: hover)")`) and the person may play now. | Small. Waits on the question above only for guests. |
 | Call 3: the tile card | A new composition for Discord's picture-in-picture and grid modes: the cover, then title, artist and album beside or under it, the cover scaled so all four fit at any tile size (a container query on the frame). No controls: the tile is not clickable by default. | New rules in `ui.css`; `setCover` becomes `setTile`. Measure Discord's real tile sizes at step 5 (§11 item 5). |
+
+### 13.7 Step 2b as built (2026-11-11)
+> **Part:** built · 2026-11-11, in part. His word: "Go to step 2b". Checked by Claude in Chrome
+> on this PC. His desk test is §12.1 steps 10 to 17. Not built: the scenery that needs a large
+> port.
+
+| Item | Built | Files |
+|---|---|---|
+| Call 1, the landscape layout ("Wide") | Yes | `surface.ts` (`wideFor`, `data-wide`), `layout.ts`, `ui.css` |
+| Call 2, the Play Now button on the toast | Yes | `toast.ts` (the app's timed toast with a button row), `search-card.ts` |
+| Call 3, the tile card | Yes | `surface.ts` (`setTile`, `data-tile`), `ui.css`. `pin.css` is not loaded now. |
+| Album colour | Yes | `album-slots.ts`, `album-color.ts`, `now-playing-card.ts` |
+| Hints | Yes | `hint.ts` |
+| Drag to reorder in the Queue | Yes: a mouse, a pen, and a finger (hold, then move) | `row-drag.ts`, `queue-card.ts`, `menu.ts` |
+| Skin scenery | Glass's aurora and Cyber's storm only | `scenery.ts`, `layout.ts` (the two layers) |
+
+**Decided inside his calls (for his review).**
+1. **Wide starts under 500 px high** on a frame wider than 460 px, and ends above 520 px. The
+   player gets 5 parts of the width and the card 7. The card's title picks Queue, Search or
+   History. Now Playing's Queue and Search squares pick that card too.
+2. **Play Now on the toast removes the copy that the tap added.** The tap put the song at the
+   end of Up Next. Play Now plays it, then removes that last copy, so the song is not there
+   twice. The button shows only where a pointer can rest on it (`hover: hover`) and only to a
+   person who may play a song now. As PERMISSIONS.md §3 stands, that is the host.
+3. **A toast holds 3.2 s** (the app's time), and 6 s when it has a button. The pointer on it
+   holds the clock, as in the app.
+4. **The tile's layout follows its shape.** Wider than 5:4: the cover on the left, the text
+   beside it. Else: the cover on top, the text under it, centred. The type scales with the
+   tile, up to the app's sizes. The Now Playing card's aurora layer stays on the tile.
+5. **Album colour reads the cover's pixels.** §13.6 said the app reads the cover on a canvas.
+   That was wrong: the app asks its Rust side for Apple's palette, and the bridge sends no
+   palette. The page uses the app's own rule for a picture with no Apple palette
+   (`paletteFromPixels`): one 48 px image per album from Apple's image server, 0 API calls.
+   Apple's server sends `Access-Control-Allow-Origin: *` (checked 2026-11-11), so the canvas
+   may be read. The colours can differ a little from the app's for the same album. The exact
+   palette needs a new field from DeetsMusic's bridge: a change in DeetsMusic, not here.
+6. **Hints use the app's defaults:** on, the 600 ms wait, a row's hint only when a name is cut
+   off. A frame has no settings for them.
+7. **A drag moves a row inside Up Next only.** The app also carries a song from Search into
+   the Queue at a chosen place. The protocol has no "add at this place", so that is not built.
+   The row shows in its new place at once; a refusal from the host puts it back.
+8. **The scenery pauses while the frame is hidden** (`visibilitychange`), and the page logs
+   each pause and start to the console.
+
+**How a finger starts a drag: his call, "A: hold, then move"** (2026-11-11). Built the same
+day in `row-drag.ts`, `menu.ts` (`holdElsewhere`) and `queue-card.ts`. Inside his call:
+the lifted row shows the look's outline (`is-context`) and the phone gives a short buzz where
+it can; a move of more than 10 px before the 450 ms ends is a scroll, and nothing lifts; a
+person who may not change Up Next gets the menu at 450 ms as before, with each line greyed.
+In Search and History a long press still opens the menu at 450 ms: their rows do not drag.
+Checked with simulated finger events in Chrome: the drag, the menu on a still release, the
+scroll, the guest's menu. NOT checked on a real touchscreen: whether the list stays still
+under a lifted row (the page refuses the scroll through `touchmove`).
+The two ways that passed the test were:
+- **A. Hold, then move** (recommended). A press held 450 ms lifts the row. A move then drags
+  it. A release with no move opens the menu, as now. No new control. The precedent is
+  DeetsMusic's own hold mode (`row-drag.ts` `hold`, MOVABLE-ROWS.md). Cost: a person must
+  learn the gesture.
+- **B. A grip.** On a touchscreen each Up Next row shows a grip at its right. A drag from the
+  grip starts at once. Cost: a new control that the app does not have, and less room for the
+  song's name.
+
+**Not built: the rest of the scenery.** Each needs a larger port of the app's driver, with
+stand-ins for what the driver reads from the player and the settings store.
+| Scenery | The app's driver | Size |
+|---|---|---|
+| The Press record's turn and slide | `vinyl.ts` | 701 lines |
+| Glass's wallpaper of covers | `wallpaper.ts` | not sized |
+| Ocean's sea | `ocean.ts`, its worker, `ocean-texture.ts` | 473 lines and two more files |
+| Happy's sky, sun and clouds | `scene.ts`, `sky-phase.ts`, `look-schedule.ts` | 398 lines and two more files |
+
+**Checked (Claude, Chrome, 2026-11-11).** `/frames.html`: the four tiles (320 × 180,
+240 × 240, 160 × 90, 200 × 300) and the Wide frame (760 × 390) draw with nothing cut off, on
+Lilac × Press. On Max, Moonlight × Glass, as the host: the Now Playing card took the cover's
+colours; a tap on a search result gave the toast with Play Now; Play Now played the song and
+Up Next went from 10 songs back to 9; a drag moved the first Up Next row to the fifth place,
+in the page and in the fake host; the hint on ⏭ showed. On Black & Red × Cyber the storm layer
+ran. No console error. `npm run check` and `npm run mock:build` pass. NOT checked: a real
+phone, a touchscreen, a pen, the tile at Discord's real sizes, the hint on a cut-off row, the
+Wide dead-band by hand, a refused drag.

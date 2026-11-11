@@ -25,7 +25,7 @@ body {
 /* Mini: a tap on the cover opens the player; the corner square goes back to the cards. In the
    app the Surface menu does both, and a frame has no such menu. */
 [data-surface="mini"]:not([data-mini="player"]) .np__art { cursor: pointer; }
-[data-surface="mini"][data-mini="player"]:not([data-cover]) .np__close {
+[data-surface="mini"][data-mini="player"]:not([data-tile], [data-wide]) .np__close {
   display: grid;
   position: absolute;
   top: var(--space-2);
@@ -43,3 +43,58 @@ body {
 
 /* A long press must not select text or open the browser's own menu on a row. */
 .qrow, .search__song, .qnow { -webkit-touch-callout: none; user-select: none; }
+
+/* ── Wide: a short, wide frame (a phone in landscape; ACTIVITY.md §13.5 call 1) ──
+   surface.ts draws it as Mini's player and adds `data-wide`: the player keeps the left side
+   and one card, picked by its title, takes the right. The `[data-mini]` raises these rules
+   over the look's player rules. */
+:root[data-wide][data-mini] .bento {
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+:root[data-wide][data-mini] .panel[data-slot="np"] { grid-column: 1; grid-row: 1; }
+:root[data-wide][data-mini] .panel[data-slot="left"] { display: flex; grid-column: 2; grid-row: 1; }
+
+/* ── Tile: Discord's picture-in-picture and grid tiles (ACTIVITY.md §13.5 call 3) ──
+   The cover with the title, the artist and the album, and nothing to press. surface.ts draws
+   it as Mini's player and adds `data-tile`. The card is a size container: on a tile wider
+   than it is tall the cover stands at the left with the text beside it; on a square or tall
+   tile the cover is on top with the text under it. The cover scales so all four fit. */
+:root[data-tile][data-mini] .titlebar { display: none; }
+:root[data-tile][data-mini] .app-body { padding: 0; }
+:root[data-tile][data-mini] .bento { gap: 0; padding: 0; }
+:root[data-tile][data-mini] .panel[data-slot="np"] {
+  container: dm-tile / size;
+  padding: clamp(var(--space-2), 5cqmin, var(--space-4));
+  border: none; border-radius: 0; box-shadow: none;
+}
+:root[data-tile][data-mini] .panel[data-slot="np"] .np {
+  container-type: normal; /* the sizes below read the tile, not the card's own width */
+  flex: 1 1 auto; min-width: 0; min-height: 0;
+  display: flex; flex-direction: row; align-items: center; justify-content: center;
+  gap: clamp(var(--space-2), 5cqmin, var(--space-4));
+}
+:root[data-tile][data-mini] .np > :not(.np__art, .np__center, .np__aurora) { display: none; }
+:root[data-tile][data-mini] .np__center > :not(.np__meta) { display: none; }
+:root[data-tile][data-mini] .np__art {
+  --dm-tile-cover: min(100cqh, 42cqw);
+  flex: 0 0 auto; align-self: center; margin: 0;
+  width: var(--dm-tile-cover); height: var(--dm-tile-cover);
+  min-width: 0; min-height: 0; max-width: none;
+  cursor: default;
+}
+:root[data-tile][data-mini] .np__center { flex: 1 1 0; min-width: 0; }
+:root[data-tile][data-mini] .np__meta { display: flex; flex-direction: column; row-gap: var(--np-meta-gap); }
+:root[data-tile][data-mini] .np__line { flex: 0 0 auto; }
+/* The type scales with the tile, up to the app's own sizes. */
+:root[data-tile][data-mini] .np__title { font-size: clamp(12px, 11cqmin, var(--fs-title)); }
+:root[data-tile][data-mini] :is(.np__artist, .np__album) { font-size: clamp(10px, 8cqmin, var(--fs-text)); }
+:root[data-tile][data-mini] .np__album { display: block; }
+@container dm-tile (max-aspect-ratio: 5 / 4) {
+  :root[data-tile][data-mini] .panel[data-slot="np"] .np { flex-direction: column; }
+  /* Three lines of text stay under the cover: the cover takes what is left of the height. */
+  :root[data-tile][data-mini] .np__art { --dm-tile-cover: min(100cqw, 100cqh - 30cqmin - 3 * var(--np-meta-gap) - var(--space-4)); }
+  :root[data-tile][data-mini] .np__center { flex: 0 0 auto; width: 100%; text-align: center; }
+  :root[data-tile][data-mini] .np__line { justify-content: center; }
+}
+

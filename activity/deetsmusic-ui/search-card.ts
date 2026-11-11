@@ -3,7 +3,8 @@
 // the recents, and artists, albums and playlists (the bot's bridge call asks for songs only).
 //
 // A tap on a song adds it to the end of the queue. Its menu (right-click, or a long press)
-// has Play Next, Add to Queue and, for the host, Play Now.
+// has Play Next, Add to Queue and, for the host, Play Now. On desktop and web the toast that
+// confirms the add has a Play Now button for a person who may play a song now.
 
 import type { Track } from "../deetsmusic-protocol";
 import { artworkURL } from "../deetsmusic-protocol";
@@ -93,10 +94,21 @@ export const searchCard: CardDef = {
 
     const titleOf = (id: string): string => results.find((t) => t.catalogId === id)?.title ?? "The song";
 
+    /** Play Now from the "is in the queue" toast: the song plays, and the copy that the tap
+     *  put at the end of the queue goes, so the song is not there twice. */
+    async function playNowFromToast(catalogId: string): Promise<void> {
+      if (!(await store.act({ kind: "playNow", catalogId }))) return;
+      const index = store.state()?.upNext.map((t) => t.catalogId).lastIndexOf(catalogId) ?? -1;
+      if (index >= 0 && store.can("queueRemove")) void store.act({ kind: "queueRemove", index });
+    }
+
     async function add(catalogId: string, mode: "next" | "later"): Promise<void> {
-      if (await store.act({ kind: "enqueue", catalogId, mode })) {
-        toast(mode === "next" ? `${titleOf(catalogId)} plays next` : `${titleOf(catalogId)} is in the queue`, "info");
-      }
+      if (!(await store.act({ kind: "enqueue", catalogId, mode }))) return;
+      if (mode === "next") return toast(`${titleOf(catalogId)} plays next`, "info");
+      // The button shows where a pointer can rest on it (desktop and web, not a touchscreen),
+      // and only to a person who may play a song now (ACTIVITY.md §13.5 call 2).
+      const offer = window.matchMedia("(hover: hover)").matches && store.can("playNow");
+      toast(`${titleOf(catalogId)} is in the queue`, "info", offer ? [{ label: "Play Now", run: () => void playNowFromToast(catalogId) }] : []);
     }
 
     const undo = [

@@ -4,7 +4,9 @@
 //   Max   Now Playing over the Queue (the stage column), Search and History beside them
 //         (DeetsMusic's "2cols" layout for Max, as its Rooms web port uses).
 //   Midi  the Now Playing strip, then two slots. Each slot's title picks its card.
-//   Mini  Now Playing and one slot; or the player (Now Playing alone); or the cover alone.
+//   Mini  Now Playing and one slot; or the player (Now Playing alone).
+//   Wide  (a short, wide frame) the player on the left, one slot on the right.
+//   Tile  (picture-in-picture, grid) Now Playing alone, drawn as the tile card.
 //
 // The look hides the slots a surface does not use, so this file only decides what to mount.
 
@@ -15,7 +17,7 @@ import { nowPlayingCard } from "./now-playing-card";
 import { queueCard } from "./queue-card";
 import { searchCard } from "./search-card";
 import type { Store } from "./store";
-import { onSurface, setMiniView, surfaceState, type SurfaceName, type SurfaceState } from "./surface";
+import { onSurface, setMiniView, surfaceState, type SurfaceState } from "./surface";
 
 type Slot = "np" | "queue" | "left" | "right";
 type Pickable = Exclude<CardId, "now-playing">;
@@ -35,6 +37,19 @@ const SHELL = `
     <div class="chrome-right"><span class="dm-activity__who" id="dm-who"></span></div>
   </header>
   <main class="app-body">
+    <div class="aurora" aria-hidden="true">
+      <div class="aurora__blob aurora__blob--1"></div>
+      <div class="aurora__blob aurora__blob--2"></div>
+      <div class="aurora__blob aurora__blob--3"></div>
+    </div>
+    <div class="storm" aria-hidden="true">
+      <div class="storm__strike storm__strike--1"><div class="storm__hold">
+        <svg class="storm__svg" viewBox="0 0 100 100" preserveAspectRatio="none"><path class="storm__bolt"></path></svg>
+      </div></div>
+      <div class="storm__strike storm__strike--2"><div class="storm__hold">
+        <svg class="storm__svg" viewBox="0 0 100 100" preserveAspectRatio="none"><path class="storm__bolt"></path></svg>
+      </div></div>
+    </div>
     <div class="bento" data-screen="home">
       <div class="stage">
         <section class="panel" data-slot="np" data-span="wide"></section>
@@ -45,14 +60,21 @@ const SHELL = `
     </div>
   </main>`;
 
-/** The two pickable slots' cards on Midi, and Mini's one. Kept for the visit, per surface. */
-const picks: Record<"midi" | "mini", { left: Pickable; right: Pickable }> = {
+/** The two pickable slots' cards on Midi, and the one on Mini and Wide. Kept for the visit,
+ *  per composition. */
+type Place = "midi" | "mini" | "wide";
+const picks: Record<Place, { left: Pickable; right: Pickable }> = {
   midi: { left: "queue", right: "search" },
   mini: { left: "queue", right: "search" },
+  wide: { left: "queue", right: "search" },
 };
+/** Which set of picks the frame uses now. Max and the tile have none. */
+const placeOf = (s: SurfaceState): Place | null => (s.tile ? null : s.wide ? "wide" : s.surface === "max" ? null : s.surface);
 
 function want(s: SurfaceState): Partial<Record<Slot, CardId>> {
-  if (s.cover || (s.surface === "mini" && s.mini === "player")) return { np: "now-playing" };
+  if (s.tile) return { np: "now-playing" };
+  if (s.wide) return { np: "now-playing", left: picks.wide.left };
+  if (s.surface === "mini" && s.mini === "player") return { np: "now-playing" };
   switch (s.surface) {
     case "max":
       return { np: "now-playing", queue: "queue", left: "search", right: "history" };
@@ -136,10 +158,11 @@ export function initLayout(root: HTMLElement, store: Store): void {
   /** Put `id` in `slot` on the current surface. A card already in the other slot swaps places. */
   function place(slot: "left" | "right", id: Pickable): void {
     const s = surfaceState();
-    if (s.surface === "max") return;
-    const set = picks[s.surface];
+    const where = placeOf(s);
+    if (!where) return;
+    const set = picks[where];
     const other = slot === "left" ? "right" : "left";
-    if (s.surface === "midi" && set[other] === id) set[other] = set[slot];
+    if (where === "midi" && set[other] === id) set[other] = set[slot];
     set[slot] = id;
     apply(s);
   }
@@ -148,12 +171,15 @@ export function initLayout(root: HTMLElement, store: Store): void {
   function requestCard(id: CardId): void {
     if (id === "now-playing") return;
     const s = surfaceState();
-    if (s.cover) return;
-    if (s.surface === "mini") {
+    const where = placeOf(s);
+    if (where === "wide") {
+      picks.wide.left = id;
+      apply(s);
+    } else if (where === "mini") {
       picks.mini.left = id;
       if (s.mini === "player") setMiniView("cards"); // the surface change mounts it
       else apply(s);
-    } else if (s.surface === "midi" && picks.midi.left !== id && picks.midi.right !== id) {
+    } else if (where === "midi" && picks.midi.left !== id && picks.midi.right !== id) {
       place("right", id);
     }
     focusCard(id);
@@ -166,19 +192,19 @@ export function initLayout(root: HTMLElement, store: Store): void {
     (p.querySelector<HTMLElement>(".search__input") ?? p.querySelector<HTMLElement>(".panel__body"))?.focus();
   }
 
-  let lastSurface: SurfaceName | null = null;
+  let lastPickable: boolean | null = null;
   function apply(s: SurfaceState): void {
     const next = want(s);
-    const pickable = s.surface !== "max";
+    const pickable = placeOf(s) !== null;
     for (const slot of ["np", "queue", "left", "right"] as Slot[]) {
       const id = next[slot];
       const cur = mounted[slot];
       // A slot keeps its card over a surface flip unless the card or its head changes.
-      const headChanged = !!cur && cur.id !== "now-playing" && lastSurface !== null && (lastSurface === "max") !== (s.surface === "max");
+      const headChanged = !!cur && cur.id !== "now-playing" && lastPickable !== null && lastPickable !== pickable;
       if (cur && (cur.id !== id || headChanged)) unmount(slot);
       if (id && !mounted[slot]) mount(slot, id, pickable && slot !== "np" && slot !== "queue");
     }
-    lastSurface = s.surface;
+    lastPickable = pickable;
   }
 
   onSurface(apply);

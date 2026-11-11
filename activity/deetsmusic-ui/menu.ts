@@ -64,8 +64,15 @@ export function openMenu(x: number, y: number, items: MenuItem[]): void {
 const LONG_PRESS_MS = 450;
 const MOVE_SLOP = 10;
 
-/** Call `open(row, x, y)` on a right-click or a long press on an element that matches `selector`. */
-export function rowMenu(host: HTMLElement, selector: string, openFor: (row: HTMLElement, x: number, y: number) => void): Undo {
+/** Call `open(row, x, y)` on a right-click or a long press on an element that matches `selector`.
+ *  `holdElsewhere`: while it answers true, a finger's long press belongs to another module (the
+ *  Queue's drag: hold, then move), which opens the menu itself on a release with no move. */
+export function rowMenu(
+  host: HTMLElement,
+  selector: string,
+  openFor: (row: HTMLElement, x: number, y: number) => void,
+  holdElsewhere?: () => boolean,
+): Undo {
   let timer = 0;
   let start: { x: number; y: number } | null = null;
   let fired = false;
@@ -82,7 +89,7 @@ export function rowMenu(host: HTMLElement, selector: string, openFor: (row: HTML
       fired = false;
     }),
     on(host, "pointerdown", (e) => {
-      if (e.pointerType === "mouse") return;
+      if (e.pointerType === "mouse" || holdElsewhere?.()) return;
       const row = (e.target as HTMLElement).closest<HTMLElement>(selector);
       if (!row) return;
       start = { x: e.clientX, y: e.clientY };

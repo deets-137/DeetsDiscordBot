@@ -5,6 +5,7 @@
 // host's; a person sets their own level for Lil Deets in Discord).
 
 import { artworkURL, positionNow, type HostState } from "../deetsmusic-protocol";
+import { watchAlbumColor } from "./album-color";
 import type { CardDef } from "./cards";
 import { clock, explicitBadge, on, type Undo } from "./dom";
 import { makeSlider } from "./slider";
@@ -175,12 +176,14 @@ export const nowPlayingCard: CardDef = {
       // Mini: a tap on the cover opens the player; its corner square goes back to the cards.
       on(art, "click", () => {
         const sf = surfaceState();
-        if (sf.surface === "mini" && sf.mini === "cards" && !sf.cover) setMiniView("player");
+        if (sf.surface === "mini" && sf.mini === "cards" && !sf.tile && !sf.wide) setMiniView("player");
       }),
       on(q(".np__close"), "click", () => setMiniView("cards")),
     );
 
     undo.push(store.watch(paint));
+    // After the first paint, so the card has its song: the aurora and the text take the cover's colours.
+    undo.push(watchAlbumColor(np, store));
     return () => undo.forEach((u) => u());
   },
 };
