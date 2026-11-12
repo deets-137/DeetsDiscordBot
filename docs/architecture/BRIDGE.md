@@ -28,7 +28,7 @@ extension. The bot is one more client. The source of truth is DeetsMusic's
 | `search_songs(term)` | `POST /search {term, types:["songs"]}` | `/dm add` and `/dm play` suggestions |
 | `command(kind)` | `POST /command {kind}`: `play` `pause` `next` `previous` | pause, resume, skip, back, np buttons, the Activity |
 | `command("seek", value)` | `POST /command {kind: "seek", value: 0..1}` (a fraction of the song) | the Activity's scrub bar (added 2026-11-11) |
-| `appearance()` | `GET /settings` (rows `theme`, `skin`) | the Activity's look, cached 60 s with the accent |
+| `appearance()` | `GET /settings` (rows `theme`, `skin`, and the skin rows in `SKIN_LOOK_KEYS`: Skin settings, Animate backgrounds, Fancy scrubber, Album wave) | the Activity's look and scenery, cached 60 s with the accent. Only the listed keys leave the PC (ACTIVITY.md §14.2) |
 | `enqueue(id, next)` | `POST /queue {id, mode: next \| later}` | `/dm add`, the picker |
 | `play(id, keep_queue)` | `POST /play {id[, keepQueue: true]}`: without `keepQueue` DeetsMusic replaces Up Next; with it the song goes in at the top and the rest stays | `/dm play` (the host: replace; a guest: keep), the Activity's Play Now (keep) |
 | `queue_edit(action, n, to)` | `POST /queue/edit {action: remove \| move, index, to}` | `/dm remove`, `/dm move` |

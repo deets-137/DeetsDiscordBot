@@ -8,9 +8,31 @@ import type { CardDef } from "./cards";
 import type { HostState } from "../deetsmusic-protocol";
 import { rowMenu, openMenu } from "./menu";
 import { rowDrag } from "./row-drag";
+import { dragLanded } from "./player-bus";
 import { nowHTML, rowHTML } from "./rows";
 
 const HOST_ONLY = "The host has set “Guests may change Up Next” to host only in DeetsMusic";
+
+/** How many Up Next rows the Queue card in `panel` can show without a scroll. With no rows to
+ *  measure, one hidden row stands in for a moment. Infinity: no Queue card there. */
+export function rowsShown(panel: HTMLElement): number {
+  const body = panel.querySelector<HTMLElement>(":scope > .qcard");
+  if (!body) return Infinity;
+  const list = body.querySelector<HTMLElement>(".qcard__list");
+  let rowH = list?.querySelector<HTMLElement>(".qrow")?.offsetHeight ?? 0;
+  if (!rowH) {
+    const probe = document.createElement("ol");
+    probe.className = "qcard__list";
+    probe.style.cssText = "position:absolute;visibility:hidden;left:0;right:0;top:0";
+    probe.innerHTML = rowHTML(0, { catalogId: "probe", title: "Probe", artistName: "Probe" });
+    body.appendChild(probe);
+    rowH = probe.querySelector<HTMLElement>(".qrow")?.offsetHeight ?? 0;
+    probe.remove();
+  }
+  if (!rowH) return Infinity;
+  const top = list ? list.getBoundingClientRect().top : (body.querySelector(".qcard__label")?.getBoundingClientRect().bottom ?? body.getBoundingClientRect().top);
+  return Math.max(0, Math.floor((body.getBoundingClientRect().bottom - top) / rowH));
+}
 
 export const queueCard: CardDef = {
   id: "queue",
@@ -86,6 +108,7 @@ export const queueCard: CardDef = {
           shown = "";
         }
         held = null;
+        dragLanded();
         void store.act({ kind: "queueMove", index: from, to, catalogId }).then((ok) => {
           if (!ok) repaint();
         });

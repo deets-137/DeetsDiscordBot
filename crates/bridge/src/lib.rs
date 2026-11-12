@@ -58,12 +58,27 @@ const ACCENT_TTL: Duration = Duration::from_secs(60);
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(20);
 const SETTINGS_TIMEOUT: Duration = Duration::from_secs(5);
 
-/// DeetsMusic's look: the ids it sets as `data-theme` and `data-skin`.
+/// DeetsMusic's look: the ids it sets as `data-theme` and `data-skin`, and the skin settings
+/// the Activity draws with (`skin_look`: only the keys in `SKIN_LOOK_KEYS`, ACTIVITY.md §14.2).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Appearance {
     pub theme: String,
     pub skin: String,
+    pub skin_look: serde_json::Map<String, Value>,
 }
+
+/// The `GET /settings` rows that change how the Activity draws the host's skin (Settings › Skin
+/// settings, and two Motion rows). Only these ever leave the PC; the keys and values are
+/// DeetsMusic's own (deetsmusic-protocol `SkinLook`).
+pub const SKIN_LOOK_KEYS: &[&str] = &[
+    "fancyScrubber", "backgroundMotion", "albumWave",
+    "oceanEdges", "oceanSand", "oceanCardOpacity", "oceanLight",
+    "pressLight", "cyberLight",
+    "glassFancy", "glassTint", "glassBacklight", "glassCanvasGlow", "glassCanvasDim", "glassCanvas", "glassTiles", "glassDiffusion", "glassAuroraColor",
+    "pressVinyl", "pressVinylWhere", "pressVinylPlate", "pressVinylSpeed", "pressVinylFps",
+    "metalMaterial", "metalGrain", "metalCoverChange", "metalPeek",
+    "happySky", "happyCardOpacity",
+];
 
 /// A failure worth showing the user as it is.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -316,7 +331,12 @@ impl Bridge {
         let mut look = self.state().look.as_ref().map(|(_, l)| l.clone()).unwrap_or_default();
         if let Ok(out) = self.call("/settings", None, SETTINGS_TIMEOUT).await {
             let row = |key: &str| settings_rows(&out).find(|(k, _)| *k == key).and_then(|(_, v)| v.and_then(Value::as_str)).unwrap_or("").to_owned();
-            look = Appearance { theme: row("theme"), skin: row("skin") };
+            let skin_look = settings_rows(&out)
+                .filter(|(k, _)| SKIN_LOOK_KEYS.contains(k))
+                // A plain value only: a toggle, a number, or a short choice id.
+                .filter_map(|(k, v)| v.filter(|v| v.is_boolean() || v.is_number() || v.as_str().is_some_and(|s| s.len() <= 32)).map(|v| (k.to_owned(), v.clone())))
+                .collect();
+            look = Appearance { theme: row("theme"), skin: row("skin"), skin_look };
         }
         self.state().look = Some((Instant::now(), look.clone()));
         look

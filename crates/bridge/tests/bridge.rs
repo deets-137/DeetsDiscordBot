@@ -317,6 +317,28 @@ async fn accent_follows_the_theme_and_falls_back() {
 }
 
 #[tokio::test]
+async fn appearance_carries_only_the_skin_look_keys() {
+    let a = Stub::start(|_| {
+        ok(json!({"settings": [
+            {"key": "theme", "value": "black-red"},
+            {"key": "skin", "value": "ocean"},
+            {"key": "oceanLight", "value": 80},
+            {"key": "happySky", "value": "sunset"},
+            {"key": "metalPeek", "value": null},
+            {"key": "glassCanvas", "value": {"not": "a plain value"}},
+            {"key": "agentHistory", "value": true},
+            {"key": "bridgeToken", "value": "secret"}
+        ]}))
+    })
+    .await;
+    let look = bridge("look", Some("tok"), vec![a.port]).appearance().await;
+    assert_eq!((look.theme.as_str(), look.skin.as_str()), ("black-red", "ocean"));
+    assert_eq!(look.skin_look.get("oceanLight"), Some(&json!(80)));
+    assert_eq!(look.skin_look.get("happySky"), Some(&json!("sunset")));
+    assert_eq!(look.skin_look.len(), 2, "a null or non-plain value and every key off the list stay home: {:?}", look.skin_look);
+}
+
+#[tokio::test]
 async fn writes_send_the_documented_bodies() {
     let a = Stub::start(|_| ok(json!({"ok": true, "notices": [{"kind": "warn", "text": "Queue is long"}]}))).await;
     let br = bridge("writes", Some("tok"), vec![a.port]);

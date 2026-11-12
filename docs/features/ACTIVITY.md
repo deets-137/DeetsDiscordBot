@@ -1,7 +1,7 @@
 ---
 status: project
 desk_test: open
-sources: [activity/deetsmusic-protocol/index.ts, activity/deetsmusic-ui/layout.ts, activity/deetsmusic-ui/surface.ts, activity/deetsmusic-ui/ui.css, activity/deetsmusic-ui/album-color.ts, activity/deetsmusic-ui/hint.ts, activity/deetsmusic-ui/row-drag.ts, activity/deetsmusic-ui/toast.ts, activity/deetsmusic-ui/scenery.ts, activity/relay/src/index.ts, activity/relay/src/room.ts, activity/relay/src/wire.ts, activity/discord-shell/main.ts, activity/discord-shell/relay-transport.ts, crates/logic/src/deetsmusic_remote.rs, crates/relay-client/src/lib.rs, crates/logic/src/relay.rs, activity/scripts/look-sync.mjs, activity/mock/transport.ts]
+sources: [activity/deetsmusic-protocol/index.ts, activity/deetsmusic-ui/layout.ts, activity/deetsmusic-ui/surface.ts, activity/deetsmusic-ui/ui.css, activity/deetsmusic-ui/album-color.ts, activity/deetsmusic-ui/hint.ts, activity/deetsmusic-ui/row-drag.ts, activity/deetsmusic-ui/toast.ts, activity/deetsmusic-ui/scenery.ts, activity/relay/src/index.ts, activity/relay/src/room.ts, activity/relay/src/wire.ts, activity/discord-shell/main.ts, activity/discord-shell/relay-transport.ts, crates/logic/src/deetsmusic_remote.rs, crates/relay-client/src/lib.rs, crates/logic/src/relay.rs, activity/scripts/look-sync.mjs, activity/mock/transport.ts, activity/deetsmusic-ui/full-player.ts, activity/deetsmusic-ui/grow.ts, activity/deetsmusic-ui/vinyl.ts, activity/deetsmusic-ui/ocean.ts, activity/deetsmusic-ui/scene.ts, activity/deetsmusic-ui/pet.ts, activity/deetsmusic-ui/metal.ts, activity/deetsmusic-ui/wallpaper.ts, activity/deetsmusic-ui/album-light.ts, activity/deetsmusic-ui/skin-settings.ts, crates/bridge/src/lib.rs]
 updated: 2026-11-11
 ---
 # The Activity: DeetsMusic's look inside the call
@@ -9,7 +9,9 @@ updated: 2026-11-11
 > **Status:** project · 2026-11-11. Build steps 1 to 5 of §10 are built (§13): the bridge
 > package's new name, the UI on fake data (2, 2b), the relay and the sign-in (3, deployed),
 > and the real cards in the call (4 and 5, §13.10: live since 2026-11-11 13:53).
-> His desk tests: §12.2 (part run), §12.3 (open).
+> His desk tests: §12.2 (part run), §12.3 (passed 2026-11-11), §12.4 (open). §14: the full
+> player, the card grow, the Queue/History swap and every skin's scenery, built 2026-11-11 and
+> NOT released (no release build, no deploy, his word).
 > §1 and §2 are the owner's calls. §3 to §10 are Claude's design inside those calls. §11 holds
 > what is not confirmed. The first notes are in [ideas/activity.md](../ideas/activity.md).
 
@@ -322,7 +324,8 @@ If sign-in fails with "Not from the Activity", `W` shows the origin the relay sa
 **Run so far** (2026-11-11): steps 1, 2, 3 and 5 passed ("showed as expected", after the fix
 in §13.9). Steps 4 and 6 to 11 are open.
 
-### 12.3 The cards in the call (build steps 4 and 5): open
+### 12.3 The cards in the call (build steps 4 and 5): passed 2026-11-11
+His word: "It passes".
 `LD` is the bot's log (`logs\lildeets-<date>.log` when started from the shortcut).
 
 **Setup, once.**
@@ -376,6 +379,38 @@ in §13.9). Steps 4 and 6 to 11 are open.
     Open DeetsMusic again and play: the Activity follows.
 14. Restart the host during a call (LIVE-RELOAD.md §7). The page shows "The host is not
     playing here", then the song again when the bot is back.
+
+### 12.4 The full player, the grow, the swap and the scenery (§14): open
+**Part A: the mock page, now** (nothing live changes). In `activity/`: `npm run mock`, open the
+address it prints, add `?host` to it. The ⚙ at the bottom left is the desk (theme, skin, Sky,
+Album light, Tiles).
+1. A wide browser window (Max). Tap the cover: the full player opens; the Queue fills the left
+   column; History slides in beside the cover. The record keeps turning. Press Escape, then
+   open it again and close it with the square at the cover's corner, then with the strip under
+   the title bar.
+2. Hover the Queue's title: a Grow button shows beside it. Press it: the Queue grows up over Now
+   Playing. Press it again: it goes back. Do the same with the strip between the Queue and Now
+   Playing, and with the History card (it widens over Search).
+3. Make the window shorter until the Queue shows 5 songs or fewer. Its title now opens a menu:
+   pick History. History goes under Now Playing; the Queue takes the tall right column. Pick
+   Queue from either title to swap back.
+4. A window about 700 px wide (Midi): tap the cover. The player covers both cards, the
+   controls on the dark band over the cover. A phone-sized window (Mini): unchanged.
+5. Skins, from the desk: Ocean (a sea with neon crests; tap ⏭: a ripple where you tapped),
+   Happy (sky, sun, clouds, grass, Deets and Happy; ⏭: Happy pushes the cover out; wait about
+   40 s for a round of fetch and "Good boy!" or "Gundu..."), Metal (brushed cards, the covers
+   before and after beside the cover; ⏭ turns the drum), Glass (the cover as the wallpaper;
+   Tiles "some" adds the next albums), Cyber and Press (⏭: the album's colour turns in around
+   each card).
+6. Sky: set Sunset, then Night: the sky and the moon follow at once.
+
+**Part B: in the call, after a release build and a relay deploy** (his word first; a release
+build is a live change, CLAUDE.md › Never).
+7. In DeetsMusic, change Skin settings › Album light and Sky. Within 60 s the Activity follows.
+8. On a phone: tap the cover in landscape (Wide) and in a tablet-sized frame. The Grow button
+   shows without hover.
+9. Picture-in-picture while the full player is open: the tile shows; back in the call the
+   cards are at rest.
 
 ## 13. As built (2026-11-10)
 
@@ -731,3 +766,190 @@ newcomer gets the last one; a flood is cut off). `cf deploy --dry-run` builds th
 DeetsMusic's fonts and look. NOT checked: anything inside Discord or against the real
 DeetsMusic (the 1 s reads, the seek fraction, the covers through the URL mappings, the layout
 mode events, Rich Presence, response type 12).
+
+## 14. The full player and all the scenery (design, 2026-11-11)
+
+> **Part:** designed · 2026-11-11. Nothing is built. His ask: "can we allow expanding the
+> player card if the view meets a size minimum? ... the whole shebang with Happy, Deets,
+> sunset/sunrise and neon oceans, etc." The forks in §14.5 are his.
+
+### 14.1 The full player
+DeetsMusic's full player (`../DeetsMusic/docs/features/fullscreen-player.md`, shipped 0.26.1):
+the Now Playing card grows over the cards beside it, so the cover is as large as the frame
+allows. Its two rules hold: the cover is never cut, and no control leaves the screen.
+
+| Frame | What the full player does | Precedent |
+|---|---|---|
+| Max (above 820 × 745) | Grows over Search and History. The Queue keeps the stage column. The cover on the left; the rows beside it when the card is about 356 px wider than tall, else over its bottom on the dark band. | fullscreen-player.md §6.2, §7.3 |
+| Midi (461 to 820 wide) | Grows over the two slots. The rows over the cover. | §6.1 |
+| Mini, Wide | No change: Mini's player view (a tap on the cover) and Wide's left half already are the player. | §7.5 |
+| The tile | Never. | §13.5 call 3 |
+
+- **The size minimum is Midi's floor**, the app's own rule: a frame wider than 460 px.
+- **Each person's own frame.** Opening it changes nothing for the others in the call.
+- **Open** (his call 2A): an edge zone (left and right on Max, top and bottom on Midi), or
+  a tap on the cover.
+- **Close:** the square over the cover's top-right corner (above it when there is room,
+  §17), an edge zone, Escape, or a click outside. Never kept after the frame closes (§6.6).
+- **The motion** is the app's: the clip-open from the card, the Press record's turning
+  flight, Metal's drum (`full-player.ts`, `full-player-layout.ts`: 1,651 lines, ported).
+- **The cover file** grows with the box (`fullArtPx`, 200 px steps, at most 2000 px). Apple's
+  image server takes the size in the URL; the URL mapping already covers it.
+
+### 14.2 The scenery, skin by skin
+Today the page has Glass's aurora and Cyber's storm (§13.7). The rest:
+
+| Skin | What the call sees | The app's driver |
+|---|---|---|
+| Press | The record turns while the song plays and slides out on a song change | `vinyl.ts` (701 lines) |
+| Ocean | The sea, the album's glow from the deep, the **neon crests** in the album's colours (the host's *Album light*), ripples where you tap. No heave with the music (his call 1B) | `ocean.ts`, its worker, `ocean-texture.ts`, `album-light.ts` |
+| Glass | The wallpaper of covers from Up Next and History | `wallpaper.ts`, its worker |
+| Metal | The material, and the previous and next covers behind the cover | `metal.ts`, `metal-material.ts` |
+| Happy | The sky, the sun or the moon, the clouds, the grass; Deets and Happy play fetch on the grass ("Good boy!", "Gundu..."); Happy pushes the old cover out on a song change; the tennis-ball playhead; Baloo 2, Quicksand, Pixelify Sans | `scene.ts`, `pet.ts`, `sky-phase.ts`, the sun equation in `look-schedule.ts` |
+
+- **The host's skin settings ride in the state message** (F3: the same for everyone): Album
+  light, card opacity, Sky, Metal's rows. Read from `GET /settings` with the theme, on the
+  same 60 s cache.
+- **The sky is meant to follow the host's sunrise and sunset** (F3): the page runs the app's
+  `skyAt` on the host's two times for today. **Not yet:** the bot cannot send those times until
+  DeetsMusic's bridge does (§14.3), so today each viewer's sky follows their own time zone, and
+  two friends far apart can see day and night.
+- **Happy's fetch and pushes are drawn in each frame**, at random, as in the app: two friends
+  may see different rounds. Nothing about them crosses the relay.
+- **Glass's wallpaper uses covers only.** The host's own pictures never leave the PC.
+- **The rules that stop motion stay:** reduced motion, a hidden frame (`visibilitychange`),
+  and the app's per-skin gates. Each driver logs when it arms, runs and stops (console).
+
+### 14.3 A fault found: the call never sees the look schedule
+The bridge's `theme` and `skin` rows are the host's **own pick** (`ownSetting` in DeetsMusic's
+`agent-settings.ts`), not the look on screen. With Settings › Look schedule on (for example a
+day look at sunrise and Black & Red × Ocean at sunset), or a rule that sets the look, the call
+keeps showing the own pick. F3 says "the host's current theme and skin".
+
+The fix is in DeetsMusic: its bridge reports the look that shows, and today's sunrise and
+sunset for the Sky. The bot cannot work it out from the rows: it cannot see a rule's look or
+how long a manual pick lasts. **A change in `../DeetsMusic`, in its own session** (never from
+this repo, CLAUDE.md › Never). Until it lands, the Activity shows the own pick and Happy's sky
+follows the viewer's own clock.
+
+### 14.4 The build
+One feature: the full player and the scenery. After the §12.3 desk test passes (CLAUDE.md ›
+One load-bearing feature in flight). The order:
+1. `npm run look:sync` (`qcard.css` changed in DeetsMusic since the copy).
+2. The full player on Midi and Max.
+3. The Press record, then Ocean (with its neon), Happy, Glass's wallpaper, Metal.
+4. The state message's new fields: the skin settings, the showing look and the sun's times
+   once DeetsMusic sends them.
+5. The Sonnet pass, then his desk test (written into §12 at hand-over).
+
+No new dependency: the two workers are Vite's own `new Worker(new URL(...))`.
+
+### 14.5 Forks — his calls (2026-11-11: "1B, 2A")
+**1B:** no heave; the bot sends no level. **2A:** the edge zones and a tap on the cover.
+
+1. **Ocean's heave.** In the app the sea rises and falls with the music's loudness. The page
+   cannot hear the call. **A (recommended):** the host measures the level of the sound it
+   already sends to the call and sends it to the relay 3 times a second while Ocean shows and
+   the music plays. Cost: about 10,800 small messages an hour to the relay (about 540 billed
+   Durable Object requests an hour at Cloudflare's 20:1 rate for socket messages; an estimate),
+   and the relay stays awake while Ocean plays. **B:** no heave; the sea rolls, glows and
+   ripples, but does not move with the music.
+2. **How the full player opens.** **A (recommended):** the app's edge zones (left and right
+   on Max, top and bottom on Midi) and a tap on the cover, as Mini's cover tap does now. A
+   finger finds the cover more easily than a thin edge. **B:** the edge zones only, one to one
+   with the app.
+
+### 14.6 His two asks at the build (2026-11-11)
+> "Can we also allow the queue to be swapped with history if we note the users display doesn't
+> display more than 5 songs of the queue? Can we also allow the queue to be expanded like in DM?"
+
+- **The swap (Max).** The page counts the Up Next rows the Queue under Now Playing can show
+  without a scroll (`rowsShown`, queue-card.ts; a hidden row stands in when Up Next is empty).
+  At 5 or fewer, the Queue's title becomes a picker (DeetsMusic's title picker) with Queue and
+  History: a pick swaps them. The Queue takes History's tall column on the right, History goes
+  under Now Playing. Swapped, both titles keep the picker, so the way back is the same.
+  Midi and Mini already pick their cards by title. Kept for the visit, as the picks.
+- **Expand (DeetsMusic's card grow, CARD-GROW.md).** Max: the Queue grows up over Now
+  Playing; Search and History widen over each other. Midi: the two cards widen over each other.
+  After a swap the Queue widens from the right column. Ways in: the strip in the gap beside the
+  card (its bar shows on hover) and the Grow button beside the card's title (on hover, as the
+  app; always on a touchscreen). Ways out: the same button, the grown card's strip, Escape, a
+  request for the covered card, the full player, a surface change.
+
+### 14.7 As built (2026-11-11, not released)
+> **Part:** built · 2026-11-11. His word: "don't release / deploy / impact the live stream but go
+> ahead and build." No release build and no deploy: the running bot and the deployed page are
+> unchanged. His desk test is §12.4.
+
+| Part | Files |
+|---|---|
+| Full player | `full-player.ts` (DeetsMusic's `full-player.ts` and `full-player-layout.ts`), `art-size.ts`, `now-playing-card.ts` (the cover tap, the close square, the larger file), `ui.css` |
+| Card grow | `grow.ts`, `ui.css` (the button shows on hover or on a touchscreen) |
+| The swap | `layout.ts` (`maxSwap`, `paintSwap`, `measureQueue`), `queue-card.ts` (`rowsShown`) |
+| The record, Metal's drum, Happy's push | `vinyl.ts` (DeetsMusic's `vinyl.ts`) |
+| Ocean | `ocean.ts`; `ocean-texture.ts` and `ocean-worker.ts` copied as they are |
+| Happy | `scene.ts`, `pet.ts` (copied, imports adapted); `look/src/sky-phase.ts` and `look/src/sun-zones.ts` (copied by `look:sync`) |
+| Metal | `metal.ts`, `metal-material.ts` (copied, imports adapted) |
+| Glass | `wallpaper.ts`; `wallpaper-worker.ts` copied as it is |
+| Album light (Press, Cyber edges; Cyber's bolts) | `album-light.ts`, `scenery.ts` (`stormTakeAlbum`) |
+| The host's skin settings | `skin-settings.ts`; `SkinLook` in `deetsmusic-protocol`; `SKIN_LOOK_KEYS` in `crates/bridge`; `look` in `crates/logic/src/deetsmusic_remote.rs` |
+| Shared | `motion.ts` (reduced motion, tokens, row entry), `player-bus.ts` (the song for the drivers; a play intent; a dropped row) |
+
+**Decided inside his calls (for his review).**
+1. **The full player's side column** (Max, a wide card) shows History, or the Queue after a
+   swap. The app's picker on that column and its Queue-side setting are not here: the
+   Activity has no settings.
+2. **The cover file grows** with the full player (200 px steps, at most 2000 px), through the
+   same Apple URL mapping.
+3. **A host on Glass › Canvas › Picture shows Covers in the call.** The host's own picture
+   never leaves the PC.
+4. **Happy's sky follows the viewer's own time zone** until DeetsMusic sends the host's
+   sunrise and sunset (§14.3). The protocol has the field (`look.sun`); the page uses it when
+   it comes.
+5. **The pair always rest in the bottom-left corner.** The app moves them for its grand
+   opening card, which the Activity does not have.
+6. **Only the listed skin rows travel** (`SKIN_LOOK_KEYS`, 29 keys). A null value stays home.
+7. **No heave on Ocean** (his call 1B). Ripples answer this person's own play, next, back and
+   Play Now taps, and a dropped Queue row.
+8. **Reduced motion** is the device's own setting in a frame (the app reads its Motion row).
+   The host's Animate backgrounds row also holds the scenery still.
+
+**Checked (Claude, Chrome, mock page, 2026-11-11).** Max, Lilac × Press, as the host: a tap on
+the cover opened the full player (Queue in the stage column, History beside the cover, the
+record turning); Escape closed it. The Queue's Grow button grew it over Now Playing; the
+button collapsed it. In a 1000 × 760 frame the Queue's title offered the swap; a pick put
+History under Now Playing and the Queue on the right. Ocean × Black & Red: the sea and the neon
+crests in the album's colour. Happy × Lilac: sky, sun, clouds, grass, Deets and Happy; ⏭ made
+Happy push the cover out. Metal × Sepia: the brushed material and the side covers. Glass ×
+Moonlight: the cover wallpaper under the frost. Cyber: the album light's wave on ⏭. Midi
+(700 × 700): the full player with the rows on the band. Mini (400 × 700) and Wide (700 × 380):
+unchanged. `npm run check`, `npm run mock:build` (both workers bundled), `cargo clippy
+--workspace --all-targets` and `cargo test --workspace` (a new bridge test: only the listed
+keys leave) pass. NOT checked: anything inside Discord, a real touchscreen, the real bot's
+state with `look`, Happy's fetch round (it starts 10 s in; not watched to the end).
+
+**The Sonnet pass** (2026-11-11; Claude checked each finding against the code). Fixed:
+1. **Reduced motion on Max: the side column never came in.** The snap open returned before the
+   step that brings it. Both opens now end in `afterOpen`.
+2. **Midi: Search or Queue on the full player did nothing** when that card was not in a slot
+   (it was placed under the player). A card request now closes the player unless the card is
+   the Max stage card beside it.
+3. **A grow started while the player waited for its large cover** outlived the player and
+   left two cards on top of each other. Nothing grows while the player opens.
+4. **Ocean with its painter blocked** (a frame's content policy) waited for ever. It now keeps
+   the plain sea and logs it.
+5. **The tile ran all the scenery behind it.** The layers leave under the tile, Happy plays no
+   round, the wallpaper draws nothing (it catches up after), and Metal's side covers go. The
+   card's own glow keeps moving.
+6. **Happy could be frozen into the full player's still copy.** The copy leaves him out.
+7. **Only plain values travel** in `look`: a toggle, a number or a choice of 32 characters at
+   most (`SKIN_LOOK_KEYS`, with a test).
+Not changed, and why:
+- **Happy's sky can differ between two friends** (§14.3): the fix is DeetsMusic's.
+- **A tap during the large cover's wait does nothing more** (up to 0.25 s, the app's own wait).
+- **A keyboard that shortens a tablet frame under 500 px makes it Wide** and remounts Search:
+  the Wide rule from §13.7, older than this work. Worth his look at the desk test.
+- **The host's Animate backgrounds Off holds every guest's scenery still** (F3: the host's
+  look for everyone). A guest's own reduced motion still holds theirs.
+- Inside Discord, untested: the two workers and the wallpaper's `blob:` picture under the
+  frame's content policy (§12.4 part B).

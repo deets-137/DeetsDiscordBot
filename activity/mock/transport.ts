@@ -25,7 +25,7 @@ const RULE_NAME: Record<keyof GuestRules, string> = {
 
 export interface MockHost extends Transport {
   /** The mock page's own switches. A real transport has none of these. */
-  set(patch: Partial<Pick<HostState, "theme" | "skin" | "active">> & { host?: boolean; rules?: Partial<GuestRules> }): void;
+  set(patch: Partial<Pick<HostState, "theme" | "skin" | "active" | "look">> & { host?: boolean; rules?: Partial<GuestRules> }): void;
   state(): HostState;
 }
 

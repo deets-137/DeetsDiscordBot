@@ -33,6 +33,24 @@ body {
   z-index: 2;
 }
 
+/* The tile covers the whole frame with the cover card: the scenery behind it cannot be seen,
+   so its layers leave (their loops stop with them). The card's own glow stays. Metal's side
+   covers do not show on a tile. (ACTIVITY.md §14.7, the break-it pass.) */
+:root[data-tile] :is(.ocean, .wallpaper, .scene, .storm, .aurora) { display: none !important; }
+:root[data-tile] .metal-peek { display: none; }
+
+/* Midi and Max: a tap on the cover opens the full player (his call 2A, ACTIVITY.md §14.1). */
+:root:is([data-surface="midi"], [data-surface="max"]):not([data-tile], [data-wide]) .bento:not([data-player="full"]) .panel[data-slot="np"] .np__art { cursor: pointer; }
+
+/* The Grow button (grow.ts) enters when the pointer is in the card's header, as in the app,
+   and stays while the card is grown. A touchscreen has no hover: there it always shows. */
+.panel__head > .grow-btns { display: none; }
+.panel__head:is(:hover, :focus-within) > .grow-btns,
+.panel.is-grown > .panel__head > .grow-btns { display: flex; }
+@media (hover: none) { .panel__head > .grow-btns { display: flex; } }
+/* While the full player is open nothing grows. */
+.bento[data-player="full"] .grow-btns { display: none; }
+
 /* A control the host's rules keep from this person: on screen, greyed (the look greys
    .np__btn[disabled] the same way). */
 .np__scrub[data-locked] { cursor: default; }

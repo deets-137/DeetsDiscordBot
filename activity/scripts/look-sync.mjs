@@ -31,9 +31,13 @@ function walk(dir) {
   return out;
 }
 
-/** Every file the look needs: the stylesheets, the fonts, and each asset a url() names. */
+/** Pure modules with no imports that the scenery uses as they are (ACTIVITY.md §14.2): the
+ *  time zones' main cities for the sun, and the sky's part of the day. */
+const PURE = ["src/sun-zones.ts", "src/sky-phase.ts"];
+
+/** Every file the look needs: the stylesheets, the fonts, each asset a url() names, and PURE. */
 function sourceFiles() {
-  const files = new Set([join(SOURCE, "src/styles.css"), ...walk(join(SOURCE, "src/styles"))]);
+  const files = new Set([join(SOURCE, "src/styles.css"), ...walk(join(SOURCE, "src/styles")), ...PURE.map((p) => join(SOURCE, p))]);
   for (const css of [...files].filter((f) => f.endsWith(".css"))) {
     for (const m of readFileSync(css, "utf8").matchAll(/url\(\s*["']?([^"')]+)["']?\s*\)/g)) {
       const ref = m[1];

@@ -11,6 +11,16 @@ import { initHints } from "./hint";
 import { initLayout } from "./layout";
 import { initLook, paintLook } from "./look";
 import { initAmbient, initStorm } from "./scenery";
+import { initMotion } from "./motion";
+import { initOcean } from "./ocean";
+import { initAlbumLight } from "./album-light";
+import { fullPlayerLookChanged } from "./full-player";
+import { initMetal } from "./metal";
+import { initPet } from "./pet";
+import { initWallpaper } from "./wallpaper";
+import { initPlayerBus } from "./player-bus";
+import { initScene } from "./scene";
+import { applySkinSettings, initSkinSettings } from "./skin-settings";
 import { makeStore } from "./store";
 import { initSurface, setTile } from "./surface";
 
@@ -25,11 +35,29 @@ export function mountDeetsMusicUI(transport: Transport, root: HTMLElement = docu
   html.dataset.maxCards = "2cols";
   html.dataset.stageSide = "left";
 
+  initMotion();
   initLook();
+  initSkinSettings();
   initSurface();
   const store = makeStore(transport);
-  store.watch((s) => paintLook(s.theme, s.skin));
+  store.watch((s) => {
+    paintLook(s.theme, s.skin);
+    applySkinSettings(s.look);
+  });
+  initPlayerBus(store);
   initLayout(root, store);
+  // After the layout: each layer is in its shell.
+  initOcean();
+  initScene();
+  initPet();
+  initMetal();
+  initWallpaper();
+  initAlbumLight();
+  // A look change can change the full player's cover share (Metal's peek) at the same size.
+  new MutationObserver(fullPlayerLookChanged).observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["data-skin", "data-hook-material", "data-metal-peek", "data-metal-cover"],
+  });
   initStorm(); // after the layout: the storm's layer is in its shell
   initAmbient();
   initHints();
