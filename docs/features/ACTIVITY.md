@@ -411,6 +411,10 @@ build is a live change, CLAUDE.md › Never).
    shows without hover.
 9. Picture-in-picture while the full player is open: the tile shows; back in the call the
    cards are at rest.
+10. **After a DeetsMusic release with `look`** (§14.3): set Settings › Look schedule to Set
+    times with the night starting a few minutes from now, a night look different from your own
+    pick. When DeetsMusic changes, the Activity follows within 60 s. A friend in another time
+    zone sees your sky under Happy.
 
 ## 13. As built (2026-11-10)
 
@@ -810,10 +814,9 @@ Today the page has Glass's aurora and Cyber's storm (§13.7). The rest:
 - **The host's skin settings ride in the state message** (F3: the same for everyone): Album
   light, card opacity, Sky, Metal's rows. Read from `GET /settings` with the theme, on the
   same 60 s cache.
-- **The sky is meant to follow the host's sunrise and sunset** (F3): the page runs the app's
-  `skyAt` on the host's two times for today. **Not yet:** the bot cannot send those times until
-  DeetsMusic's bridge does (§14.3), so today each viewer's sky follows their own time zone, and
-  two friends far apart can see day and night.
+- **The sky follows the host's sunrise and sunset** (F3): the page runs the app's `skyAt` on
+  the host's two times for today (`look.sun`, §14.3). With a DeetsMusic that does not send them
+  yet, each viewer's sky follows their own time zone.
 - **Happy's fetch and pushes are drawn in each frame**, at random, as in the app: two friends
   may see different rounds. Nothing about them crosses the relay.
 - **Glass's wallpaper uses covers only.** The host's own pictures never leave the PC.
@@ -831,6 +834,15 @@ sunset for the Sky. The bot cannot work it out from the rows: it cannot see a ru
 how long a manual pick lasts. **A change in `../DeetsMusic`, in its own session** (never from
 this repo, CLAUDE.md › Never). Until it lands, the Activity shows the own pick and Happy's sky
 follows the viewer's own clock.
+
+**Fixed on both sides (2026-11-11).** DeetsMusic's session added `look` to every `GET /settings`
+reply: `{theme, skin, sun}`, the ids on screen now and today's sun (`{rise, set}` in epoch ms, or
+"day" / "night"; without Sun shift). The `theme` and `skin` rows still mean the own pick. The
+bot's `appearance()` now takes `look.theme` and `look.skin` when they are there, else the rows (an
+older DeetsMusic), and passes `look.sun` on as the state's `look.sun` after a shape check (two
+finite numbers, rise before set, or the one word). The cards' accent follows the shown theme too.
+Live only after **both** a DeetsMusic release and a bot release build; until then, the old
+behaviour. Test: `appearance_prefers_the_look_on_screen_and_its_sun` (crates/bridge).
 
 ### 14.4 The build
 One feature: the full player and the scenery. After the §12.3 desk test passes (CLAUDE.md ›
@@ -903,9 +915,8 @@ No new dependency: the two workers are Vite's own `new Worker(new URL(...))`.
    same Apple URL mapping.
 3. **A host on Glass › Canvas › Picture shows Covers in the call.** The host's own picture
    never leaves the PC.
-4. **Happy's sky follows the viewer's own time zone** until DeetsMusic sends the host's
-   sunrise and sunset (§14.3). The protocol has the field (`look.sun`); the page uses it when
-   it comes.
+4. **Happy's sky follows the host's sun** (`look.sun`, §14.3), and the viewer's own time
+   zone when the host's DeetsMusic does not send it.
 5. **The pair always rest in the bottom-left corner.** The app moves them for its grand
    opening card, which the Activity does not have.
 6. **Only the listed skin rows travel** (`SKIN_LOOK_KEYS`, 29 keys). A null value stays home.
@@ -945,7 +956,8 @@ state with `look`, Happy's fetch round (it starts 10 s in; not watched to the en
 7. **Only plain values travel** in `look`: a toggle, a number or a choice of 32 characters at
    most (`SKIN_LOOK_KEYS`, with a test).
 Not changed, and why:
-- **Happy's sky can differ between two friends** (§14.3): the fix is DeetsMusic's.
+- **Happy's sky can differ between two friends** (§14.3): fixed later the same day, once
+  DeetsMusic sends the host's sun.
 - **A tap during the large cover's wait does nothing more** (up to 0.25 s, the app's own wait).
 - **A keyboard that shortens a tablet frame under 500 px makes it Wide** and remounts Search:
   the Wide rule from §13.7, older than this work. Worth his look at the desk test.

@@ -72,7 +72,9 @@ updated: 2026-11-11
    NOT released** (§14.7; his word: "don't release / deploy / impact the live stream").
    No release build, no `cf deploy`: the live bot and page are unchanged. **Next: his desk test
    §12.4 part A on the mock page**; part B needs a release build and a relay deploy, at his
-   word. Open: the look schedule needs a change in DeetsMusic (§14.3).
+   word. The look schedule in the call: DeetsMusic's bridge sends `look` (built in a DeetsMusic
+   session, 2026-11-11, not released); the bot reads it (§14.3). Live after both releases.
+   This work is on branch `activity-full-player` (pushed), not on main.
    §11 lists what is not confirmed (a Read-only seat launching in a large server is the first;
    §12.2 steps 10 and 11 test it). `activity/` can be worked on from a Mac (ops/SETUP.md
    §9.1); the bot cannot.
