@@ -26,6 +26,7 @@
     "src/assets/skins/happy/scene/sun.png": "3620fe17f8e8cef754307190bb2f52e95e223be53f3fd5d54d461330679d420b",
     "src/assets/skins/happy/scene/sun_rays.png": "e2c6897dc2ed7938d041dea596865e66e70a5c72a1e639710590716cbd283cab",
     "src/assets/skins/happy/scene/tennis_ball.png": "6b8e907ec887b40e4cc5884e42a9d9890ba9cb2b260e0f652496c8ff41e1cb5d",
+    "src/sky-phase.ts": "626d6058580fced79d4d42776a95d1638e01ad9b11798ff1563d1b6fff18e61b",
     "src/styles.css": "da7c8bbf18ad6dc3cd43efc291258dca94e7fd8e7de51af5ff6a14e9928ae676",
     "src/styles/compass.css": "dd02f5c6c323d7b30f7c3c77b84614cad05f77dd3d7d97d0a98f053840be9dc9",
     "src/styles/diary.css": "64a69e4ca2a92d580e450c1419bb839c9d64525863e4b7266ed1634992413e2f",
@@ -61,6 +62,7 @@
     "src/styles/themes.css": "d680dae30be0f066d9cefeb4e233920f5572d78162433e03b78311a7c9dd0e99",
     "src/styles/toast.css": "06044f717af1b384b81262149fa78c9304c3674db635d2775c632d64055a9ab7",
     "src/styles/updates.css": "90b4ff967937a70ab57d29bc0d5289080209c463b74d72cff2274067ae7be2fc",
-    "src/styles/walk.css": "2f74b31f7ad2b3744f6bca11c99eba21854396db13bdca80a312611daa13ce80"
+    "src/styles/walk.css": "2f74b31f7ad2b3744f6bca11c99eba21854396db13bdca80a312611daa13ce80",
+    "src/sun-zones.ts": "b867c36a82b90066bf5038a6e5c1540ebf80dca0a97a49857d75209a4e602e95"
   }
 }

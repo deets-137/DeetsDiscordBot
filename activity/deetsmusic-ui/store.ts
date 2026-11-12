@@ -2,6 +2,7 @@
 // knows nothing about where the state comes from.
 
 import { allowed, type Action, type HostState, type Track, type Transport } from "../deetsmusic-protocol";
+import { playIntent } from "./player-bus";
 import { toast } from "./toast";
 
 export interface Store {
@@ -33,6 +34,7 @@ export function makeStore(transport: Transport): Store {
     },
     can: (kind) => !!current && allowed(current, kind),
     async act(action) {
+      if (action.kind === "play" || action.kind === "next" || action.kind === "previous" || action.kind === "playNow") playIntent();
       try {
         const r = await transport.act(action);
         if (!r.ok) toast(r.reason);

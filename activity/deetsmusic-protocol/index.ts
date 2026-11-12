@@ -50,6 +50,51 @@ export interface Viewer {
   host: boolean;
 }
 
+/** Today's sunrise and sunset where the host is (epoch ms), or "day" / "night" when the sun
+ *  stays up or down all day. */
+export type SunTimes = { rise: number; set: number } | "day" | "night";
+
+/** The host's skin settings and Motion rows that change how the look draws (DeetsMusic ›
+ *  Settings › Skin settings; the keys and values are DeetsMusic's own). Each is optional: a
+ *  missing key keeps DeetsMusic's default. Only these keys ever travel. */
+export interface SkinLook {
+  fancyScrubber?: boolean;
+  /** Settings › Motion › Animate backgrounds. */
+  backgroundMotion?: "on" | "reduced" | "off";
+  oceanEdges?: "sand" | "soft";
+  oceanSand?: number;
+  oceanCardOpacity?: number;
+  /** Ocean's album light: the neon on the crests above 0. */
+  oceanLight?: number;
+  /** Press and Cyber: the album light on the card edges (0 off). */
+  pressLight?: number;
+  cyberLight?: number;
+  /** A new album's colour turns in around each card. */
+  albumWave?: boolean;
+  glassFancy?: boolean;
+  glassTint?: number;
+  glassBacklight?: number;
+  glassCanvasGlow?: number;
+  glassCanvasDim?: number;
+  glassCanvas?: "aurora" | "covers" | "picture";
+  glassTiles?: "one" | "few" | "some" | "many";
+  glassDiffusion?: number;
+  glassAuroraColor?: "cover" | "theme";
+  pressVinyl?: "spin" | "still" | "off";
+  pressVinylWhere?: "stage" | "card" | "everywhere";
+  pressVinylPlate?: boolean;
+  pressVinylSpeed?: "16" | "33" | "45" | "78";
+  pressVinylFps?: "60" | "120" | "144" | "240";
+  metalMaterial?: "steel" | "acrylic";
+  metalGrain?: "faint" | "fine" | "medium" | "strong";
+  metalCoverChange?: "zoetrope" | "off";
+  metalPeek?: boolean;
+  happySky?: "follow" | "day" | "sunrise" | "sunset" | "night";
+  happyCardOpacity?: number;
+  /** The host's sun today, for Happy's sky. Absent: the page uses the viewer's own time zone. */
+  sun?: SunTimes | null;
+}
+
 /** The whole state, sent on a change (never on a timer). */
 export interface HostState {
   v: typeof PROTOCOL_VERSION;
@@ -62,6 +107,8 @@ export interface HostState {
   /** DeetsMusic's theme and skin ids (`data-theme`, `data-skin`). */
   theme: string;
   skin: string;
+  /** The host's skin settings (ACTIVITY.md §14.2). Absent from an older bot. */
+  look?: SkinLook;
   rules: GuestRules;
   you: Viewer;
 }

@@ -9,10 +9,25 @@
 // (`data-ambient="paused"`, as DeetsMusic's ambient.ts). The app asks its window; a page asks
 // the browser. It logs each change, as anything that acts by itself does.
 //
-// Not here yet (ACTIVITY.md §13.6): Ocean's sea, Glass's wallpaper, Happy's scene and the
-// Press record's turn. Each needs a larger port of the app's own driver.
+// The bolts take the album's second colour (album-light.ts) at their loop seam, while dark.
+// The rest of the scenery has its own driver (ACTIVITY.md §14.2): ocean.ts, wallpaper.ts,
+// scene.ts and pet.ts, metal.ts, vinyl.ts (the Press record), album-light.ts.
 
 const root = document.documentElement;
+
+/** The album's secondary colour (album-light.ts) on one bolt, taken only while it is dark. */
+function takeAlbum(strike: HTMLElement): void {
+  const album = root.style.getPropertyValue("--album-neon-2");
+  if (album) strike.style.setProperty("--storm-album", album);
+  else strike.style.removeProperty("--storm-album");
+}
+
+/** The roles changed: every bolt that is dark now takes them. A lit one waits for its seam. */
+export function stormTakeAlbum(): void {
+  document.querySelectorAll<HTMLElement>(".storm__strike").forEach((strike) => {
+    if (getComputedStyle(strike).opacity === "0") takeAlbum(strike);
+  });
+}
 
 export function initStorm(): void {
   document.querySelectorAll<HTMLElement>(".storm__strike").forEach((strike) => {
@@ -20,6 +35,7 @@ export function initStorm(): void {
       // The storm's viewBox is 0..100 across, so "8..92px" is 8 % to 92 % of the width.
       strike.style.setProperty("--storm-x", `${Math.round(8 + Math.random() * 84)}px`);
       strike.style.setProperty("--storm-flip", Math.random() < 0.5 ? "-1" : "1");
+      takeAlbum(strike);
     };
     roll();
     strike.addEventListener("animationiteration", (e) => {

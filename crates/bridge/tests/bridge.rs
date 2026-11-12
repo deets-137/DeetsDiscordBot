@@ -317,6 +317,52 @@ async fn accent_follows_the_theme_and_falls_back() {
 }
 
 #[tokio::test]
+async fn appearance_carries_only_the_skin_look_keys() {
+    let a = Stub::start(|_| {
+        ok(json!({"settings": [
+            {"key": "theme", "value": "black-red"},
+            {"key": "skin", "value": "ocean"},
+            {"key": "oceanLight", "value": 80},
+            {"key": "happySky", "value": "sunset"},
+            {"key": "metalPeek", "value": null},
+            {"key": "glassCanvas", "value": {"not": "a plain value"}},
+            {"key": "agentHistory", "value": true},
+            {"key": "bridgeToken", "value": "secret"}
+        ]}))
+    })
+    .await;
+    let look = bridge("look", Some("tok"), vec![a.port]).appearance().await;
+    assert_eq!((look.theme.as_str(), look.skin.as_str()), ("black-red", "ocean"));
+    assert_eq!(look.skin_look.get("oceanLight"), Some(&json!(80)));
+    assert_eq!(look.skin_look.get("happySky"), Some(&json!("sunset")));
+    assert_eq!(look.skin_look.len(), 2, "a null or non-plain value and every key off the list stay home: {:?}", look.skin_look);
+}
+
+#[tokio::test]
+async fn appearance_prefers_the_look_on_screen_and_its_sun() {
+    let a = Stub::start(|_| {
+        ok(json!({
+            "settings": [{"key": "theme", "value": "lilac"}, {"key": "skin", "value": "press"}],
+            "look": {"theme": "black-red", "skin": "ocean", "sun": {"rise": 1794406907804u64, "set": 1794444721514u64}}
+        }))
+    })
+    .await;
+    let look = bridge("shown", Some("tok"), vec![a.port]).appearance().await;
+    assert_eq!((look.theme.as_str(), look.skin.as_str()), ("black-red", "ocean"), "the schedule's look, not the own pick");
+    assert_eq!(look.skin_look.get("sun"), Some(&json!({"rise": 1794406907804.0, "set": 1794444721514.0})));
+
+    let b = Stub::start(|_| ok(json!({"settings": [{"key": "theme", "value": "lilac"}], "look": {"theme": "", "skin": "happy", "sun": "night"}}))).await;
+    let look = bridge("shown-part", Some("tok"), vec![b.port]).appearance().await;
+    assert_eq!((look.theme.as_str(), look.skin.as_str()), ("lilac", "happy"), "an empty id falls back to the row");
+    assert_eq!(look.skin_look.get("sun"), Some(&json!("night")));
+
+    let c = Stub::start(|_| ok(json!({"settings": [{"key": "skin", "value": "metal"}], "look": {"sun": {"rise": "soon"}}}))).await;
+    let look = bridge("old", Some("tok"), vec![c.port]).appearance().await;
+    assert_eq!(look.skin, "metal", "an older DeetsMusic: the rows");
+    assert!(look.skin_look.get("sun").is_none(), "a malformed sun stays home");
+}
+
+#[tokio::test]
 async fn writes_send_the_documented_bodies() {
     let a = Stub::start(|_| ok(json!({"ok": true, "notices": [{"kind": "warn", "text": "Queue is long"}]}))).await;
     let br = bridge("writes", Some("tok"), vec![a.port]);

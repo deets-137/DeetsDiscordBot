@@ -68,7 +68,8 @@ function guard(color: RGB, backdrops: RGB[], target: number): RGB {
 const known = new Map<string, AlbumPalette | null>();
 const inFlight = new Map<string, Promise<AlbumPalette | null>>();
 
-function readPalette(track: Track): Promise<AlbumPalette | null> {
+/** The cover's palette (one read per album, kept for the visit). Ocean's glow and neon read it too. */
+export function readPalette(track: Track): Promise<AlbumPalette | null> {
   const key = track.artworkTemplate ?? "";
   const url = artworkURL(track, SAMPLE_PX);
   if (!key || !url) return Promise.resolve(null);

@@ -10,6 +10,9 @@ import type { CardDef } from "./cards";
 import { clock, explicitBadge, on, type Undo } from "./dom";
 import { makeSlider } from "./slider";
 import { setMiniView, surfaceState } from "./surface";
+import { artPxNow, onArtPx } from "./art-size";
+import { closeFullPlayer, isFullPlayer, openFullPlayer } from "./full-player";
+import { mountVinyl } from "./vinyl";
 
 const ICON_PLAY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>';
 const ICON_PAUSE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z" /></svg>';
@@ -89,8 +92,9 @@ export const nowPlayingCard: CardDef = {
     const scrubEl = q(".np__scrub");
     const undo: Undo[] = [];
 
-    let shownArt = "";
     let scrubbingTo: number | null = null;
+    const vinyl = mountVinyl(art, GLYPH_NOTE);
+    undo.push(() => vinyl.destroy());
 
     const duration = (): number => store.state()?.now.track?.durationMs ?? 0;
 
@@ -98,11 +102,13 @@ export const nowPlayingCard: CardDef = {
       enabled: () => store.can("seek") && duration() > 0,
       onDrag: (f) => {
         scrubbingTo = f * duration();
+        vinyl.scrub(scrubbingTo / 1000);
         paintClock();
       },
       onCommit: (f) => {
         const positionMs = Math.round(f * duration());
         scrubbingTo = null;
+        vinyl.scrub(positionMs / 1000, true);
         void store.act({ kind: "seek", positionMs });
       },
     });
@@ -131,14 +137,12 @@ export const nowPlayingCard: CardDef = {
       album.textContent = t?.albumName ?? "";
 
       // The cover: DeetsMusic's vinyl markup, so Press turns it and the other skins show it flat.
-      const src = artworkURL(t, window.devicePixelRatio > 1.5 ? 640 : 480) ?? "";
-      if (src !== shownArt) {
-        shownArt = src;
-        art.innerHTML = src
-          ? `<div class="vinyl"><div class="vinyl__plate"></div><div class="vinyl__spin"><img alt="" data-art decoding="async" src="${src.replace(/"/g, "&quot;")}" /></div></div>`
-          : `<div class="vinyl vinyl--glyph">${GLYPH_NOTE}</div>`;
-      }
-      art.dataset.turn = t && s.now.playing ? "spin" : "none";
+      // The cover: DeetsMusic's record slot (vinyl.ts), so Press turns it, Metal's drum turns
+      // between songs, Happy pushes it, and the other skins show it flat. The same song at a
+      // new size (the full player) swaps its file once decoded.
+      vinyl.show(t?.catalogId ?? "", artworkURL(t, artPxNow()) ?? undefined);
+      vinyl.playing(!!t && s.now.playing);
+      if (t) vinyl.position(positionNow(s.now) / 1000, (t.durationMs ?? 0) / 1000);
 
       const playing = s.now.playing;
       playBtn.innerHTML = playing ? ICON_PAUSE : ICON_PLAY;
@@ -173,12 +177,26 @@ export const nowPlayingCard: CardDef = {
       on(nextBtn, "click", () => void store.act({ kind: "next" })),
       on(q("#np-summon"), "click", () => ctx.requestCard("queue")),
       on(q("#np-search"), "click", () => ctx.requestCard("search")),
-      // Mini: a tap on the cover opens the player; its corner square goes back to the cards.
+      // A tap on the cover: Mini opens its player view; Midi and Max open the full player (his
+      // call 2A, 2026-11-11). The corner square goes back: the cards, or the player closes.
       on(art, "click", () => {
         const sf = surfaceState();
-        if (sf.surface === "mini" && sf.mini === "cards" && !sf.tile && !sf.wide) setMiniView("player");
+        if (sf.tile || sf.wide) return;
+        if (sf.surface === "mini") {
+          if (sf.mini === "cards") setMiniView("player");
+        } else if (!isFullPlayer()) {
+          void openFullPlayer("cover");
+        }
       }),
-      on(q(".np__close"), "click", () => setMiniView("cards")),
+      on(q(".np__close"), "click", () => {
+        if (isFullPlayer()) void closeFullPlayer("close");
+        else setMiniView("cards");
+      }),
+      // The full player asks for a larger cover file while it is open.
+      onArtPx(() => {
+        const s = store.state();
+        if (s) paint(s);
+      }),
     );
 
     undo.push(store.watch(paint));

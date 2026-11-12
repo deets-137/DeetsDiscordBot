@@ -67,8 +67,14 @@ updated: 2026-11-11
    "A, no line"): the real cards in the call, `deetsmusic_remote`, "Open in call" on the
    `/dm np` card, Play Now and `/dm play` for guests under "Guests may skip" and "Guests may add
    songs" (keeping Up Next). IPC `PROTOCOL` 3, relay WIRE 2, the five cover URL mappings in the
-   Portal. **Next: his desk test §12.3** (15 steps). Set aside by his word ("Step 3,
-   the relay"): the rest of the scenery (§13.7: the Press record, the wallpaper, Ocean, Happy).
+   Portal. **His desk test §12.3 passed** (2026-11-11, "It passes").
+   **The full player, the card grow, the Queue/History swap and all the scenery are built and
+   NOT released** (§14.7; his word: "don't release / deploy / impact the live stream").
+   No release build, no `cf deploy`: the live bot and page are unchanged. **Next: his desk test
+   §12.4 part A on the mock page**; part B needs a release build and a relay deploy, at his
+   word. The look schedule in the call: DeetsMusic's bridge sends `look` (built in a DeetsMusic
+   session, 2026-11-11, not released); the bot reads it (§14.3). Live after both releases.
+   This work is on branch `activity-full-player` (pushed), not on main.
    §11 lists what is not confirmed (a Read-only seat launching in a large server is the first;
    §12.2 steps 10 and 11 test it). `activity/` can be worked on from a Mac (ops/SETUP.md
    §9.1); the bot cannot.

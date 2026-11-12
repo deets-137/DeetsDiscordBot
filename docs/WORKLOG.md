@@ -9,6 +9,29 @@ updated: 2026-11-11
 One dated `##` per sitting, newest first. An old entry is never corrected. DeetsOTD's earlier
 history is in `git log` and docs/archive/.
 
+## 2026-11-11 (later) — the Activity's full player, grow, swap and scenery, built (not released)
+
+- **His words.** "1B, 2A"; "It passes" (§12.3); "don't release / deploy / impact the live stream
+  but go ahead and build"; the Queue/History swap when the Queue shows 5 songs or fewer; "allow
+  the queue to be expanded like in DM".
+- **Built** (ACTIVITY.md §14.6, §14.7): the full player on Midi and Max, card grow, the swap,
+  and every skin's scenery (Press record, Ocean with neon, Happy with Deets and fetch, Metal,
+  Glass wallpaper, the album light). The host's skin settings ride in the state (`look`,
+  `SKIN_LOOK_KEYS`). The Sonnet pass found 6 faults; all fixed.
+- **Not done:** no release build, no deploy (his word). The look schedule needs DeetsMusic
+  (§14.3). His desk test is §12.4.
+
+## 2026-11-11 (late) — the Activity's full player and scenery, on paper
+
+- **His words.** "can we allow expanding the player card if the view meets a size minimum?
+  ... the whole shebang with Happy, Deets, sunset/sunrise and neon oceans, etc."
+- **Designed** (ACTIVITY.md §14): DeetsMusic's full player on Midi and Max; the scenery of
+  every skin (Press, Ocean with its neon, Glass's wallpaper, Metal, Happy with Deets and
+  fetch); the host's skin settings and sky in the state message. Two forks for him (§14.5).
+- **Found:** the bridge's `theme` and `skin` are the host's own pick, not the showing look,
+  so the look schedule (sunrise and sunset) never reaches the call (§14.3). The fix is in
+  DeetsMusic. Nothing built; `npm run check` shows the look copy is behind (`qcard.css`).
+
 ## 2026-11-11 (night) — the Activity, steps 4 and 5: the real cards in the call
 
 - **His words.** "Yup, showed as expected" (§12.2 steps 1–3, 5 after the §13.9 fix); "Let's

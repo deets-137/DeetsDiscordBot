@@ -3,7 +3,7 @@
 // Rooms rule, the stream on or off, and the tile.
 
 import { mountDeetsMusicUI } from "../deetsmusic-ui";
-import type { GuestRules } from "../deetsmusic-protocol";
+import type { GuestRules, SkinLook } from "../deetsmusic-protocol";
 import { mockHost } from "./transport";
 
 const host = mockHost();
@@ -28,6 +28,9 @@ desk.innerHTML = `
   <div id="desk-panel" hidden style="position:absolute;left:0;bottom:34px;width:230px;padding:8px;background:#fff;border:1px solid #888;border-radius:8px;display:grid;gap:6px">
     <label>Theme <select id="desk-theme">${options(THEMES, s.theme)}</select></label>
     <label>Skin <select id="desk-skin">${options(SKINS, s.skin)}</select></label>
+    <label>Sky (Happy) <select id="desk-sky">${options(["follow", "day", "sunrise", "sunset", "night"], "follow")}</select></label>
+    <label>Album light <input type="range" id="desk-light" min="0" max="100" value="80"></label>
+    <label>Tiles (Glass) <select id="desk-tiles">${options(["one", "few", "some", "many"], "one")}</select></label>
     <label><input type="checkbox" id="desk-host"> I am the host</label>
     <label><input type="checkbox" id="desk-active" checked> The host is playing here</label>
     <label><input type="checkbox" id="desk-tile"> Tile (picture-in-picture, grid)</label>
@@ -44,6 +47,18 @@ $("desk-toggle").addEventListener("click", () => {
 });
 $<HTMLSelectElement>("desk-theme").addEventListener("change", (e) => host.set({ theme: (e.target as HTMLSelectElement).value }));
 $<HTMLSelectElement>("desk-skin").addEventListener("change", (e) => host.set({ skin: (e.target as HTMLSelectElement).value }));
+// The host's skin settings (ACTIVITY.md §14.2): what the real host sends in `look`.
+const look = (): SkinLook => {
+  const light = Number($<HTMLInputElement>("desk-light").value);
+  return {
+    happySky: $<HTMLSelectElement>("desk-sky").value as SkinLook["happySky"],
+    oceanLight: light,
+    pressLight: light,
+    cyberLight: light,
+    glassTiles: $<HTMLSelectElement>("desk-tiles").value as SkinLook["glassTiles"],
+  };
+};
+for (const id of ["desk-sky", "desk-light", "desk-tiles"]) $(id).addEventListener("change", () => host.set({ look: look() }));
 $<HTMLInputElement>("desk-host").addEventListener("change", (e) => host.set({ host: (e.target as HTMLInputElement).checked }));
 $<HTMLInputElement>("desk-active").addEventListener("change", (e) => host.set({ active: (e.target as HTMLInputElement).checked }));
 $<HTMLInputElement>("desk-tile").addEventListener("change", (e) => ui.setTile((e.target as HTMLInputElement).checked));

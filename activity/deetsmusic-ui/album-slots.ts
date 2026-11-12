@@ -76,6 +76,45 @@ export function auroraSlots(p: AlbumPalette): [string | undefined, string | unde
   return [third?.s ?? second?.s, first.s, halo];
 }
 
+/** The album's one colour: the most colourful of the three. */
+export function albumColor(p: AlbumPalette | null | undefined): string | undefined {
+  return p ? rankByColor(p)[0]?.s : undefined;
+}
+
+// ── the album as neon (DeetsMusic's OCEAN.md §7, ALBUM-COLOR.md § The album light) ──
+
+/** Is this ground dark enough for a lit line? */
+export const isDark = (c: RGB): boolean => toOKLCH(c)[0] < 0.55;
+
+/** Album colour → a neon line: the bloom more vivid, the core lifted toward white on a dark
+ *  ground; both deeper on a light ground. A grey cover stays grey. */
+export function asNeon(c: RGB, darkGround: boolean): { core: RGB; bloom: RGB } {
+  const [, C, h] = toOKLCH(c);
+  const vivid = Math.min(C * 1.5, 0.2);
+  return darkGround
+    ? { bloom: fromOKLCH([0.72, vivid, h]), core: fromOKLCH([0.92, vivid * 0.45, h]) }
+    : { bloom: fromOKLCH([0.62, vivid, h]), core: fromOKLCH([0.45, vivid, h]) };
+}
+
+/** The album light's three roles, as hex. */
+export interface Neon {
+  core: string;
+  bloom: string;
+  /** The secondary colour's bloom (Cyber's bolts). */
+  second: string;
+}
+
+/** A palette as the card edges' neon (an all-grey cover on a dark ground lights white). */
+export function albumNeon(p: AlbumPalette, darkGround: boolean): Neon | null {
+  const [, rim, halo] = auroraSlots(p);
+  const main = rim ? parseColor(rim) : null;
+  if (!main) return null;
+  const lit = asNeon(main, darkGround);
+  const grey = darkGround && toOKLCH(main)[1] < GREY_CHROMA;
+  const next = asNeon((halo ? parseColor(halo) : null) ?? main, darkGround);
+  return { core: toHex(lit.core), bloom: toHex(grey ? lit.core : lit.bloom), second: toHex(grey ? next.core : next.bloom) };
+}
+
 // ── a palette from a picture's own pixels ──────────────────────────────────────
 
 const HUE_BINS = 12;

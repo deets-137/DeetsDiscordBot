@@ -229,6 +229,8 @@ fn build_state(np: Option<&NowPlaying>, q: Option<&Queue>, rules: &HashMap<Strin
         "history": history,
         "theme": if look.theme.is_empty() { "lilac" } else { look.theme.as_str() },
         "skin": if look.skin.is_empty() { "press" } else { look.skin.as_str() },
+        // The host's skin settings (ACTIVITY.md §14.2): only the bridge's SKIN_LOOK_KEYS.
+        "look": look.skin_look,
         "rules": {
             "playPause": rule("roomGuests.playPause"),
             "skip": rule("roomGuests.skip"),
@@ -435,7 +437,8 @@ mod tests {
     #[test]
     fn the_state_has_the_protocol_shape() {
         let rules: HashMap<String, Option<String>> = [("roomGuests.skip".to_owned(), Some("everyone".to_owned())), ("roomGuests.add".to_owned(), Some("host".to_owned()))].into();
-        let look = Appearance { theme: "sepia".into(), skin: "glass".into() };
+        let skin_look = [("oceanLight".to_owned(), json!(60)), ("happySky".to_owned(), json!("sunset"))].into_iter().collect();
+        let look = Appearance { theme: "sepia".into(), skin: "glass".into(), skin_look };
         let s = build_state(Some(&np()), Some(&queue()), &rules, &look, true, 1000.0);
         assert_eq!(s["v"], 1);
         assert_eq!(s["active"], true);
@@ -450,6 +453,8 @@ mod tests {
         assert_eq!(s["history"][0]["track"]["title"], "Newest");
         assert_eq!(s["theme"], "sepia");
         assert_eq!(s["skin"], "glass");
+        assert_eq!(s["look"]["oceanLight"], 60);
+        assert_eq!(s["look"]["happySky"], "sunset");
         assert_eq!(s["rules"]["skip"], "everyone");
         assert_eq!(s["rules"]["add"], "host");
         assert_eq!(s["rules"]["seek"], "host"); // unknown: host only
